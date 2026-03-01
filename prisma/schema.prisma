@@ -66,3 +66,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model Settings {
+  id              String   @id @default("global") // Enforce single row
+  companyName     String   @default("ProjectBill Consulting")
+  companyAddress  String?  
+  companyEmail    String?
+  updatedAt       DateTime @updatedAt
+}

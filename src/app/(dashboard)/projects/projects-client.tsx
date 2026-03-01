@@ -278,7 +278,7 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="IDR">IDR</SelectItem>
-                                                <SelectItem value="USD">USD</SelectItem>
+                                                <SelectItem value="USD" disabled>USD (Pending feature)</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>

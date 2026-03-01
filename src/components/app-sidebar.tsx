@@ -1,4 +1,4 @@
-import { Home, Users, Briefcase, FileText, LogOut, LayoutDashboard } from "lucide-react"
+import { Home, Users, Briefcase, FileText, LogOut, LayoutDashboard, Settings } from "lucide-react"
 import { signOut } from "@/auth"
 
 import {
@@ -39,6 +39,11 @@ const items = [
     title: "Invoices",
     url: "/invoices",
     icon: FileText,
+  },
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
   },
 ]
 

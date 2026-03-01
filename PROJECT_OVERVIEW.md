@@ -9,9 +9,9 @@ ProjectBill is a web-based, self-hosted invoicing and project tracking applicati
 - **ORM:** Prisma
 - **Language:** TypeScript
 
-## Current State: Phase 1-8 (MVP to V1 Complete)
+## Current State: Phase 1-11 (V1.1 Complete)
 
-The Minimum Viable Product (MVP) and advanced V1 features have been successfully implemented:
+The Minimum Viable Product (MVP) and advanced V1.1 features have been successfully implemented:
 
 1. **Infrastructure & Core Entity (Phase 1-2):**
    - Next.js 15+ App Router, Tailwind CSS, Shadcn UI setup.
@@ -45,21 +45,23 @@ The Minimum Viable Product (MVP) and advanced V1 features have been successfully
    - Shows "Total Paid Revenue", "Pending Revenue", "Active Clients", and "Unpaid Invoices" counts.
    - Included Recharts visualizations to map revenue streams and project status distributions.
 
+7. **Export & PDF Generation (Phase 9):**
+   - Built a flawless physical document output using optimized CSS `@media print` directives.
+   - Added a "Download PDF / Print" feature directly to the native public invoice view.
+   - Clean, A4-ready layouts that hide UI clutter automatically during print.
+
+8. **Settings & Branding Customization (Phase 11):**
+   - Created a central `Settings` state in the database mapping to a singleton global configuration.
+   - Developed a UI settings panel using `react-hook-form` to configure business Name, Address, Email, and Bank Details.
+   - Integrated dynamic settings fetch into public invoices, abandoning generic hardcoded templates.
+
 ## Future Development Plan (V2 & Beyond)
 
 To continue the development of ProjectBill, subsequent agents should focus on:
 
-### Phase 9: Export & PDF Generation
-- **Goal:** Allow clients and business owners to download invoices as PDF files.
-- **Tasks:** Use a library like `puppeteer` or specialized PDF generation APIs to render `/invoices/[id]` securely into a downloadable format.
-
 ### Phase 10: Multi-Currency Payment Gateway
 - **Goal:** Expand automatic payments to USD.
 - **Tasks:** Wire up Stripe Checkout for invoices where `currency === 'USD'`, adding a separate webhook listener alongside Mayar.id.
-
-### Phase 11: Settings & Branding Customization
-- **Goal:** Allow the business owner to customize the app's look and feel.
-- **Tasks:** Create a settings panel to allow the user to modify the company name, logo, address, and default bank account details dynamically (saving it in DB or a persistent config).
 
 ## Notes for the Next Agent
 - All layout components and global CSS are already set up.

@@ -109,9 +109,10 @@ export function InvoicesClient({ initialInvoices }: { initialInvoices: any[] }) 
                                     <TableCell className="capitalize">{inv.type.replace('_', ' ')}</TableCell>
                                     <TableCell>{formatCurrency(inv.amount, inv.project.currency || "IDR")}</TableCell>
                                     <TableCell>
-                                        <Badge variant={inv.status === "paid" ? "default" : "secondary"}>
-                                            {inv.status}
-                                        </Badge>
+                                        {inv.status === 'paid'
+                                            ? <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-300 text-xs py-1 px-3 uppercase tracking-widest font-bold">Paid</Badge>
+                                            : <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-200 border-red-300 text-xs py-1 px-3 uppercase tracking-widest font-bold">Unpaid</Badge>
+                                        }
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end items-center gap-2">
@@ -122,7 +123,8 @@ export function InvoicesClient({ initialInvoices }: { initialInvoices: any[] }) 
                                                 variant="secondary"
                                                 size="sm"
                                                 onClick={() => handleSendEmail(inv.id)}
-                                                disabled={sendingId === inv.id}
+                                                disabled={sendingId === inv.id || inv.status === 'paid'}
+                                                title={inv.status === 'paid' ? 'Invoice already paid' : 'Send invoice email'}
                                             >
                                                 {sendingId === inv.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
                                                 Send

@@ -66,8 +66,9 @@ export default async function DashboardPage() {
   const revenueData = [
     { name: 'Paid IDR', total: totalRevenueIDR },
     { name: 'Pending IDR', total: pendingRevenueIDR },
-    { name: 'Paid USD', total: totalRevenueUSD },
-    { name: 'Pending USD', total: pendingRevenueUSD }
+    // Temporarily disabled USD metrics for V1.1
+    // { name: 'Paid USD', total: totalRevenueUSD },
+    // { name: 'Pending USD', total: pendingRevenueUSD }
   ].filter(d => d.total > 0) // Only show bars that have values
 
   const statuses = ['to_do', 'in_progress', 'review', 'done']
