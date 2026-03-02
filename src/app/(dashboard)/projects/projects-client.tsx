@@ -106,7 +106,7 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
         const isDpPaid = project.invoices?.some(inv => inv.type === "dp" && inv.status === "paid")
 
         let fullPaymentAmount = Number(project.totalPrice)
-        if (isDpPaid && project.dpAmount) {
+        if (isDpPaid && project.dpAmount && Number(project.dpAmount) > 0) {
             fullPaymentAmount = fullPaymentAmount - Number(project.dpAmount)
         }
 
@@ -117,7 +117,7 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
         setInvoiceProject(project)
         const calc = getInvoiceCalculation(project)
 
-        if (!calc.hasDpInvoice && project.dpAmount) {
+        if (!calc.hasDpInvoice && project.dpAmount && Number(project.dpAmount) > 0) {
             setInvoiceType("dp")
         } else {
             setInvoiceType("full_payment")
@@ -441,7 +441,7 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
                                             <p className="text-sm font-medium">Select Payment Type:</p>
 
                                             <div className="flex flex-col gap-3">
-                                                {invoiceProject.dpAmount && !calc.hasDpInvoice && (
+                                                {invoiceProject.dpAmount && Number(invoiceProject.dpAmount) > 0 && !calc.hasDpInvoice && (
                                                     <label className="flex items-center gap-2 cursor-pointer p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                                                         <input
                                                             type="radio"
@@ -531,7 +531,7 @@ export function ProjectsClient({ initialProjects, clients }: { initialProjects: 
                                     <TableCell>{project.client.name}</TableCell>
                                     <TableCell>{project.deadline ? new Date(project.deadline).toLocaleDateString() : "-"}</TableCell>
                                     <TableCell>{formatCurrency(project.totalPrice, project.currency)}</TableCell>
-                                    <TableCell>{project.dpAmount ? formatCurrency(project.dpAmount, project.currency) : "-"}</TableCell>
+                                    <TableCell>{project.dpAmount && Number(project.dpAmount) > 0 ? formatCurrency(project.dpAmount, project.currency) : "-"}</TableCell>
                                     <TableCell className="capitalize">{project.status.replace("_", " ")}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" disabled={getInvoiceCalculation(project).hasFullInvoice} onClick={() => handleOpenInvoiceDialog(project)} title={getInvoiceCalculation(project).hasFullInvoice ? "All invoices generated" : "Generate Invoice"}>

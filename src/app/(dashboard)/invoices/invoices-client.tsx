@@ -53,7 +53,11 @@ export function InvoicesClient({ initialInvoices }: { initialInvoices: any[] }) 
         try {
             const res = await sendInvoiceEmail(id)
             if (res.success) {
-                alert("Email sent successfully!")
+                if (res.manual) {
+                    alert(`${res.message}\n\nInvoice Link: ${res.invoiceLink}`);
+                } else {
+                    alert("Email sent successfully!")
+                }
             } else {
                 alert("Failed to send email: " + res.error)
             }

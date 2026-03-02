@@ -2,14 +2,38 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
         const session = await auth()
         if (!session) return new NextResponse("Unauthorized", { status: 401 })
-        const clients = await prisma.client.findMany({
+
+        const { searchParams } = new URL(request.url);
+        const limitParam = searchParams.get("limit");
+        const pageParam = searchParams.get("page");
+
+        const args: any = {
             where: { isArchived: false },
             orderBy: { createdAt: 'desc' }
-        })
+        };
+
+        if (limitParam && pageParam) {
+            const limit = parseInt(limitParam, 10);
+            const page = parseInt(pageParam, 10);
+            args.skip = (page - 1) * limit;
+            args.take = limit;
+
+            const [clients, total] = await Promise.all([
+                prisma.client.findMany(args),
+                prisma.client.count({ where: { isArchived: false } })
+            ]);
+
+            return NextResponse.json({
+                data: clients,
+                meta: { total, page, limit, totalPages: Math.ceil(total / limit) }
+            });
+        }
+
+        const clients = await prisma.client.findMany(args)
         return NextResponse.json(clients)
     } catch (error) {
         console.error("Failed to sequence clients:", error)

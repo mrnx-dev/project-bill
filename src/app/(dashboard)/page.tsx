@@ -6,20 +6,19 @@ import { Users, Briefcase, FileText } from "lucide-react"
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
-  const projectsRaw = await prisma.project.findMany({
-    include: { client: true },
-    orderBy: { createdAt: 'desc' }
-  })
-
-  const unpaidInvoices = await prisma.invoice.count({
-    where: { status: 'unpaid' }
-  })
-
-  const invoicesRaw = await prisma.invoice.findMany({
-    include: { project: true }
-  })
-
-  const totalClients = await prisma.client.count()
+  const [projectsRaw, unpaidInvoices, invoicesRaw, totalClients] = await Promise.all([
+    prisma.project.findMany({
+      include: { client: true },
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.invoice.count({
+      where: { status: 'unpaid' }
+    }),
+    prisma.invoice.findMany({
+      include: { project: true }
+    }),
+    prisma.client.count()
+  ])
 
   // Serializing and calculating actual revenue from invoices
   let totalRevenueIDR = 0;

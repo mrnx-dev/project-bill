@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { createPaymentLink } from "@/lib/mayar";
 import { sendInvoiceEmail } from "@/lib/email";
 import { auth } from "@/auth";
+import { generateInvoiceNumber } from "@/lib/invoice-utils";
 
 export async function POST(request: Request) {
     try {
@@ -66,8 +67,11 @@ export async function POST(request: Request) {
         const dueDate = new Date();
         dueDate.setDate(dueDate.getDate() + 7);
 
+        const invoiceNumber = await generateInvoiceNumber();
+
         const newInvoice = await prisma.invoice.create({
             data: {
+                invoiceNumber,
                 projectId: project.id,
                 type: "full_payment",
                 amount: amountToPay,

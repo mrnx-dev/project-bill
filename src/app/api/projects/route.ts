@@ -2,14 +2,38 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
         const session = await auth()
         if (!session) return new NextResponse("Unauthorized", { status: 401 })
-        const projects = await prisma.project.findMany({
+
+        const { searchParams } = new URL(request.url);
+        const limitParam = searchParams.get("limit");
+        const pageParam = searchParams.get("page");
+
+        const args: any = {
             include: { client: true, invoices: true, items: true },
             orderBy: { createdAt: 'desc' }
-        })
+        };
+
+        if (limitParam && pageParam) {
+            const limit = parseInt(limitParam, 10);
+            const page = parseInt(pageParam, 10);
+            args.skip = (page - 1) * limit;
+            args.take = limit;
+
+            const [projects, total] = await Promise.all([
+                prisma.project.findMany(args),
+                prisma.project.count()
+            ]);
+
+            return NextResponse.json({
+                data: projects,
+                meta: { total, page, limit, totalPages: Math.ceil(total / limit) }
+            });
+        }
+
+        const projects = await prisma.project.findMany(args)
         return NextResponse.json(projects)
     } catch (error) {
         console.error("Failed to fetch projects:", error)
@@ -17,39 +41,51 @@ export async function GET() {
     }
 }
 
+import { projectSchema } from "@/lib/validations"
+
 export async function POST(request: Request) {
     try {
         const session = await auth()
         if (!session) return new NextResponse("Unauthorized", { status: 401 })
-        const json = await request.json()
-        const { title, clientId, totalPrice, dpAmount, currency, items, deadline } = json
 
-        if (!title || !clientId || totalPrice === undefined) {
-            return NextResponse.json({ error: "Missing required fields: title, clientId, totalPrice" }, { status: 400 })
+        let json;
+        try {
+            json = await request.json()
+        } catch {
+            return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
         }
 
-        const parsedTotalPrice = parseFloat(totalPrice)
-        const parsedDpAmount = dpAmount ? parseFloat(dpAmount) : null
+        const validation = projectSchema.safeParse(json)
+        if (!validation.success) {
+            return NextResponse.json({
+                error: "Validation failed",
+                details: validation.error.flatten().fieldErrors
+            }, { status: 400 })
+        }
 
-        if (parsedDpAmount !== null && parsedDpAmount > parsedTotalPrice) {
-            return NextResponse.json({ error: "DP amount cannot exceed total price" }, { status: 400 })
+        const data = validation.data;
+
+        // If items exist, recalculate totalPrice from them
+        let totalPrice = data.totalPrice;
+        if (data.items && data.items.length > 0) {
+            totalPrice = data.items.reduce((acc, item) => acc + item.price, 0);
         }
 
         const projectData: any = {
-            title,
-            clientId,
-            totalPrice: parsedTotalPrice,
-            dpAmount: parsedDpAmount,
-            currency: currency || "IDR",
-            deadline: deadline ? new Date(deadline) : null,
+            title: data.title,
+            clientId: data.clientId,
+            totalPrice,
+            dpAmount: data.dpAmount ?? null,
+            currency: data.currency,
+            deadline: data.deadline ? new Date(data.deadline) : null,
             status: "to_do"
         }
 
-        if (items && Array.isArray(items) && items.length > 0) {
+        if (data.items && data.items.length > 0) {
             projectData.items = {
-                create: items.map((i: any) => ({
+                create: data.items.map(i => ({
                     description: i.description,
-                    price: parseFloat(i.price)
+                    price: i.price
                 }))
             }
         }

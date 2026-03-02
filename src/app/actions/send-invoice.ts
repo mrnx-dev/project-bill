@@ -3,9 +3,6 @@
 import { Resend } from "resend";
 import { InvoiceEmail } from "@/emails/InvoiceEmail";
 import { prisma } from "@/lib/prisma";
-
-const resend = new Resend(process.env.RESEND_API_KEY!);
-
 export async function sendInvoiceEmail(invoiceId: string) {
     try {
         // Fetch invoice details
@@ -39,12 +36,24 @@ export async function sendInvoiceEmail(invoiceId: string) {
         );
         const amountStr = formatter.format(Number(invoice.amount));
 
-        // Resolve the BASE_URL from env or default to localhost, we need it for the full invoice link
-        // Default to the vercel url if available, otherwise localhost
+        // Resolve the BASE_URL from env or default to localhost
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
             (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
         const invoiceLink = `${baseUrl}/invoices/${invoice.id}`;
+
+        const resendApiKey = process.env.RESEND_API_KEY;
+        if (!resendApiKey) {
+            // Return success with manual flag so UI can handle it gracefully
+            return {
+                success: true,
+                manual: true,
+                invoiceLink,
+                message: "No Resend API Key configured. Please send this link manually."
+            };
+        }
+
+        const resend = new Resend(resendApiKey);
 
         // Send the email
         const { data, error } = await resend.emails.send({

@@ -88,6 +88,20 @@ The full MVP through V1.2 features have been successfully implemented:
     - Project deletion guard: Projects with unpaid invoices cannot be deleted.
     - All delete confirmations use proper `ConfirmDialog` (AlertDialog) component instead of native browser dialogs.
 
+14. **Security, Hardening & Resilience (Sprint 8):**
+    - **Zod Validation:** Strict runtime validation on API payloads (`POST /projects`, `POST /invoices`) and startup environment variables (`src/lib/env.ts`).
+    - **Data Integrity:** `prisma.$transaction()` wraps multi-step financial operations (e.g., cron late fees). `Invoice` relation changed to `onDelete: Restrict` to prevent accidental financial record deletion.
+    - **Endpoint Hardening:** Webhook signature verification uses `crypto.timingSafeEqual` and strictly denies invalid requests. Cron jobs enforce strict authorization checks. Plaintext password logging removed from authentication flow.
+    - **Error Boundaries:** Implemented `global-error.tsx` (for layout crashes) and `error.tsx` (component boundaries) with user-friendly recovery UI.
+    - **Performance & UX:** Parallelized data fetching on Dashboard using `Promise.all()`. Added elegant Skeleton Loading states (`loading.tsx`). Added `?page` and `?limit` pagination to List APIs.
+    - **Invoice Numbering:** Fully sequential `INV-YYYYMM-XXXX` tracking system built into the database schema (`String @unique`).
+
+## Upcoming: Sprint 9 (Quality Assurance & Testing)
+The immediate focus for the next development cycle is establishing a robust automated testing suite to cement the stability achieved in Sprint 8.
+- **Unit Testing (Jest):** Coverage for critical financial calculations (late fees, DP deductions) and signature verification (`verifyMayarWebhook`).
+- **Integration Testing (Vitest/Supertest):** API endpoint tests asserting Zod validation, auth rejection, and database mutation.
+- **End-to-End Testing (Playwright):** Core user journey tests spanning Login -> Create Client -> Create Project -> Generate Invoice -> View Public Invoice.
+
 ## Future Development Plan (V2 & Beyond)
 
 All planned features for V1.2 have been completed. Potential future enhancements:

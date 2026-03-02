@@ -47,6 +47,7 @@ model ProjectItem {
 
 model Invoice {
   id              String    @id @default(uuid())
+  invoiceNumber   String    @unique @default(uuid()) // E.g., INV-2026-0001
   projectId       String
   project         Project   @relation(fields: [projectId], references: [id], onDelete: Restrict)
   type            String    // dp, full_payment
@@ -62,6 +63,7 @@ model Invoice {
   updatedAt       DateTime  @updatedAt
 
   @@index([status])
+  @@index([projectId])
 }
 
 model User {
