@@ -55,11 +55,11 @@ test.describe("Terms of Service Acceptance Flow", () => {
     if (testInvoice)
       await prisma.invoice
         .delete({ where: { id: testInvoice.id } })
-        .catch(() => {});
+        .catch(() => { });
     if (testProject)
       await prisma.project
         .delete({ where: { id: testProject.id } })
-        .catch(() => {});
+        .catch(() => { });
   });
 
   test("Client must accept terms to see the Pay Now button", async ({
@@ -72,13 +72,18 @@ test.describe("Terms of Service Acceptance Flow", () => {
     const payButton = page.getByRole("button", { name: /Pay Rp/ });
     await expect(payButton).not.toBeVisible();
 
-    // 3. Verify the Terms Agreement card is visible
+    // 3. Verify the Terms Agreement card is visible and open the dialog
     await expect(page.getByText("Digital Agreement Required")).toBeVisible();
+
+    // Click the trigger button to open the contract modal
+    await page.getByRole("button", { name: "Review & Sign SOW" }).click();
+
+    // Verify dialog content is visible
     await expect(page.getByText("1. No revisions.")).toBeVisible();
 
     // 4. Try to click Agree without checking the box (Button should be disabled)
     const acceptButton = page.getByRole("button", {
-      name: "Accept Terms & Proceed to Payment",
+      name: "Digitally Sign & Accept",
     });
     await expect(acceptButton).toBeDisabled();
 
@@ -90,8 +95,8 @@ test.describe("Terms of Service Acceptance Flow", () => {
     await acceptButton.click();
 
     // 7. Verify the success state appears
-    await expect(page.getByText("Terms & Conditions Accepted")).toBeVisible();
-    await expect(page.getByText(/Digitally signed on/)).toBeVisible();
+    await expect(page.getByText("Valid Digital Contract Formed")).toBeVisible();
+    await expect(page.getByText(/Digitally signed and accepted on/)).toBeVisible();
 
     // 8. Verify the Pay Now button is now visible
     await expect(payButton).toBeVisible();

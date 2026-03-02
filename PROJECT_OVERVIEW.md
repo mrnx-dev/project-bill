@@ -106,7 +106,8 @@ The full MVP through V1.2 features have been successfully implemented:
     - **Database Extensions:** Added `terms` and `termsAcceptedAt` fields to `Project` model.
     - **Admin Tools:** Custom SOW / Terms input via a textarea in the Project creation form. Clear visual badges on the Projects board indicating signature status ("Pending Signature", "Accepted").
     - **Client Journey Enforcement:** The public invoice view hides the "Pay Now" button behind a mandatory Terms Agreement gate if terms were provided.
-    - **Digital Signature:** Clients must check an agreement box and accept terms. The exact timestamp is securely recorded via `PATCH /api/projects/[id]/accept-terms`.
+    - **Professional Signature Flow:** A clean "Digital Agreement Required" banner triggers a full-screen, professional legal document modal. Clients must check an agreement box and accept terms. The exact timestamp is securely recorded via `PATCH /api/projects/[id]/accept-terms`.
+    - **Public View Theming Guard:** `next-themes` dark mode is explicitly overridden on `/invoices/[id]` (forced light mode) to preserve the professional black-on-white paper aesthetic regardless of the client's OS/device preferences.
 
 ## Upcoming: Sprint 11 (V2 Feature Expansion)
 The next development cycle will focus on expanding core functionality to support a wider array of business models. Potential candidates for Sprint 11:

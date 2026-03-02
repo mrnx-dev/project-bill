@@ -42,7 +42,7 @@ export default async function InvoiceViewPage(props: {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-100 py-10 print:py-0 print:bg-white flex justify-center flex-col items-center gap-6">
+    <div className="light-theme min-h-screen bg-neutral-100 py-10 print:py-0 print:bg-white flex justify-center flex-col items-center gap-6">
       {/* Toolbar outside the A4 paper */}
       <div className="w-full max-w-[210mm] flex justify-end print:hidden">
         <PrintButton />
@@ -104,13 +104,13 @@ export default async function InvoiceViewPage(props: {
         {/* Status Badge (Absolute Positioned for style) */}
         <div className="absolute top-12 right-[50%] translate-x-[50%] print:hidden">
           {invoice.status === "paid" ? (
-            <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-900 border text-xs py-1 px-3 uppercase tracking-widest font-bold">
+            <Badge variant="outline" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-300 border text-xs py-1 px-3 uppercase tracking-widest font-bold">
               Paid
             </Badge>
           ) : (
             <Badge
-              variant="destructive"
-              className="bg-red-100 text-red-800 hover:bg-red-200 border-red-300 dark:bg-red-950 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900 border text-xs py-1 px-3 uppercase tracking-widest font-bold"
+              variant="outline"
+              className="bg-red-100 text-red-800 hover:bg-red-200 border-red-300 border text-xs py-1 px-3 uppercase tracking-widest font-bold"
             >
               Unpaid
             </Badge>
@@ -160,8 +160,8 @@ export default async function InvoiceViewPage(props: {
             </thead>
             <tbody>
               {invoice.type === "dp" ||
-              !invoice.project.items ||
-              invoice.project.items.length === 0 ? (
+                !invoice.project.items ||
+                invoice.project.items.length === 0 ? (
                 <tr className="border-b border-slate-200">
                   <td className="py-4 px-2">
                     <p className="font-medium text-slate-800">
@@ -215,7 +215,7 @@ export default async function InvoiceViewPage(props: {
                   ))}
                   {invoice.project.dpAmount &&
                     Number(invoice.project.totalPrice) >
-                      Number(invoice.amount) && (
+                    Number(invoice.amount) && (
                       <tr className="border-b border-slate-200">
                         <td className="py-4 px-2">
                           <p className="font-medium text-slate-800 text-slate-500 italic">

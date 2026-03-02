@@ -54,7 +54,7 @@ type Project = {
   dpAmount: string | null;
   currency: string;
   terms?: string | null;
-  termsAcceptedAt?: string | null;
+  termsAcceptedAt: Date | null;
   invoices: any[];
   items?: ProjectItem[];
   createdAt: string;
@@ -400,9 +400,9 @@ export function ProjectsClient({
                       value={
                         items.length > 0
                           ? items.reduce(
-                              (sum, item) => sum + Number(item.price),
-                              0,
-                            )
+                            (sum, item) => sum + Number(item.price),
+                            0,
+                          )
                           : totalPrice
                       }
                       onValueChange={(values) => setTotalPrice(values.value)}
