@@ -96,11 +96,24 @@ The full MVP through V1.2 features have been successfully implemented:
     - **Performance & UX:** Parallelized data fetching on Dashboard using `Promise.all()`. Added elegant Skeleton Loading states (`loading.tsx`). Added `?page` and `?limit` pagination to List APIs.
     - **Invoice Numbering:** Fully sequential `INV-YYYYMM-XXXX` tracking system built into the database schema (`String @unique`).
 
-## Upcoming: Sprint 9 (Quality Assurance & Testing)
-The immediate focus for the next development cycle is establishing a robust automated testing suite to cement the stability achieved in Sprint 8.
-- **Unit Testing (Jest):** Coverage for critical financial calculations (late fees, DP deductions) and signature verification (`verifyMayarWebhook`).
-- **Integration Testing (Vitest/Supertest):** API endpoint tests asserting Zod validation, auth rejection, and database mutation.
-- **End-to-End Testing (Playwright):** Core user journey tests spanning Login -> Create Client -> Create Project -> Generate Invoice -> View Public Invoice.
+15. **Quality Assurance & Automated Testing (Sprint 9):**
+    - **Jest Unit Tests:** 8 passing tests covering `verifyMayarWebhook` signature verification (valid, invalid, empty secret, length mismatch) and financial calculations (late fee 5%, IDR formatting, DP deductions, zero DP).
+    - **Playwright E2E Tests:** 3 passing tests — API auth rejection for unauthenticated requests, and a full Core Business Journey (Login → Create Client → Create Project → Generate Invoice → Verify Invoice).
+    - **Test Infrastructure:** `jest.config.ts` with Next.js integration, `playwright.config.ts` targeting `localhost:3000`, and `scripts/seed-test-user.ts` for reproducible test data.
+    - **NPM Scripts:** `npm test` (Jest), `npm run test:e2e` (Playwright), `npm run test:seed` (seed test user).
+
+16. **Digital Contracts & Terms of Service (Sprint 10):**
+    - **Database Extensions:** Added `terms` and `termsAcceptedAt` fields to `Project` model.
+    - **Admin Tools:** Custom SOW / Terms input via a textarea in the Project creation form. Clear visual badges on the Projects board indicating signature status ("Pending Signature", "Accepted").
+    - **Client Journey Enforcement:** The public invoice view hides the "Pay Now" button behind a mandatory Terms Agreement gate if terms were provided.
+    - **Digital Signature:** Clients must check an agreement box and accept terms. The exact timestamp is securely recorded via `PATCH /api/projects/[id]/accept-terms`.
+
+## Upcoming: Sprint 11 (V2 Feature Expansion)
+The next development cycle will focus on expanding core functionality to support a wider array of business models. Potential candidates for Sprint 11:
+1. **Multi-Currency Payment Gateway** (Stripe integration for USD invoices).
+2. **Client Portal** (A dedicated dashboard for clients to view their active projects and payment history).
+3. **Recurring Invoices** (Cron-based generation for retainer agreements).
+4. **File Attachments** (S3/R2 integration to attach contracts or deliverables to projects).
 
 ## Future Development Plan (V2 & Beyond)
 

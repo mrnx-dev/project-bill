@@ -1,97 +1,104 @@
 import {
-    Body,
-    Button,
-    Container,
-    Head,
-    Heading,
-    Hr,
-    Html,
-    Img,
-    Link,
-    Preview,
-    Section,
-    Text,
-    Tailwind,
+  Body,
+  Button,
+  Container,
+  Head,
+  Heading,
+  Hr,
+  Html,
+  Img,
+  Link,
+  Preview,
+  Section,
+  Text,
+  Tailwind,
 } from "@react-email/components";
 import * as React from "react";
 
 interface InvoiceEmailProps {
-    clientName: string;
-    invoiceId: string;
-    projectName: string;
-    amount: string;
-    dueDate: Date | null;
-    invoiceLink: string;
+  clientName: string;
+  invoiceId: string;
+  projectName: string;
+  amount: string;
+  dueDate: Date | null;
+  invoiceLink: string;
 }
 
 export const InvoiceEmail = ({
-    clientName = "Client Name",
-    invoiceId = "INV-1234",
-    projectName = "Website Development",
-    amount = "Rp 1,000,000",
-    dueDate = new Date(),
-    invoiceLink = "https://projectbill.com/invoices/INV-1234",
+  clientName = "Client Name",
+  invoiceId = "INV-1234",
+  projectName = "Website Development",
+  amount = "Rp 1,000,000",
+  dueDate = new Date(),
+  invoiceLink = "https://projectbill.com/invoices/INV-1234",
 }: InvoiceEmailProps) => {
-    const formattedDate = dueDate
-        ? new Intl.DateTimeFormat("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-        }).format(dueDate)
-        : "Upon Receipt";
+  const formattedDate = dueDate
+    ? new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }).format(dueDate)
+    : "Upon Receipt";
 
-    return (
-        <Html>
-            <Head />
-            <Preview>New invoice from ProjectBill for {projectName}</Preview>
-            <Tailwind>
-                <Body className="bg-gray-100 font-sans my-auto mx-auto pt-6 px-2">
-                    <Container className="border border-solid border-gray-200 rounded-lg shadow-sm bg-white mx-auto my-[40px] max-w-[465px] p-[20px]">
-                        <Heading className="text-black text-[24px] font-bold text-center p-0 my-[30px] mx-0">
-                            ProjectBill
-                        </Heading>
-                        <Text className="text-gray-800 text-[14px] leading-[24px]">
-                            Hello {clientName},
-                        </Text>
-                        <Text className="text-gray-800 text-[14px] leading-[24px]">
-                            We have generated a new invoice for the <strong>{projectName}</strong> project.
-                        </Text>
+  return (
+    <Html>
+      <Head />
+      <Preview>New invoice from ProjectBill for {projectName}</Preview>
+      <Tailwind>
+        <Body className="bg-gray-100 font-sans my-auto mx-auto pt-6 px-2">
+          <Container className="border border-solid border-gray-200 rounded-lg shadow-sm bg-white mx-auto my-[40px] max-w-[465px] p-[20px]">
+            <Heading className="text-black text-[24px] font-bold text-center p-0 my-[30px] mx-0">
+              ProjectBill
+            </Heading>
+            <Text className="text-gray-800 text-[14px] leading-[24px]">
+              Hello {clientName},
+            </Text>
+            <Text className="text-gray-800 text-[14px] leading-[24px]">
+              We have generated a new invoice for the{" "}
+              <strong>{projectName}</strong> project.
+            </Text>
 
-                        <Section className="bg-gray-50 rounded-md p-6 my-6 border border-gray-100">
-                            <Text className="text-gray-500 m-0 mb-1 text-xs uppercase tracking-wider font-semibold">
-                                Amount Due
-                            </Text>
-                            <Text className="text-black text-3xl font-bold m-0 mb-4">
-                                {amount}
-                            </Text>
+            <Section className="bg-gray-50 rounded-md p-6 my-6 border border-gray-100">
+              <Text className="text-gray-500 m-0 mb-1 text-xs uppercase tracking-wider font-semibold">
+                Amount Due
+              </Text>
+              <Text className="text-black text-3xl font-bold m-0 mb-4">
+                {amount}
+              </Text>
 
-                            <Text className="m-0 text-sm text-gray-500">
-                                Invoice <span className="text-gray-900 font-medium">#{invoiceId.split('-')[0]}</span>
-                            </Text>
-                            <Text className="m-0 text-sm text-gray-500">
-                                Due <span className="text-gray-900 font-medium">{formattedDate}</span>
-                            </Text>
-                        </Section>
+              <Text className="m-0 text-sm text-gray-500">
+                Invoice{" "}
+                <span className="text-gray-900 font-medium">
+                  #{invoiceId.split("-")[0]}
+                </span>
+              </Text>
+              <Text className="m-0 text-sm text-gray-500">
+                Due{" "}
+                <span className="text-gray-900 font-medium">
+                  {formattedDate}
+                </span>
+              </Text>
+            </Section>
 
-                        <Section className="text-center mt-[32px] mb-[32px]">
-                            <Button
-                                className="bg-[#000000] rounded-md text-white text-[14px] font-medium no-underline text-center px-6 py-3 cursor-pointer"
-                                href={invoiceLink}
-                            >
-                                View Full Invoice & Pay
-                            </Button>
-                        </Section>
+            <Section className="text-center mt-[32px] mb-[32px]">
+              <Button
+                className="bg-[#000000] rounded-md text-white text-[14px] font-medium no-underline text-center px-6 py-3 cursor-pointer"
+                href={invoiceLink}
+              >
+                View Full Invoice & Pay
+              </Button>
+            </Section>
 
-                        <Hr className="border border-solid border-gray-200 my-[26px] mx-0 w-full" />
-                        <Text className="text-gray-500 text-[12px] leading-[24px] text-center">
-                            This invoice was generated by ProjectBill. If you have any questions,
-                            please reply to this email.
-                        </Text>
-                    </Container>
-                </Body>
-            </Tailwind>
-        </Html>
-    );
+            <Hr className="border border-solid border-gray-200 my-[26px] mx-0 w-full" />
+            <Text className="text-gray-500 text-[12px] leading-[24px] text-center">
+              This invoice was generated by ProjectBill. If you have any
+              questions, please reply to this email.
+            </Text>
+          </Container>
+        </Body>
+      </Tailwind>
+    </Html>
+  );
 };
 
 export default InvoiceEmail;

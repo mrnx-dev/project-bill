@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import "@/app/globals.css";
-import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
-import { auth } from "@/auth"
-import { redirect } from "next/navigation"
-import { prisma } from "@/lib/prisma"
+import {
+  SidebarProvider,
+  SidebarTrigger,
+  SidebarInset,
+} from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
   title: "ProjectBill",
@@ -18,17 +22,17 @@ export default async function DashboardLayout({
 }>) {
   const userCount = await prisma.user.count();
   if (userCount === 0) {
-    redirect('/setup');
+    redirect("/setup");
   }
 
   const session = await auth();
   if (!session?.user?.id) {
-    redirect('/login');
+    redirect("/login");
   }
 
   const dbUser = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true, email: true }
+    select: { name: true, email: true },
   });
 
   return (

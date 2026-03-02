@@ -1,11 +1,13 @@
-import NextAuth from "next-auth"
-import { authConfig } from "./auth.config"
+import NextAuth from "next-auth";
+import { authConfig } from "./auth.config";
 
-const { auth } = NextAuth(authConfig)
+const { auth } = NextAuth(authConfig);
 export default auth((req) => {
-    // req.auth
-})
+  // req.auth
+});
 
 export const config = {
-    matcher: ["/((?!api/webhook|api/webhooks|api/setup|invoices/[^/]+$|login|setup|_next|favicon).*)"]
-}
+  matcher: [
+    "/((?!api/webhook|api/webhooks|api/setup|invoices/[^/]+$|login|setup|_next|favicon).*)",
+  ],
+};
