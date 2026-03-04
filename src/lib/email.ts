@@ -149,3 +149,65 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
     return { success: false, error };
   }
 }
+
+// --- Payment Success Email ---
+
+export interface SendPaymentSuccessEmailParams {
+  to: string;
+  clientName: string;
+  projectTitle: string;
+  amountStr: string;
+  invoiceLink: string;
+  sowPdfBuffer?: Buffer;
+}
+
+export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailParams) {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn("[MOCK PAYMENT SUCCESS EMAIL]");
+    console.log(`  To: ${params.to} | Subject: Payment Received for ${params.projectTitle}`);
+    return { success: true, mocked: true };
+  }
+
+  try {
+    const attachments = [];
+    if (params.sowPdfBuffer) {
+      attachments.push({
+        filename: `Statement_of_Work_${params.projectTitle.replace(/[^a-z0-9]/gi, '_')}.pdf`,
+        content: params.sowPdfBuffer
+      });
+    }
+
+    const data = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL || "Project Bill <noreply@projectbill.mrndev.me>",
+      to: [params.to],
+      subject: `Payment Received - Thank you for your business!`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2 style="color: #10B981; margin: 0;">Payment Successful</h2>
+            </div>
+            <h2 style="color: #333;">Hello ${params.clientName},</h2>
+            <p>We have successfully received your payment of <strong>${params.amountStr}</strong> for the project: <strong>${params.projectTitle}</strong>.</p>
+            
+            <p>Your invoice has been marked as paid. You can view the full details and receipt using the link below:</p>
+            
+            <a href="${params.invoiceLink}" style="display: inline-block; background-color: #0F172A; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px; margin-bottom: 20px;">
+                View Receipt
+            </a>
+
+            ${params.sowPdfBuffer ? '<p>Please find attached your official digital Statement of Work (SOW) document containing the electronic signature audit trail for your records.</p>' : ''}
+            
+            <p style="margin-top: 30px; font-size: 12px; color: #666; border-top: 1px solid #eaeaea; padding-top: 20px;">
+                Powered by <strong>Project Bill</strong>. The friction-free workspace for freelancers.
+            </p>
+        </div>
+      `,
+      attachments: attachments.length > 0 ? attachments : undefined,
+    });
+
+    return { success: true, data };
+  } catch (error) {
+    console.error("Failed to send payment success email:", error);
+    return { success: false, error };
+  }
+}

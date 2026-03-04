@@ -9,14 +9,20 @@ export async function GET(
         const resolvedParams = await params;
         const id = resolvedParams.id;
 
-        const project = await prisma.project.findUnique({
+        const invoice = await prisma.invoice.findUnique({
             where: { id },
-            include: { client: true },
+            include: {
+                project: {
+                    include: { client: true },
+                }
+            }
         });
 
-        if (!project) {
-            return NextResponse.json({ error: "Project not found" }, { status: 404 });
+        if (!invoice || !invoice.project) {
+            return NextResponse.json({ error: "Project or Invoice not found" }, { status: 404 });
         }
+
+        const project = invoice.project;
 
         if (!project.terms) {
             return NextResponse.json(

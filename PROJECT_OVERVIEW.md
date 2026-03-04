@@ -117,10 +117,11 @@ The full MVP through V1.2 features have been successfully implemented:
     - **Native Print Generation:** Replaced external PDF libraries with a native CSS `@media print` layout at `/invoices/[id]/sow/print` for flawless, responsive A4 document generation directly from the browser.
     - **Client Receipt:** Added a "Download / Print PDF" functionality to the success banner after the client accepts the digital contract, complete with an Audit Trail footer detailing the User Agent, Session ID, and timestamp.
 
-18. **Real-Time Webhook UI Sync (Sprint 10):**
+18. **Real-Time Webhook UI Sync & Auto-Delivery (Sprint 10):**
     - **Zero-Cost DB Polling:** Utilized Next.js Server Actions with lightweight Prisma queries (`select: { status: true }`) and `count()` functions to monitor database changes.
     - **Client-Side Poller Components:** Mounted invisible `<RealtimeInvoicePoller />` on unpaid invoices and `<GlobalInvoicePoller />` on admin dashboard lists to refresh the UI (`router.refresh()`) the exact second a successful webhook lands.
     - **Cache Revalidation:** Tied Next.js edge-caching (`revalidatePath()`) cleanly into the backend `api/webhooks/mayar/route.ts` architecture for 1-millisecond synchronization.
+    - **Automated SOW Delivery:** Integrated Puppeteer to run a headless browser upon receiving a `payment.success` webhook. It captures a pixel-perfect Print PDF of the digital SOW and instantly attaches it to a "Payment Successful" receipt email via Resend natively inside Serverless logic.
 
 ## Upcoming: Sprint 11 (V2 Feature Expansion)
 The next development cycle will focus on expanding core functionality to support a wider array of business models. Potential candidates for Sprint 11:

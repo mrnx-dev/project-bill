@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyMayarWebhook } from "@/lib/mayar";
+import { generateSowPdfBuffer } from "@/lib/pdf-generator";
+import { sendPaymentSuccessEmail } from "@/lib/email";
 
 export async function POST(request: Request) {
   try {
@@ -36,14 +38,57 @@ export async function POST(request: Request) {
       }
 
       if (invoiceId) {
-        await prisma.invoice.update({
+        const updatedInvoice = await prisma.invoice.update({
           where: { id: invoiceId },
           data: {
             status: "paid",
             paidAt: new Date(),
             paymentId: data.data?.id || data.transaction_id || data.id, // Save the final payment ID back to our DB
           },
+          include: {
+            project: {
+              include: {
+                client: true,
+              }
+            }
+          }
         });
+
+        // Generate SOW PDF and send Email in the background
+        (async () => {
+          try {
+            const project = updatedInvoice.project;
+            let pdfBuffer: Buffer | undefined;
+
+            if (project.termsAcceptedAt) {
+              pdfBuffer = await generateSowPdfBuffer(updatedInvoice.id);
+            }
+
+            const formatCurrency = new Intl.NumberFormat(
+              project.currency === "IDR" ? "id-ID" : "en-US",
+              {
+                style: "currency",
+                currency: project.currency || "IDR",
+                minimumFractionDigits: 0,
+              },
+            ).format(Number(updatedInvoice.amount));
+
+            const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+            const invoiceDetailUrl = `${baseUrl}/invoices/${updatedInvoice.id}`;
+
+            await sendPaymentSuccessEmail({
+              to: project.client.email!,
+              clientName: project.client.name,
+              projectTitle: project.title,
+              amountStr: formatCurrency,
+              invoiceLink: invoiceDetailUrl,
+              sowPdfBuffer: pdfBuffer,
+            });
+            console.log(`[Webhook] Payment success email sent for Invoice ${updatedInvoice.id}`);
+          } catch (err) {
+            console.error("[Webhook] Failed to generate PDF or send email:", err);
+          }
+        })();
 
         // Trigger cache revalidation so other pages updates immediately
         const { revalidatePath } = await import("next/cache");
