@@ -109,9 +109,16 @@ export async function DELETE(
       );
     }
 
-    await prisma.project.delete({
-      where: { id },
-    });
+    await prisma.$transaction([
+      // Delete child invoices first to satisfy the Restricted foreign key
+      prisma.invoice.deleteMany({
+        where: { projectId: id },
+      }),
+      // Then delete the project
+      prisma.project.delete({
+        where: { id },
+      }),
+    ]);
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

@@ -9,6 +9,7 @@ export interface CreatePaymentLinkParams {
   amount: number;
   customerName: string;
   customerEmail: string;
+  customerMobile: string;
   description: string;
 }
 
@@ -39,8 +40,9 @@ export async function createPaymentLink(
     },
     body: JSON.stringify({
       amount: params.amount,
-      customer_name: params.customerName,
-      customer_email: params.customerEmail,
+      name: params.customerName,
+      email: params.customerEmail,
+      mobile: params.customerMobile,
       description: params.description,
     }),
   });
@@ -69,19 +71,25 @@ export function verifyMayarWebhook(
     );
     return false;
   }
-
   try {
-    const hmac = crypto.createHmac("sha256", MAYAR_WEBHOOK_SECRET);
-    const expectedSignature = hmac.update(payload).digest("hex");
-
-    const sigBuffer = Buffer.from(signature, "hex");
-    const expectedBuffer = Buffer.from(expectedSignature, "hex");
-
-    if (sigBuffer.length !== expectedBuffer.length) {
-      return false;
+    // 1. Direct match (in case it is just a static API key/secret passed in header)
+    if (signature === MAYAR_WEBHOOK_SECRET) {
+      return true;
     }
 
-    return crypto.timingSafeEqual(sigBuffer, expectedBuffer);
+    // 2. HMAC SHA-256
+    const expectedSha256 = crypto.createHmac("sha256", MAYAR_WEBHOOK_SECRET).update(payload).digest("hex");
+    if (signature === expectedSha256) {
+      return true;
+    }
+
+    // 3. HMAC SHA-512 (x-callback-token is 128 characters long, which matches exactly SHA-512)
+    const expectedSha512 = crypto.createHmac("sha512", MAYAR_WEBHOOK_SECRET).update(payload).digest("hex");
+    if (signature === expectedSha512) {
+      return true;
+    }
+
+    return false;
   } catch (error) {
     console.error("Error verifying webhook signature:", error);
     return false;

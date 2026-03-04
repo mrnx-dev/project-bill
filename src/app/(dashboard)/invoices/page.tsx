@@ -1,17 +1,22 @@
 import { prisma } from "@/lib/prisma";
 import { InvoicesClient } from "./invoices-client";
 
+import { GlobalInvoicePoller } from "@/components/global-invoice-poller";
+
 export const dynamic = "force-dynamic";
 
 export default async function InvoicesPage() {
-  const invoicesRaw = await prisma.invoice.findMany({
-    include: {
-      project: {
-        include: { client: true },
+  const [invoicesRaw, unpaidCount] = await Promise.all([
+    prisma.invoice.findMany({
+      include: {
+        project: {
+          include: { client: true },
+        },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.invoice.count({ where: { status: "unpaid" } }),
+  ]);
 
   // Serialize records
   const invoices = invoicesRaw.map((inv) => ({
@@ -46,6 +51,7 @@ export default async function InvoicesPage() {
         </div>
       </div>
 
+      <GlobalInvoicePoller currentUnpaidCount={unpaidCount} />
       <InvoicesClient initialInvoices={invoices} />
     </div>
   );

@@ -7,19 +7,19 @@ export interface SendInvoiceEmailParams {
   clientName: string;
   projectTitle: string;
   amountStr: string;
-  paymentLink: string;
+  invoiceLink: string;
 }
 
 export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
   if (!process.env.RESEND_API_KEY) {
     console.warn("No RESEND_API_KEY found. Mocking email delivery.");
-    console.log(`[MOCK EMAIL] To: ${params.to} | Link: ${params.paymentLink}`);
+    console.log(`[MOCK EMAIL] To: ${params.to} | Link: ${params.invoiceLink}`);
     return { success: true, mocked: true };
   }
 
   try {
     const data = await resend.emails.send({
-      from: "Project Bill <hello@projectbill.example.com>",
+      from: "Project Bill <noreply@projectbill.mrndev.me>",
       to: [params.to],
       subject: `Invoice for ${params.projectTitle} - Action Required`,
       html: `
@@ -32,10 +32,10 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
                         <h1 style="margin: 5px 0 0 0; color: #111;">${params.amountStr}</h1>
                     </div>
                     
-                    <p>You can securely pay this invoice using the link below:</p>
+                    <p>You can securely view and pay this invoice using the link below:</p>
                     
-                    <a href="${params.paymentLink}" style="display: inline-block; background-color: #0F172A; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">
-                        Pay Invoice Now
+                    <a href="${params.invoiceLink}" style="display: inline-block; background-color: #0F172A; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">
+                        View Your Invoice
                     </a>
                     
                     <p style="margin-top: 30px; font-size: 12px; color: #666;">
@@ -61,7 +61,7 @@ export interface SendReminderEmailParams {
   clientName: string;
   projectTitle: string;
   amountStr: string;
-  paymentLink: string;
+  invoiceLink: string;
   reminderType: ReminderType;
   lateFeeAmountStr?: string;
 }
@@ -127,14 +127,14 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
 
   try {
     const data = await resend.emails.send({
-      from: "Project Bill <hello@projectbill.example.com>",
+      from: "Project Bill <noreply@projectbill.mrndev.me>",
       to: [params.to],
       subject,
       html: `
                 <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px;">
                     ${bodyContent}
-                    <a href="${params.paymentLink}" style="display: inline-block; background-color: #0F172A; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">
-                        Pay Invoice Now
+                    <a href="${params.invoiceLink}" style="display: inline-block; background-color: #0F172A; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">
+                        View Your Invoice
                     </a>
                     <p style="margin-top: 30px; font-size: 12px; color: #666;">
                         Powered by <strong>Project Bill</strong>. The friction-free workspace for freelancers.

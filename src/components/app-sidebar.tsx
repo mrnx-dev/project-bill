@@ -26,7 +26,15 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,6 +86,16 @@ const items = [
     title: "Settings",
     url: "/settings",
     icon: Settings,
+    subItems: [
+      {
+        title: "General",
+        url: "/settings",
+      },
+      {
+        title: "SOW Templates",
+        url: "/settings/sow-template",
+      },
+    ],
   },
 ];
 
@@ -93,11 +111,84 @@ export function AppSidebar({ user }: AppSidebarProps) {
             ProjectBill
           </SidebarGroupLabel>
           <SidebarGroupContent>
+
             <SidebarMenu className="gap-1">
               {items.map((item) => {
                 const isActive =
-                  pathname === item.url ||
-                  (item.url !== "/" && pathname?.startsWith(item.url));
+                  item.url === "/"
+                    ? pathname === "/"
+                    : pathname?.startsWith(item.url);
+
+                if (item.subItems) {
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <SidebarMenuButton
+                            tooltip={item.title}
+                            isActive={isActive}
+                            className={`[[data-state=expanded]_&]:hidden rounded-lg transition-all duration-200 ${isActive ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"}`}
+                          >
+                            <item.icon />
+                            <span>{item.title}</span>
+                            <ChevronUp className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:-rotate-180" />
+                          </SidebarMenuButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          side="right"
+                          align="start"
+                          className="w-48 ml-2 rounded-lg"
+                        >
+                          <DropdownMenuLabel>{item.title}</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          {item.subItems.map((subItem) => (
+                            <DropdownMenuItem key={subItem.title} asChild>
+                              <Link href={subItem.url} className="w-full cursor-pointer">
+                                {subItem.title}
+                              </Link>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      <Collapsible
+                        asChild
+                        defaultOpen={isActive}
+                        className="group/collapsible absolute inset-0 -z-10 opacity-0 group-data-[collapsible=icon]:hidden [[data-state=expanded]_&]:relative [[data-state=expanded]_&]:z-0 [[data-state=expanded]_&]:opacity-100"
+                      >
+                        <div>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton
+                              tooltip={item.title}
+                              isActive={isActive}
+                              className={`rounded-lg transition-all duration-200 ${isActive ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"}`}
+                            >
+                              <item.icon />
+                              <span>{item.title}</span>
+                              <ChevronUp className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:-rotate-180" />
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <SidebarMenuSub>
+                              {item.subItems.map((subItem) => {
+                                const isSubActive = pathname === subItem.url;
+                                return (
+                                  <SidebarMenuSubItem key={subItem.title}>
+                                    <SidebarMenuSubButton asChild isActive={isSubActive}>
+                                      <Link href={subItem.url}>
+                                        <span>{subItem.title}</span>
+                                      </Link>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                );
+                              })}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </div>
+                      </Collapsible>
+                    </SidebarMenuItem>
+                  );
+                }
 
                 return (
                   <SidebarMenuItem key={item.title}>

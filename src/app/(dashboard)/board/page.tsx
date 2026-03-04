@@ -1,13 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import { DashboardClient as BoardClient } from "./board-client"; // Renamed on import for now to avoid refactoring the component itself
 
+import { GlobalInvoicePoller } from "@/components/global-invoice-poller";
+
 export const dynamic = "force-dynamic";
 
 export default async function BoardPage() {
-  const projectsRaw = await prisma.project.findMany({
-    include: { client: true, invoices: true, items: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const [projectsRaw, unpaidCount] = await Promise.all([
+    prisma.project.findMany({
+      include: { client: true, invoices: true, items: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.invoice.count({ where: { status: "unpaid" } }),
+  ]);
 
   // Serialize records
   const projects = projectsRaw.map((p) => ({
@@ -49,6 +54,7 @@ export default async function BoardPage() {
         </div>
       </div>
 
+      <GlobalInvoicePoller currentUnpaidCount={unpaidCount} />
       <BoardClient initialProjects={projects} />
     </div>
   );

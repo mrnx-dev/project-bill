@@ -51,11 +51,11 @@ export async function POST(
 
     // Prepare payload for Mayar API `create payment link`
     const payload = {
-      name: `${invoice.project.title} - ${invoice.type === "dp" ? "Down Payment" : "Full Payment"}`,
+      name: invoice.project.client.name,
+      email: invoice.project.client.email || "client@company.com",
+      mobile: invoice.project.client.phone || "081234567890",
       amount: Math.round(Number(invoice.amount)),
       description: `Invoice for ${invoice.project.title}. ID: ${invoice.id}`,
-      customerName: invoice.project.client.name,
-      customerEmail: invoice.project.client.email || undefined,
       referenceId: invoice.id, // Important for webhook tracing
       isSingleUse: true, // Usually we want one-time payment for one invoice
       expiredAt: invoice.dueDate

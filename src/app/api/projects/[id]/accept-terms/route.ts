@@ -14,7 +14,7 @@ export async function PATCH(
 
     const project = await prisma.project.findUnique({
       where: { id },
-      select: { terms: true, termsAcceptedAt: true, updatedAt: true },
+      select: { terms: true, termsAcceptedAt: true, termsVersionId: true, updatedAt: true },
     });
 
     if (!project) {
@@ -35,17 +35,19 @@ export async function PATCH(
       );
     }
 
-    // Extract IP address from headers
-    const forwardedFor = request.headers.get("x-forwarded-for");
-    const realIp = request.headers.get("x-real-ip");
-    const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : (realIp || "Unknown");
+    const userAgent = request.headers.get("user-agent") || "Unknown Browser";
+    const sessionId = crypto.randomUUID(); // Requires `import crypto from "crypto";` at top or use global crypto if Node >= 19
+
+    // Calculate next version
+    const nextVersion = (project.termsVersionId || 0) + 1;
 
     const updatedProject = await prisma.project.update({
       where: { id },
       data: {
         termsAcceptedAt: new Date(),
-        termsAcceptedIp: ip,
-        termsVersionId: project.updatedAt.toISOString(),
+        termsAcceptedUserAgent: userAgent,
+        termsAcceptedSessionId: sessionId,
+        termsVersionId: nextVersion,
       },
     });
 

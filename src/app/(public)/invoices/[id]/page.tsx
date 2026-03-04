@@ -5,6 +5,7 @@ import { PayButton } from "./pay-button";
 import { PrintButton } from "./print-button";
 import { CompanyLogo } from "@/components/company-logo";
 import { TermsAgreement } from "./terms-agreement";
+import { RealtimeInvoicePoller } from "@/components/realtime-invoice-poller";
 
 export default async function InvoiceViewPage(props: {
   params: Promise<{ id: string }>;
@@ -43,6 +44,7 @@ export default async function InvoiceViewPage(props: {
 
   return (
     <div className="light-theme min-h-screen bg-neutral-100 py-10 print:py-0 print:bg-white flex justify-center flex-col items-center gap-6">
+      {invoice.status !== "paid" && <RealtimeInvoicePoller invoiceId={invoice.id} />}
       {/* Toolbar outside the A4 paper */}
       <div className="w-full max-w-[210mm] flex justify-end print:hidden">
         <PrintButton />

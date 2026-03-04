@@ -103,17 +103,24 @@ The full MVP through V1.2 features have been successfully implemented:
     - **NPM Scripts:** `npm test` (Jest), `npm run test:e2e` (Playwright), `npm run test:seed` (seed test user).
 
 16. **Digital Contracts & Terms of Service (Sprint 10):**
-    - **Database Extensions:** Added `terms` and `termsAcceptedAt` fields to `Project` model.
-    - **Admin Tools:** Custom SOW / Terms input via a textarea in the Project creation form. Clear visual badges on the Projects board indicating signature status ("Pending Signature", "Accepted").
+    - **Database Extensions:** Added `terms` and `termsAcceptedAt` fields to `Project` model, and established the `SOWTemplate` table.
+    - **Multi-Template Management:** Added a dedicated dashboard (`/settings/sow-template`) for Admins to create, edit, and manage multiple dynamically named SOW Templates.
+    - **Project Integration:** Added a "Load from Template" dropdown to the Project Creation/Edit forms to instantly import saved terms.
+    - **Rich Text Previews:** Integrated `react-markdown` with `@tailwindcss/typography` to elegantly format Markdown Headings, Lists, and Tables across the admin editor, pop-up contract views, and print layouts.
     - **Client Journey Enforcement:** The public invoice view hides the "Pay Now" button behind a mandatory Terms Agreement gate if terms were provided.
-    - **Professional Signature Flow:** A clean "Digital Agreement Required" banner triggers a full-screen, professional legal document modal. Clients must check an agreement box and accept terms. The exact timestamp is securely recorded via `PATCH /api/projects/[id]/accept-terms`.
-    - **Public View Theming Guard:** `next-themes` dark mode is explicitly overridden on `/invoices/[id]` (forced light mode) to preserve the professional black-on-white paper aesthetic regardless of the client's OS/device preferences.
+    - **Professional Signature Flow:** A "Digital Agreement Required" banner triggers a full-screen legal document modal. Clients must check an agreement box and accept terms.
+    - **Public View Theming Guard:** `next-themes` dark mode is explicitly overridden on `/invoices/[id]` (forced light mode) to preserve the black-on-white paper aesthetic.
 
 17. **SOW Legal Hardening & Audit Trails (Sprint 10):**
-    - **Audit Trail Recording:** Captured `termsAcceptedIp` and the project's `updatedAt` as a `termsVersionId` in the database to legally lock the state of the SOW upon signature.
-    - **Scroll-to-Bottom Enforcement:** Modified the Terms Modal UI so the "Accept" checkbox is disabled until the client actually scrolls to the very bottom of the contract.
-    - **PDF Generation:** Integrated `@react-pdf/renderer` to generate a legally compliant SOW document on-the-fly via `/api/projects/[id]/sow-pdf`.
-    - **Client Receipt:** Added a "Download PDF" functionality to the success banner after the client accepts the digital contract, complete with an Audit Trail footer detailing the IP address and exact timestamp.
+    - **Audit Trail Recording:** Captured `termsAcceptedUserAgent`, a unique `termsAcceptedSessionId`, and a sequential `termsVersionId` in the database to legally validate non-repudiation.
+    - **Scroll-to-Bottom Enforcement:** Modified the Terms Modal UI so the "Accept" checkbox is disabled until the client actually scrolls to the very bottom of the document.
+    - **Native Print Generation:** Replaced external PDF libraries with a native CSS `@media print` layout at `/invoices/[id]/sow/print` for flawless, responsive A4 document generation directly from the browser.
+    - **Client Receipt:** Added a "Download / Print PDF" functionality to the success banner after the client accepts the digital contract, complete with an Audit Trail footer detailing the User Agent, Session ID, and timestamp.
+
+18. **Real-Time Webhook UI Sync (Sprint 10):**
+    - **Zero-Cost DB Polling:** Utilized Next.js Server Actions with lightweight Prisma queries (`select: { status: true }`) and `count()` functions to monitor database changes.
+    - **Client-Side Poller Components:** Mounted invisible `<RealtimeInvoicePoller />` on unpaid invoices and `<GlobalInvoicePoller />` on admin dashboard lists to refresh the UI (`router.refresh()`) the exact second a successful webhook lands.
+    - **Cache Revalidation:** Tied Next.js edge-caching (`revalidatePath()`) cleanly into the backend `api/webhooks/mayar/route.ts` architecture for 1-millisecond synchronization.
 
 ## Upcoming: Sprint 11 (V2 Feature Expansion)
 The next development cycle will focus on expanding core functionality to support a wider array of business models. Potential candidates for Sprint 11:

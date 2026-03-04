@@ -132,28 +132,32 @@ export function DashboardClient({
 
     const projectId = completionProject.id;
 
-    // Update status to done
+    // Update Local State Optimistically
     setProjects((prev) =>
       prev.map((p) => (p.id === projectId ? { ...p, status: "done" } : p)),
     );
     setIsCompletionDialogOpen(false);
 
     try {
-      await fetch(`/api/projects/${projectId}`, {
+      const res = await fetch(`/api/projects/${projectId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "done" }),
       });
 
-      // Generate invoice if requested
+      if (!res.ok) throw new Error("Failed to update status");
+
+      // Generate invoice only if status update succeeded
       if (generateInvoice) {
         await handleGenerateInvoice(projectId);
+      } else {
+        router.refresh(); // Refresh if no generation happened
       }
 
-      router.refresh();
     } catch (error) {
       console.error(error);
-      setProjects(initialProjects);
+      toast.error("Failed to update project status");
+      setProjects(initialProjects); // Revert optimistic update
     }
 
     setCompletionProject(null);
@@ -239,8 +243,8 @@ export function DashboardClient({
           const archivedCount =
             column.id === "done"
               ? projects.filter(
-                  (p) => p.status === "done" && isFullyPaidDone(p),
-                ).length
+                (p) => p.status === "done" && isFullyPaidDone(p),
+              ).length
               : 0;
 
           return (
@@ -280,13 +284,12 @@ export function DashboardClient({
                     return (
                       <Card
                         key={project.id}
-                        className={`shadow-sm transition-all ${
-                          isPaidDone
-                            ? "border-l-4 border-l-emerald-500 bg-emerald-50/30 opacity-70 dark:bg-emerald-950/20"
-                            : isDone
-                              ? "border-l-4 border-l-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30"
-                              : ""
-                        }`}
+                        className={`shadow-sm transition-all ${isPaidDone
+                          ? "border-l-4 border-l-emerald-500 bg-emerald-50/30 opacity-70 dark:bg-emerald-950/20"
+                          : isDone
+                            ? "border-l-4 border-l-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30"
+                            : ""
+                          }`}
                       >
                         <CardHeader className="p-4 pb-2">
                           <div className="flex justify-between items-start">
@@ -369,9 +372,9 @@ export function DashboardClient({
                           {project.status === "done" && (
                             <div className="w-full mt-2">
                               {project.invoices &&
-                              project.invoices.find(
-                                (i: any) => i.type === "full_payment",
-                              ) ? (
+                                project.invoices.find(
+                                  (i: any) => i.type === "full_payment",
+                                ) ? (
                                 <Button
                                   variant="default"
                                   size="sm"
@@ -380,8 +383,8 @@ export function DashboardClient({
                                     const inv = project.invoices!.find(
                                       (i: any) => i.type === "full_payment",
                                     );
-                                    if (inv?.paymentLink) {
-                                      window.open(inv.paymentLink, "_blank");
+                                    if (inv?.id) {
+                                      window.open(`/invoices/${inv.id}`, "_blank");
                                     }
                                   }}
                                 >
@@ -389,7 +392,7 @@ export function DashboardClient({
                                     (i: any) => i.type === "full_payment",
                                   ).status === "paid"
                                     ? "View Receipt"
-                                    : "Pay Now Link"}
+                                    : "View Invoice"}
                                 </Button>
                               ) : (
                                 <Button
@@ -523,10 +526,10 @@ export function DashboardClient({
               prev.map((p) =>
                 p.id === activeItemProject.id
                   ? {
-                      ...p,
-                      totalPrice: newTotal,
-                      items: [...(p.items || []), item],
-                    }
+                    ...p,
+                    totalPrice: newTotal,
+                    items: [...(p.items || []), item],
+                  }
                   : p,
               ),
             );
@@ -536,10 +539,10 @@ export function DashboardClient({
               prev.map((p) =>
                 p.id === activeItemProject.id
                   ? {
-                      ...p,
-                      totalPrice: newTotal,
-                      items: (p.items || []).filter((i) => i.id !== itemId),
-                    }
+                    ...p,
+                    totalPrice: newTotal,
+                    items: (p.items || []).filter((i) => i.id !== itemId),
+                  }
                   : p,
               ),
             );

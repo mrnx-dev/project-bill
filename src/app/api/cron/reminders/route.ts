@@ -82,6 +82,13 @@ export async function GET(request: Request) {
       let lateFeeAmountStr: string | undefined;
 
       // Apply late fee if applicable
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL ||
+        (process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : "http://localhost:3000");
+      const invoiceLink = `${baseUrl}/invoices/${invoice.id}`;
+
       if (reminderType === "late_fee") {
         const currentAmount = Number(invoice.amount);
         const lateFee = currentAmount * 0.05;
@@ -95,7 +102,7 @@ export async function GET(request: Request) {
           clientName: invoice.project.client.name,
           projectTitle: invoice.project.title,
           amountStr: formatter.format(Number(invoice.amount)),
-          paymentLink: invoice.paymentLink,
+          invoiceLink,
           reminderType,
           lateFeeAmountStr,
         });
@@ -125,7 +132,7 @@ export async function GET(request: Request) {
           clientName: invoice.project.client.name,
           projectTitle: invoice.project.title,
           amountStr: formatter.format(Number(invoice.amount)),
-          paymentLink: invoice.paymentLink,
+          invoiceLink,
           reminderType,
           lateFeeAmountStr,
         });

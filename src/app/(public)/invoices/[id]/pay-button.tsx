@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, CreditCard } from "lucide-react";
 
+import { toast } from "sonner";
+
 export function PayButton({
   invoiceId,
   amountStr,
@@ -33,7 +35,7 @@ export function PayButton({
       }
     } catch (error: any) {
       console.error(error);
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setIsLoading(false);
     }

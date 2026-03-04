@@ -7,9 +7,10 @@ datasource db {
 }
 
 model Client {
-  id        String    @id @default(uuid())
-  name      String
+  id         String    @id @default(uuid())
+  name       String
   email      String?
+  phone      String?
   isArchived Boolean   @default(false)
   projects   Project[]
   createdAt  DateTime  @default(now())
@@ -17,23 +18,24 @@ model Client {
 }
 
 model Project {
-  id         String        @id @default(uuid())
-  clientId   String
-  client     Client        @relation(fields: [clientId], references: [id])
-  title      String
-  status     String        @default("to_do") // to_do, in_progress, review, done
-  totalPrice Decimal       @db.Decimal(19, 4)
-  dpAmount   Decimal?      @db.Decimal(19, 4)
-  currency   String        @default("IDR") // IDR or USD
-  items      ProjectItem[]
-  invoices   Invoice[]
-  deadline   DateTime?
-  terms         String?
-  termsAcceptedAt DateTime?
-  termsAcceptedIp String?
-  termsVersionId  String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                     String        @id @default(uuid())
+  clientId               String
+  client                 Client        @relation(fields: [clientId], references: [id])
+  title                  String
+  status                 String        @default("to_do") // to_do, in_progress, review, done
+  totalPrice             Decimal       @db.Decimal(19, 4)
+  dpAmount               Decimal?      @db.Decimal(19, 4)
+  currency               String        @default("IDR") // IDR or USD
+  items                  ProjectItem[]
+  invoices               Invoice[]
+  deadline               DateTime?
+  terms                  String?
+  termsAcceptedAt        DateTime?
+  termsAcceptedUserAgent String?
+  termsAcceptedSessionId String?
+  termsVersionId         Int?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
 
   @@index([status])
   @@index([clientId])
@@ -50,21 +52,21 @@ model ProjectItem {
 }
 
 model Invoice {
-  id              String    @id @default(uuid())
-  invoiceNumber   String    @unique @default(uuid()) // E.g., INV-2026-0001
-  projectId       String
-  project         Project   @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  type            String    // dp, full_payment
-  amount          Decimal   @db.Decimal(19, 4)
-  status          String    @default("unpaid") // unpaid, paid
-  dueDate         DateTime?
-  paymentLink     String?
-  paymentId       String?
-  paidAt          DateTime?
-  lastReminderAt  DateTime?
-  lateFeeApplied  Boolean   @default(false)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id             String    @id @default(uuid())
+  invoiceNumber  String    @unique @default(uuid()) // E.g., INV-2026-0001
+  projectId      String
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  type           String // dp, full_payment
+  amount         Decimal   @db.Decimal(19, 4)
+  status         String    @default("unpaid") // unpaid, paid
+  dueDate        DateTime?
+  paymentLink    String?
+  paymentId      String?
+  paidAt         DateTime?
+  lastReminderAt DateTime?
+  lateFeeApplied Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([status])
   @@index([projectId])
@@ -80,10 +82,18 @@ model User {
 }
 
 model Settings {
-  id              String   @id @default("global") // Enforce single row
-  companyName     String   @default("ProjectBill Consulting")
-  companyAddress  String?  
-  companyEmail    String?
-  companyLogoUrl  String?
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default("global") // Enforce single row
+  companyName    String   @default("ProjectBill Consulting")
+  companyAddress String?
+  companyEmail   String?
+  companyLogoUrl String?
+  updatedAt      DateTime @updatedAt
+}
+
+model SOWTemplate {
+  id        String   @id @default(uuid())
+  name      String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

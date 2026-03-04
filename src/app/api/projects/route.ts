@@ -84,9 +84,10 @@ export async function POST(request: Request) {
       dpAmount: data.dpAmount ?? null,
       currency: data.currency,
       deadline: data.deadline ? new Date(data.deadline) : null,
-      terms: data.terms ?? null,
       status: "to_do",
     };
+
+    projectData.terms = data.terms ?? null;
 
     if (data.items && data.items.length > 0) {
       projectData.items = {

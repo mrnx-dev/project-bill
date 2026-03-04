@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, ShieldCheck, FileCheck2, CheckCircle2, Download } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import {
   Dialog,
   DialogContent,
@@ -103,12 +106,17 @@ export function TermsAgreement({
           </div>
           <div className="ml-auto flex items-center gap-3">
             <a
-              href={`/api/projects/${projectId}/sow-pdf`}
-              download={`SOW_${projectId}.pdf`}
+              href={`/invoices/${projectId}/sow/print`}
+              target="_blank"
+              onClick={(e) => {
+                // Prevent default navigation initially, use window.open
+                e.preventDefault();
+                window.open(`/invoices/${projectId}/sow/print`, '_blank');
+              }}
               className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:pointer-events-none disabled:opacity-50 bg-white border border-emerald-200 hover:bg-emerald-50 text-emerald-700 h-8 px-3 py-1 shadow-sm"
             >
               <Download className="w-3 h-3 mr-1.5" />
-              Download PDF
+              Print / Save PDF
             </a>
             <CheckCircle2 className="w-5 h-5 text-emerald-500 opacity-50" />
           </div>
@@ -161,8 +169,10 @@ export function TermsAgreement({
             ref={scrollContainerRef}
           >
             <div className="bg-white border rounded-lg shadow-sm min-h-[400px]">
-              <div className="p-6 md:p-8 prose prose-sm md:prose-base max-w-none text-slate-700 whitespace-pre-wrap leading-relaxed">
-                {terms}
+              <div className="p-6 md:p-8 prose prose-sm md:prose-base max-w-none text-slate-700 leading-relaxed text-justify">
+                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                  {terms}
+                </ReactMarkdown>
               </div>
             </div>
           </div>

@@ -49,7 +49,9 @@ export async function POST(request: Request) {
       amountToPay -= Number(project.dpAmount);
     }
 
-    const customerEmail = project.client.email || "client@example.com";
+    const customerEmail = project.client.email || "client@company.com";
+    // Now that we have a phone field in the database, we use it. Fallback is kept as a safety net.
+    const customerMobile = project.client.phone || "081234567890";
 
     // Build itemized description
     let description = `Payment for project: ${project.title}`;
@@ -71,12 +73,9 @@ export async function POST(request: Request) {
       description += `\n\n${itemLines}`;
     }
 
-    const paymentLinkRes = await createPaymentLink({
-      amount: amountToPay,
-      customerName: project.client.name,
-      customerEmail: customerEmail,
-      description,
-    });
+    // Payment link generation is fully deferred to the "Pay Now" button
+    // To ensure users always see the Invoice Detail first and payment links don't expire prematurely.
+    const paymentLinkRes: any = null;
 
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 7);
@@ -91,10 +90,14 @@ export async function POST(request: Request) {
         amount: amountToPay,
         status: "unpaid",
         dueDate,
-        paymentLink: paymentLinkRes.link,
-        paymentId: paymentLinkRes.id,
+        paymentLink: paymentLinkRes ? paymentLinkRes.link : null,
+        paymentId: paymentLinkRes ? (paymentLinkRes.id || null) : null,
       },
     });
+
+    const host = request.headers.get("host") || "localhost:3000";
+    const protocol = host.includes("localhost") ? "http" : "https";
+    const invoiceDetailUrl = `${protocol}://${host}/invoices/${newInvoice.id}`;
 
     // Soft-fail: Try communicating with Resend, but don't fail the whole block if it errors.
     let emailSuccess = false;
@@ -114,7 +117,7 @@ export async function POST(request: Request) {
           clientName: project.client.name,
           projectTitle: project.title,
           amountStr: formatCurrency,
-          paymentLink: paymentLinkRes.link,
+          invoiceLink: invoiceDetailUrl,
         });
 
         emailSuccess = emailRes.success;

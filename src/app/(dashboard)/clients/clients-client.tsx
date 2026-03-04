@@ -30,6 +30,7 @@ type Client = {
   id: string;
   name: string;
   email: string | null;
+  phone: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -49,6 +50,7 @@ export function ClientsClient({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const handleOpenDialog = (client?: Client) => {
@@ -56,10 +58,12 @@ export function ClientsClient({
       setEditingId(client.id);
       setName(client.name);
       setEmail(client.email || "");
+      setPhone(client.phone || "");
     } else {
       setEditingId(null);
       setName("");
       setEmail("");
+      setPhone("");
     }
     setIsDialogOpen(true);
   };
@@ -74,7 +78,7 @@ export function ClientsClient({
         const res = await fetch(`/api/clients/${editingId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email: email || null }),
+          body: JSON.stringify({ name, email: email || null, phone: phone || null }),
         });
         if (res.ok) {
           const updated = await res.json();
@@ -82,10 +86,10 @@ export function ClientsClient({
             clients.map((c) =>
               c.id === editingId
                 ? {
-                    ...updated,
-                    createdAt: updated.createdAt,
-                    updatedAt: updated.updatedAt,
-                  }
+                  ...updated,
+                  createdAt: updated.createdAt,
+                  updatedAt: updated.updatedAt,
+                }
                 : c,
             ),
           );
@@ -95,7 +99,7 @@ export function ClientsClient({
         const res = await fetch(`/api/clients`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email: email || null }),
+          body: JSON.stringify({ name, email: email || null, phone: phone || null }),
         });
         if (res.ok) {
           const created = await res.json();
@@ -131,7 +135,9 @@ export function ClientsClient({
     (client) =>
       client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (client.email &&
-        client.email.toLowerCase().includes(searchQuery.toLowerCase())),
+        client.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (client.phone &&
+        client.phone.includes(searchQuery)),
   );
 
   return (
@@ -181,6 +187,16 @@ export function ClientsClient({
                   placeholder="contact@acme.com"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone / WhatsApp</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="081234567890"
+                />
+              </div>
               <DialogFooter>
                 <Button type="submit" disabled={isLoading}>
                   {isLoading ? "Saving..." : "Save changes"}
@@ -197,6 +213,7 @@ export function ClientsClient({
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
               <TableHead>Created</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -232,6 +249,7 @@ export function ClientsClient({
                 <TableRow key={client.id}>
                   <TableCell className="font-medium">{client.name}</TableCell>
                   <TableCell>{client.email || "-"}</TableCell>
+                  <TableCell>{client.phone || "-"}</TableCell>
                   <TableCell>
                     {new Date(client.createdAt).toLocaleDateString()}
                   </TableCell>

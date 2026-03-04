@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -83,7 +83,7 @@ export function ProjectsClient({
   const [currency, setCurrency] = useState("IDR");
   const [deadline, setDeadline] = useState("");
   const [terms, setTerms] = useState("");
-
+  const [isSowLocked, setIsSowLocked] = useState(false);
   const [items, setItems] = useState<ProjectItem[]>([]);
   const [newItemDesc, setNewItemDesc] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
@@ -102,6 +102,15 @@ export function ProjectsClient({
     "full_payment",
   );
 
+  const [sowTemplates, setSowTemplates] = useState<{ id: string, name: string, content: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/sow-templates")
+      .then(res => res.json())
+      .then(data => setSowTemplates(data))
+      .catch(err => console.error("Failed to load templates:", err));
+  }, []);
+
   const handleOpenDialog = (project?: Project) => {
     if (project) {
       setEditingId(project.id);
@@ -117,6 +126,8 @@ export function ProjectsClient({
       );
       setTerms(project.terms || "");
       setItems(project.items || []);
+      const hasPaid = project.invoices?.some((i) => i.status === "paid") || false;
+      setIsSowLocked(hasPaid);
     } else {
       setEditingId(null);
       setTitle("");
@@ -127,6 +138,7 @@ export function ProjectsClient({
       setDeadline("");
       setTerms("");
       setItems([]);
+      setIsSowLocked(false);
     }
     setNewItemDesc("");
     setNewItemPrice("");
@@ -312,7 +324,7 @@ export function ProjectsClient({
           </Button>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? "Edit Project" : "Add Project"}
@@ -361,21 +373,53 @@ export function ProjectsClient({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="terms">
-                    Terms & Conditions (SOW/Contract)
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="terms">
+                      Terms & Conditions (SOW/Contract)
+                    </Label>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     If provided, the client must digitally accept these terms
                     before they can pay the invoice.
                   </p>
+
+                  <div className="mb-2">
+                    <Select
+                      disabled={sowTemplates.length === 0 || isSowLocked}
+                      onValueChange={(val) => {
+                        if (!val) return;
+                        const tpl = sowTemplates.find(t => t.id === val);
+                        if (tpl) {
+                          if (terms && !confirm("This will overwrite your existing terms. Proceed?")) return;
+                          setTerms(tpl.content);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="text-sm h-8 mt-1 border-dashed bg-slate-50 dark:bg-slate-900 border-slate-300">
+                        <SelectValue placeholder={sowTemplates.length === 0 ? "No templates created yet" : "Load from Template..."} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {sowTemplates.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <textarea
                     id="terms"
                     rows={4}
                     value={terms}
+                    disabled={isSowLocked}
                     onChange={(e) => setTerms(e.target.value)}
-                    className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="e.g. 1. Revisions are limited to 2 rounds. 2. Payments are non-refundable."
                   />
+                  {isSowLocked && (
+                    <p className="text-[10px] text-amber-600 font-medium">
+                      Terms cannot be edited because a payment has already been made.
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
@@ -822,6 +866,6 @@ export function ProjectsClient({
           setItemRemoveConfirm(null);
         }}
       />
-    </div>
+    </div >
   );
 }

@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { Send, Loader2 } from "lucide-react";
 import { sendInvoiceEmail } from "@/app/actions/send-invoice";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { toast } from "sonner";
 
 export function InvoicesClient({
   initialInvoices,
@@ -24,6 +26,7 @@ export function InvoicesClient({
   const [invoices, setInvoices] = useState(initialInvoices);
   const [searchQuery, setSearchQuery] = useState("");
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [toggleConfirmId, setToggleConfirmId] = useState<{ id: string, currentStatus: string } | null>(null);
 
   const formatCurrency = (amount: string | number, currencyStr: string) => {
     return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
@@ -149,7 +152,15 @@ export function InvoicesClient({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => toggleStatus(inv.id, inv.status)}
+                        disabled={inv.status === "paid" && !!inv.paymentId}
+                        title={inv.status === "paid" && !!inv.paymentId ? "Invoice already paid via Mayar" : ""}
+                        onClick={() => {
+                          if (inv.status === "paid") {
+                            setToggleConfirmId({ id: inv.id, currentStatus: inv.status });
+                          } else {
+                            toggleStatus(inv.id, inv.status);
+                          }
+                        }}
                       >
                         Mark {inv.status === "paid" ? "Unpaid" : "Paid"}
                       </Button>
@@ -188,6 +199,20 @@ export function InvoicesClient({
           </TableBody>
         </Table>
       </div>
+
+      <ConfirmDialog
+        open={!!toggleConfirmId}
+        onOpenChange={(open) => !open && setToggleConfirmId(null)}
+        title="Mark as Unpaid?"
+        description="This will manually mark the invoice as unpaid. Are you sure you want to proceed?"
+        confirmLabel="Confirm"
+        onConfirm={() => {
+          if (toggleConfirmId) {
+            toggleStatus(toggleConfirmId.id, toggleConfirmId.currentStatus);
+            setToggleConfirmId(null);
+          }
+        }}
+      />
     </div>
   );
 }
