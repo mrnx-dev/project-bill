@@ -73,9 +73,9 @@ export function TermsAgreement({
       setAccepted(true);
       setAcceptedDate(data.termsAcceptedAt);
       setIsOpen(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      alert(error.message);
+      alert(error instanceof Error ? error.message : "Failed to accept terms");
     } finally {
       setIsLoading(false);
     }

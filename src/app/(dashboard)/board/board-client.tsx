@@ -17,6 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -231,7 +237,168 @@ export function DashboardClient({
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Mobile View: Accordion */}
+      <div className="md:hidden block space-y-4 shadow-sm border rounded-xl overflow-hidden bg-background">
+        <Accordion type="single" collapsible defaultValue="in_progress" className="w-full">
+          {COLUMNS.map((column) => {
+            let columnProjects = projects.filter((p) => p.status === column.id);
+
+            // If archive toggle is OFF, hide fully-paid done projects
+            if (column.id === "done" && !showArchived) {
+              columnProjects = columnProjects.filter((p) => !isFullyPaidDone(p));
+            }
+
+            const archivedCount =
+              column.id === "done"
+                ? projects.filter((p) => p.status === "done" && isFullyPaidDone(p)).length
+                : 0;
+
+            return (
+              <AccordionItem key={column.id} value={column.id} className="border-b-0">
+                <AccordionTrigger className="px-4 py-3 hover:bg-muted/50 data-[state=open]:bg-muted/50 border-b">
+                  <div className="flex items-center justify-between w-full pr-4">
+                    <span className="font-semibold text-sm uppercase tracking-wide">
+                      {column.title}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {column.id === "done" && archivedCount > 0 && !showArchived && (
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground border-dashed">
+                          +{archivedCount} archived
+                        </Badge>
+                      )}
+                      <Badge variant="secondary">{columnProjects.length}</Badge>
+                    </div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="bg-muted/20 p-4">
+                  <div className="flex flex-col gap-3">
+                    {columnProjects.length === 0 ? (
+                      <div className="text-sm text-muted-foreground text-center py-6 italic">
+                        No projects here
+                      </div>
+                    ) : (
+                      columnProjects.map((project) => {
+                        const isDone = project.status === "done";
+                        const isPaidDone = isFullyPaidDone(project);
+
+                        return (
+                          <Card
+                            key={project.id}
+                            className={`shadow-sm transition-all ${isPaidDone
+                              ? "border-l-4 border-l-emerald-500 bg-emerald-50/30 opacity-70 dark:bg-emerald-950/20"
+                              : isDone
+                                ? "border-l-4 border-l-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30"
+                                : ""
+                              }`}
+                          >
+                            <CardHeader className="p-3 pb-2">
+                              <div className="flex justify-between items-start">
+                                <div className="max-w-[80%]">
+                                  <CardTitle className="text-sm leading-tight flex items-center gap-1.5 truncate">
+                                    {isDone && (
+                                      <CheckCircle2
+                                        className={`h-3.5 w-3.5 shrink-0 ${isPaidDone ? "text-emerald-600" : "text-emerald-400"}`}
+                                      />
+                                    )}
+                                    <span className="truncate">{project.title}</span>
+                                  </CardTitle>
+                                  <CardDescription className="text-[11px] pt-1 truncate">
+                                    {project.client.name}
+                                  </CardDescription>
+                                  {project.deadline && (
+                                    <div className="mt-1.5">
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[9px] px-1 py-0 h-4 font-normal border-amber-200 bg-amber-50 text-amber-800 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-200"
+                                      >
+                                        Due: {new Date(project.deadline).toLocaleDateString("en-US")}
+                                      </Badge>
+                                    </div>
+                                  )}
+                                  {isPaidDone && (
+                                    <div className="mt-1.5">
+                                      <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-300 text-[9px] px-1 py-0 h-4 uppercase tracking-widest font-bold">
+                                        Completed & Paid
+                                      </Badge>
+                                    </div>
+                                  )}
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 text-[10px] px-2 shrink-0"
+                                  onClick={() => setSelectedProjectForItems(project.id)}
+                                >
+                                  Items
+                                </Button>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="p-3 pt-0 pb-2">
+                              <div className="text-xs font-medium">
+                                {formatCurrency(project.totalPrice, project.currency || "IDR")}
+                              </div>
+                            </CardContent>
+                            <CardFooter className="p-3 pt-0 flex flex-col gap-2">
+                              <Select
+                                value={project.status}
+                                onValueChange={(val) => handleStatusChange(project.id, val)}
+                              >
+                                <SelectTrigger className="h-7 text-[11px] w-full">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {COLUMNS.map((col) => (
+                                    <SelectItem key={col.id} value={col.id} className="text-[11px]">
+                                      {col.title}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              {project.status === "done" && (
+                                <div className="w-full mt-1">
+                                  {project.invoices && project.invoices.find((i: any) => i.type === "full_payment") ? (
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      className="w-full h-7 text-[11px] font-semibold bg-green-600 hover:bg-green-700 text-white"
+                                      onClick={() => {
+                                        const inv = project.invoices!.find((i: any) => i.type === "full_payment");
+                                        if (inv?.id) window.open(`/invoices/${inv.id}`, "_blank");
+                                      }}
+                                    >
+                                      {project.invoices.find((i: any) => i.type === "full_payment").status === "paid"
+                                        ? "View Receipt"
+                                        : "View Invoice"}
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      className="w-full h-7 text-[11px]"
+                                      disabled={isGenerating === project.id}
+                                      onClick={() => handleGenerateInvoice(project.id)}
+                                    >
+                                      {isGenerating === project.id ? "..." : "Generate Invoice"}
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                            </CardFooter>
+                          </Card>
+                        );
+                      })
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
+        </Accordion>
+      </div>
+
+      {/* Desktop View: Grid */}
+      <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-6">
         {COLUMNS.map((column) => {
           let columnProjects = projects.filter((p) => p.status === column.id);
 
@@ -293,16 +460,16 @@ export function DashboardClient({
                       >
                         <CardHeader className="p-4 pb-2">
                           <div className="flex justify-between items-start">
-                            <div>
-                              <CardTitle className="text-base leading-tight flex items-center gap-1.5">
+                            <div className="max-w-[75%]">
+                              <CardTitle className="text-base leading-tight flex items-center gap-1.5 truncate">
                                 {isDone && (
                                   <CheckCircle2
                                     className={`h-4 w-4 shrink-0 ${isPaidDone ? "text-emerald-600" : "text-emerald-400"}`}
                                   />
                                 )}
-                                {project.title}
+                                <span className="truncate">{project.title}</span>
                               </CardTitle>
-                              <CardDescription className="text-xs pt-1">
+                              <CardDescription className="text-xs pt-1 truncate">
                                 {project.client.name}
                               </CardDescription>
                               {project.deadline && (
@@ -314,7 +481,7 @@ export function DashboardClient({
                                     Due:{" "}
                                     {new Date(
                                       project.deadline,
-                                    ).toLocaleDateString()}
+                                    ).toLocaleDateString("en-US")}
                                   </Badge>
                                 </div>
                               )}
@@ -329,7 +496,7 @@ export function DashboardClient({
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-6 text-[10px] px-2"
+                              className="h-6 text-[10px] px-2 shrink-0"
                               onClick={() =>
                                 setSelectedProjectForItems(project.id)
                               }
@@ -339,7 +506,7 @@ export function DashboardClient({
                           </div>
                         </CardHeader>
                         <CardContent className="p-4 pt-0 pb-3">
-                          <div className="text-sm font-medium">
+                          <div className="text-sm font-medium shrink-0">
                             {formatCurrency(
                               project.totalPrice,
                               project.currency || "IDR",

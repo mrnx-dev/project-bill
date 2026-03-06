@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 
 export async function PATCH(
@@ -14,7 +15,7 @@ export async function PATCH(
     const json = await request.json();
     const { status, paidAt, paymentLink, paymentId } = json;
 
-    const updateData: any = {};
+    const updateData: Prisma.InvoiceUpdateInput = {};
     if (status !== undefined) updateData.status = status;
     if (paidAt !== undefined)
       updateData.paidAt = paidAt ? new Date(paidAt) : null;

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 
 export async function GET(request: Request) {
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
     const limitParam = searchParams.get("limit");
     const pageParam = searchParams.get("page");
 
-    const args: any = {
+    const args: Prisma.InvoiceFindManyArgs = {
       include: { project: { include: { client: true } } },
       orderBy: { createdAt: "desc" },
     };

@@ -22,9 +22,9 @@ export async function GET() {
     }
 
     return NextResponse.json(settings);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Failed to fetch settings:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
   }
 }
 
@@ -46,8 +46,8 @@ export async function PUT(req: Request) {
     });
 
     return NextResponse.json(settings);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Failed to update settings:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
   }
 }

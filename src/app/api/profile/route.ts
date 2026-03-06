@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import bcrypt from "bcryptjs";
 
-export async function GET(req: Request) {
+export async function GET(_req: Request) {
   try {
     const session = await auth();
     if (!session?.user?.email) {
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json(user);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Profile fetch error:", error);
     return NextResponse.json({ error: "An error occurred." }, { status: 500 });
   }
@@ -107,7 +107,7 @@ export async function PUT(req: Request) {
     }
 
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Profile update error:", error);
     return NextResponse.json({ error: "An error occurred." }, { status: 500 });
   }

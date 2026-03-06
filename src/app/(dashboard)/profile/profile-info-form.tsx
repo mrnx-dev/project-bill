@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -59,9 +59,9 @@ export function ProfileInfoForm({
 
       toast.success("Profile updated successfully!");
       router.refresh(); // Refresh server components to catch new session state
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || "Failed to update profile.");
+      toast.error(err instanceof Error ? err.message : "Failed to update profile.");
     } finally {
       setIsSaving(false);
     }

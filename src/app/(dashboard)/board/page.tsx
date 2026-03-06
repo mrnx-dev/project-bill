@@ -28,7 +28,7 @@ export default async function BoardPage() {
       createdAt: p.client.createdAt.toISOString(),
       updatedAt: p.client.updatedAt.toISOString(),
     },
-    invoices: p.invoices.map((i: any) => ({
+    invoices: p.invoices.map((i) => ({
       ...i,
       amount: i.amount.toString(),
       dueDate: i.dueDate?.toISOString() || null,
@@ -36,7 +36,7 @@ export default async function BoardPage() {
       createdAt: i.createdAt.toISOString(),
       updatedAt: i.updatedAt.toISOString(),
     })),
-    items: p.items.map((i: any) => ({
+    items: p.items.map((i) => ({
       id: i.id,
       description: i.description,
       price: i.price.toString(),

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { createPaymentLink } from "@/lib/mayar";
 import { sendInvoiceEmail } from "@/lib/email";
 import { auth } from "@/auth";
 import { generateInvoiceNumber } from "@/lib/invoice-utils";
@@ -49,33 +48,9 @@ export async function POST(request: Request) {
       amountToPay -= Number(project.dpAmount);
     }
 
-    const customerEmail = project.client.email || "client@company.com";
-    // Now that we have a phone field in the database, we use it. Fallback is kept as a safety net.
-    const customerMobile = project.client.phone || "081234567890";
-
-    // Build itemized description
-    let description = `Payment for project: ${project.title}`;
-    if ((project as any).items && (project as any).items.length > 0) {
-      const currencyFormatter = new Intl.NumberFormat(
-        project.currency === "IDR" ? "id-ID" : "en-US",
-        {
-          style: "currency",
-          currency: project.currency || "IDR",
-          minimumFractionDigits: 0,
-        },
-      );
-      const itemLines = (project as any).items
-        .map(
-          (i: any) =>
-            `- ${i.description}: ${currencyFormatter.format(Number(i.price))}`,
-        )
-        .join("\n");
-      description += `\n\n${itemLines}`;
-    }
-
     // Payment link generation is fully deferred to the "Pay Now" button
     // To ensure users always see the Invoice Detail first and payment links don't expire prematurely.
-    const paymentLinkRes: any = null;
+    const paymentLinkRes = null as { link?: string; id?: string } | null;
 
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 7);

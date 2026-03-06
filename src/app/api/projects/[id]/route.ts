@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 
 export async function PATCH(
@@ -23,7 +24,7 @@ export async function PATCH(
       terms,
     } = json;
 
-    const updateData: any = {};
+    const updateData: Prisma.ProjectUncheckedUpdateInput = {};
     if (title !== undefined) updateData.title = title;
     if (clientId !== undefined) updateData.clientId = clientId;
     if (totalPrice !== undefined)

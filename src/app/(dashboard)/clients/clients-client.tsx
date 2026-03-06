@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
   Table,
   TableBody,
   TableCell,
@@ -207,7 +213,78 @@ export function ClientsClient({
         </Dialog>
       </div>
 
-      <div className="rounded-md border">
+      {/* Mobile View: Cards */}
+      <div className="grid grid-cols-1 gap-4 md:hidden">
+        {filteredClients.length === 0 ? (
+          <Card className="text-center py-8">
+            <CardContent className="flex flex-col items-center justify-center gap-3">
+              <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground/50">
+                <Users className="h-8 w-8" />
+              </div>
+              <h3 className="font-semibold text-lg">No Clients Found</h3>
+              <p className="text-sm text-muted-foreground">
+                {searchQuery
+                  ? `We couldn't find any clients matching "${searchQuery}".`
+                  : "You haven't added any clients yet."}
+              </p>
+              {!searchQuery && (
+                <Button
+                  onClick={() => handleOpenDialog()}
+                  variant="outline"
+                  className="mt-2"
+                >
+                  <Plus className="mr-2 h-4 w-4" /> Add Your First Client
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          filteredClients.map((client) => (
+            <Card key={client.id} className="overflow-hidden">
+              <CardHeader className="border-b border-border/50">
+                <CardTitle className="flex justify-between items-center text-base">
+                  <span className="truncate">{client.name}</span>
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleOpenDialog(client)}
+                      className="h-8 w-8"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => setDeleteConfirmId(client.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Email</span>
+                  <span className="font-medium text-right truncate overflow-hidden max-w-[200px]">{client.email || "-"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Phone</span>
+                  <span className="font-medium">{client.phone || "-"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Created</span>
+                  <span className="font-medium">{new Date(client.createdAt).toLocaleDateString("en-US")}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Desktop View: Table */}
+      <div className="hidden md:block rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -251,7 +328,7 @@ export function ClientsClient({
                   <TableCell>{client.email || "-"}</TableCell>
                   <TableCell>{client.phone || "-"}</TableCell>
                   <TableCell>
-                    {new Date(client.createdAt).toLocaleDateString()}
+                    {new Date(client.createdAt).toLocaleDateString("en-US")}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button

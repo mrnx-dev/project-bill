@@ -123,22 +123,24 @@ The full MVP through V1.2 features have been successfully implemented:
     - **Cache Revalidation:** Tied Next.js edge-caching (`revalidatePath()`) cleanly into the backend `api/webhooks/mayar/route.ts` architecture for 1-millisecond synchronization.
     - **Automated SOW Delivery:** Integrated Puppeteer to run a headless browser upon receiving a `payment.success` webhook. It captures a pixel-perfect Print PDF of the digital SOW and instantly attaches it to a "Payment Successful" receipt email via Resend natively inside Serverless logic.
 
+19. **Mobile UI/UX Responsiveness (Sprint 10 Patch):**
+    - **Swipeable Sidebar:** Implemented a native-feeling gesture allowing users to seamlessly swipe right from the left edge of their mobile screens to open the sidebar, bypassing the top navbar hamburger menu.
+    - Added an invisible `touchAction: "pan-y"` intercept zone to prevent default mobile browser behaviors from blocking the gesture.
+
 ## Upcoming: Sprint 11 (V2 Feature Expansion)
-The next development cycle will focus on expanding core functionality to support a wider array of business models. Potential candidates for Sprint 11:
-1. **Multi-Currency Payment Gateway** (Stripe integration for USD invoices).
-2. **Client Portal** (A dedicated dashboard for clients to view their active projects and payment history).
-3. **Recurring Invoices** (Cron-based generation for retainer agreements).
-4. **File Attachments** (S3/R2 integration to attach contracts or deliverables to projects).
+The next development cycle will focus on expanding core functionality to support a wider array of business models and improving overall client journey Quality of Life. Potential candidates for Sprint 11:
+
+1. **Client Portal (Multitenant Dashboards)** — A dedicated login area or permanent token link for clients to view all their past invoices, project status, and download SOWs from a single unified screen.
+2. **Recurring Invoices (Retainers)** — Auto-generate and send monthly invoices for retainer-based projects via scheduled Cron jobs.
+3. **File Attachments (S3/R2 Integration)** — Enabling a "Deliverables" section on the Project board where agencies can upload result files (ZIPs, Videos) that unlock for the client only after payment is complete.
+4. **Partial Payments & Milestones** — Expanding beyond DP & Balance to support multi-stage payment terms (e.g., 30% Design, 40% Develop, 30% Launch).
+5. **Time-Tracking & Hourly Billing** — An in-app stopwatch linked to projects that automatically compiles hours worked into billable invoice line-items at the end of the month.
+6. **Native Tax & Discount Calculation** — Adding dynamic percentage fields for corporate VAT (PPN 11%) or loyalty discounts directly on the invoice creation screen.
 
 ## Future Development Plan (V2 & Beyond)
 
-All planned features for V1.2 have been completed. Potential future enhancements:
-
-- **Multi-Currency Payment Gateway** — Currently disabled. If needed, re-enable USD in `projects-client.tsx` and integrate Stripe Checkout for USD invoices.
-- **Client Portal** — A dedicated login area for clients to view all their invoices and project status.
-- **Recurring Invoices** — Auto-generate monthly invoices for retainer-based projects.
-- **File Attachments** — Allow uploading deliverables or contracts to projects.
-
+All planned features for V1.2 have been completed.
+- **Multi-Currency Payment Gateway** — Currently disabled. If international clients are targeted, re-enable USD in `projects-client.tsx` and integrate Stripe Checkout for USD invoices alongside Mayar (IDR).
 ## Notes for the Next Agent
 - All layout components and global CSS are already set up.
 - Use Shadcn UI (`npx shadcn@latest add ...`) for any new UI components to maintain visual consistency.

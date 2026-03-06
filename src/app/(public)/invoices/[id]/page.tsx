@@ -55,9 +55,9 @@ export default async function InvoiceViewPage(props: {
         {/* Header Section */}
         <div className="flex justify-between items-start mb-12">
           <div className="space-y-1">
-            {(settings as any).companyLogoUrl ? (
+            {settings.companyLogoUrl ? (
               <CompanyLogo
-                src={(settings as any).companyLogoUrl}
+                src={settings.companyLogoUrl}
                 companyName={settings.companyName}
               />
             ) : (
@@ -87,7 +87,7 @@ export default async function InvoiceViewPage(props: {
                 Date:
               </span>
               <span className="font-medium">
-                {new Date(invoice.createdAt).toLocaleDateString()}
+                {new Date(invoice.createdAt).toLocaleDateString("en-US")}
               </span>
               {invoice.dueDate && (
                 <>
@@ -95,7 +95,7 @@ export default async function InvoiceViewPage(props: {
                     Due Date:
                   </span>
                   <span className="font-medium">
-                    {new Date(invoice.dueDate).toLocaleDateString()}
+                    {new Date(invoice.dueDate).toLocaleDateString("en-US")}
                   </span>
                 </>
               )}

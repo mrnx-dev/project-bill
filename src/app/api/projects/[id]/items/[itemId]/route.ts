@@ -43,7 +43,7 @@ export async function DELETE(
     }
 
     // Attempt to delete and subtract from total price
-    const [deletedItem, updatedProject] = await prisma.$transaction([
+    const [, updatedProject] = await prisma.$transaction([
       prisma.projectItem.delete({
         where: { id: itemId },
       }),

@@ -6,6 +6,7 @@ import {
   SidebarInset,
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { SwipeSidebarHandler } from "@/components/swipe-sidebar-handler";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -37,6 +38,7 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider>
+      <SwipeSidebarHandler />
       <AppSidebar user={dbUser || session.user} />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">

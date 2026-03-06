@@ -81,11 +81,11 @@ export async function sendInvoiceEmail(invoiceId: string) {
     }
 
     return { success: true, data };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Failed to send email:", error);
     return {
       success: false,
-      error: error.message || "An unexpected error occurred",
+      error: error instanceof Error ? error.message : "An unexpected error occurred",
     };
   }
 }

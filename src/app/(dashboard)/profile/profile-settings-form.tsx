@@ -65,9 +65,9 @@ export function ProfileSettingsForm() {
 
       toast.success("Password updated successfully!");
       form.reset();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || "Failed to update password.");
+      toast.error(err instanceof Error ? err.message : "Failed to update password.");
     } finally {
       setIsSaving(false);
     }

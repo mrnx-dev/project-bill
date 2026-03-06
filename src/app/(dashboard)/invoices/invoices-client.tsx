@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
   Table,
   TableBody,
   TableCell,
@@ -16,12 +22,12 @@ import Link from "next/link";
 import { Send, Loader2 } from "lucide-react";
 import { sendInvoiceEmail } from "@/app/actions/send-invoice";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { toast } from "sonner";
+import { Prisma } from "@prisma/client";
 
 export function InvoicesClient({
   initialInvoices,
 }: {
-  initialInvoices: any[];
+  initialInvoices: Prisma.InvoiceGetPayload<{ include: { project: { include: { client: true } } } }>[];
 }) {
   const [invoices, setInvoices] = useState(initialInvoices);
   const [searchQuery, setSearchQuery] = useState("");
@@ -72,9 +78,9 @@ export function InvoicesClient({
       } else {
         alert("Failed to send email: " + res.error);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      alert("An error occurred: " + e.message);
+      alert("An error occurred: " + (e instanceof Error ? e.message : String(e)));
     } finally {
       setSendingId(null);
     }
@@ -101,7 +107,92 @@ export function InvoicesClient({
         />
       </div>
 
-      <div className="rounded-md border">
+      {/* Mobile View: Cards */}
+      <div className="grid grid-cols-1 gap-4 md:hidden">
+        {filteredInvoices.length === 0 ? (
+          <Card className="text-center py-8">
+            <CardContent>No invoices found.</CardContent>
+          </Card>
+        ) : (
+          filteredInvoices.map((inv) => (
+            <Card key={inv.id} className="overflow-hidden">
+              <CardHeader className="border-b border-border/50">
+                <CardTitle className="flex justify-between items-start text-base gap-2">
+                  <div className="flex flex-col">
+                    <span className="truncate pr-4 font-bold">{inv.project.title}</span>
+                    <span className="text-sm font-normal text-muted-foreground truncate">{inv.project.client.name}</span>
+                  </div>
+                  <div className="shrink-0 flex flex-col gap-1 items-end">
+                    {inv.status === "paid" ? (
+                      <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-900 border text-[10px] py-0 px-2 uppercase tracking-widest font-bold">
+                        Paid
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="destructive"
+                        className="bg-red-100 text-red-800 hover:bg-red-200 border-red-300 dark:bg-red-950 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900 border text-[10px] py-0 px-2 uppercase tracking-widest font-bold"
+                      >
+                        Unpaid
+                      </Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground capitalize">{inv.type.replace("_", " ")}</span>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center text-muted-foreground">
+                  <span className="text-sm">Amount</span>
+                  <span className="font-semibold text-foreground">{formatCurrency(Number(inv.amount), inv.project.currency || "IDR")}</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/50">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full px-1 text-xs"
+                    disabled={inv.status === "paid" && !!inv.paymentId}
+                    onClick={() => {
+                      if (inv.status === "paid") {
+                        setToggleConfirmId({ id: inv.id, currentStatus: inv.status });
+                      } else {
+                        toggleStatus(inv.id, inv.status);
+                      }
+                    }}
+                  >
+                    Mark {inv.status === "paid" ? "Unpaid" : "Paid"}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="w-full px-1 text-xs"
+                    onClick={() => handleSendEmail(inv.id)}
+                    disabled={sendingId === inv.id || inv.status === "paid"}
+                  >
+                    {sendingId === inv.id ? (
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4 mr-1" />
+                    )}
+                    Send
+                  </Button>
+                  <Button variant="outline" size="sm" className="w-full px-1 text-xs" asChild>
+                    <Link
+                      href={`/invoices/${inv.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Desktop View: Table */}
+      <div className="hidden md:block rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -131,7 +222,7 @@ export function InvoicesClient({
                     {inv.type.replace("_", " ")}
                   </TableCell>
                   <TableCell>
-                    {formatCurrency(inv.amount, inv.project.currency || "IDR")}
+                    {formatCurrency(Number(inv.amount), inv.project.currency || "IDR")}
                   </TableCell>
                   <TableCell>
                     {inv.status === "paid" ? (

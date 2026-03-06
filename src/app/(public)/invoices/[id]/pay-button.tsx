@@ -33,9 +33,9 @@ export function PayButton({
       } else {
         throw new Error("No payment link returned");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error.message);
+      toast.error(error instanceof Error ? error.message : "Failed to initiate payment");
     } finally {
       setIsLoading(false);
     }

@@ -6,8 +6,6 @@ import {
   Heading,
   Hr,
   Html,
-  Img,
-  Link,
   Preview,
   Section,
   Text,
@@ -34,10 +32,10 @@ export const InvoiceEmail = ({
 }: InvoiceEmailProps) => {
   const formattedDate = dueDate
     ? new Intl.DateTimeFormat("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }).format(dueDate)
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(dueDate)
     : "Upon Receipt";
 
   return (

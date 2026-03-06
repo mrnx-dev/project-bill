@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { OverviewCharts } from "@/components/dashboard/overview-charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Briefcase, FileText } from "lucide-react";
+import { Users, FileText } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +23,7 @@ export default async function DashboardPage() {
 
   // Serializing and calculating actual revenue from invoices
   let totalRevenueIDR = 0;
-  let totalRevenueUSD = 0;
   let pendingRevenueIDR = 0;
-  let pendingRevenueUSD = 0;
 
   invoicesRaw.forEach((inv) => {
     const amount = Number(inv.amount);
@@ -33,27 +31,14 @@ export default async function DashboardPage() {
 
     if (inv.status === "paid") {
       if (isIDR) totalRevenueIDR += amount;
-      else totalRevenueUSD += amount;
+      // else totalRevenueUSD += amount;
     } else {
       if (isIDR) pendingRevenueIDR += amount;
-      else pendingRevenueUSD += amount;
+      // else pendingRevenueUSD += amount;
     }
   });
 
-  // Serialize records
-  const projects = projectsRaw.map((p) => ({
-    ...p,
-    totalPrice: p.totalPrice.toString(),
-    dpAmount: p.dpAmount?.toString() || null,
-    currency: p.currency,
-    createdAt: p.createdAt.toISOString(),
-    updatedAt: p.updatedAt.toISOString(),
-    client: {
-      ...p.client,
-      createdAt: p.client.createdAt.toISOString(),
-      updatedAt: p.client.updatedAt.toISOString(),
-    },
-  }));
+
 
   const formatCurrency = (amount: number, currencyStr: string) => {
     return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {

@@ -12,7 +12,7 @@ export default function SOWPrintPage() {
     const router = useRouter();
     const projectId = params.id as string;
 
-    const [project, setProject] = useState<any>(null);
+    const [project, setProject] = useState<{ title: string; client: { name: string }; terms: string; termsAcceptedAt: string; termsAcceptedUserAgent: string; termsAcceptedSessionId: string; } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -82,7 +82,7 @@ export default function SOWPrintPage() {
                     </div>
                     <div className="text-right text-sm text-slate-500 flex flex-col gap-1">
                         <p><strong className="text-slate-700">Client:</strong> {project.client.name}</p>
-                        <p><strong className="text-slate-700">Date Generated:</strong> {new Date().toLocaleDateString()}</p>
+                        <p><strong className="text-slate-700">Date Generated:</strong> {new Date().toLocaleDateString("en-US")}</p>
                     </div>
                 </div>
 

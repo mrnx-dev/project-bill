@@ -106,8 +106,8 @@ export async function POST(
       redirect_url: paymentUrl,
       payment_id: paymentId,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Failed to generate payment link:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
   }
 }

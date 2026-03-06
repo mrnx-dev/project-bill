@@ -2,6 +2,12 @@
 
 import { useState, useEffect } from "react";
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
   Table,
   TableBody,
   TableCell,
@@ -18,7 +24,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
@@ -55,7 +60,7 @@ type Project = {
   currency: string;
   terms?: string | null;
   termsAcceptedAt: Date | null;
-  invoices: any[];
+  invoices: { type: string; status: string; amount: string; paidAt: string | null; dueDate: string | null }[];
   items?: ProjectItem[];
   createdAt: string;
   updatedAt: string;
@@ -697,7 +702,120 @@ export function ProjectsClient({
         </div>
       </div>
 
-      <div className="rounded-md border">
+      {/* Mobile View: Cards */}
+      <div className="grid grid-cols-1 gap-4 md:hidden">
+        {filteredProjects.length === 0 ? (
+          <Card className="text-center py-8">
+            <CardContent className="flex flex-col items-center justify-center gap-3">
+              <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground/50">
+                <FileText className="h-8 w-8" />
+              </div>
+              <h3 className="font-semibold text-lg">No Projects Found</h3>
+              <p className="text-sm text-muted-foreground">
+                {searchQuery
+                  ? `We couldn't find any projects matching "${searchQuery}".`
+                  : "You haven't added any projects yet."}
+              </p>
+              {!searchQuery && (
+                <Button
+                  onClick={() => handleOpenDialog()}
+                  variant="outline"
+                  className="mt-2"
+                >
+                  <Plus className="mr-2 h-4 w-4" /> Add Your First Project
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          filteredProjects.map((project) => (
+            <Card key={project.id} className="overflow-hidden">
+              <CardHeader className="border-b border-border/50">
+                <CardTitle className="flex flex-col gap-2 text-base">
+                  <div className="flex justify-between items-start">
+                    <span className="truncate pr-4 font-bold">{project.title}</span>
+                    <Badge variant="secondary" className="capitalize shrink-0 text-[10px] px-2 py-0">
+                      {project.status.replace("_", " ")}
+                    </Badge>
+                  </div>
+                  <span className="text-sm font-normal text-muted-foreground truncate">{project.client.name}</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm space-y-3">
+                <div className="flex justify-between items-center text-muted-foreground border-b border-border/50 pb-2">
+                  <span>Price</span>
+                  <span className="font-medium text-foreground">{formatCurrency(project.totalPrice, project.currency)}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pb-2 border-b border-border/50">
+                  <div className="flex flex-col pb-2">
+                    <span className="text-xs text-muted-foreground">Deadline</span>
+                    <span className="font-medium">{project.deadline ? new Date(project.deadline).toLocaleDateString("en-US") : "-"}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground">Terms</span>
+                    <span className="pt-0.5">
+                      {!project.terms ? (
+                        <span className="text-muted-foreground text-xs italic">
+                          None
+                        </span>
+                      ) : project.termsAcceptedAt ? (
+                        <Badge
+                          variant="outline"
+                          className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-1.5 py-0 h-5"
+                        >
+                          Accepted
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="bg-yellow-50 text-yellow-700 border-yellow-200 text-[10px] px-1.5 py-0 h-5"
+                        >
+                          Pending
+                        </Badge>
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 mr-2"
+                    disabled={getInvoiceCalculation(project).hasFullInvoice}
+                    onClick={() => handleOpenInvoiceDialog(project)}
+                  >
+                    <FileText className="h-4 w-4 mr-1" />
+                    Invoice
+                  </Button>
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleOpenDialog(project)}
+                      className="h-8 w-8"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => setDeleteConfirmId(project.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Desktop View: Table */}
+      <div className="hidden md:block rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -744,7 +862,7 @@ export function ProjectsClient({
                   <TableCell>{project.client.name}</TableCell>
                   <TableCell>
                     {project.deadline
-                      ? new Date(project.deadline).toLocaleDateString()
+                      ? new Date(project.deadline).toLocaleDateString("en-US")
                       : "-"}
                   </TableCell>
                   <TableCell>

@@ -33,7 +33,7 @@ export function LoginForm() {
                 id="email"
                 name="email"
                 type="email"
-                placeholder="m@example.com"
+                placeholder="Enter your email"
                 required
               />
             </div>
@@ -41,7 +41,7 @@ export function LoginForm() {
               <div className="flex items-center">
                 <Label htmlFor="password">Password</Label>
               </div>
-              <Input id="password" name="password" type="password" required />
+              <Input id="password" name="password" type="password" placeholder="Enter your password" required />
             </div>
             {state?.message && (
               <p className="text-sm font-medium text-destructive">

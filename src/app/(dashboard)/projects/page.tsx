@@ -26,7 +26,7 @@ export default async function ProjectsPage() {
       createdAt: p.client.createdAt.toISOString(),
       updatedAt: p.client.updatedAt.toISOString(),
     },
-    invoices: p.invoices.map((inv: any) => ({
+    invoices: p.invoices.map((inv) => ({
       ...inv,
       amount: inv.amount.toString(),
       dueDate: inv.dueDate ? inv.dueDate.toISOString() : null,
@@ -35,7 +35,7 @@ export default async function ProjectsPage() {
       updatedAt: inv.updatedAt.toISOString(),
     })),
     items:
-      (p as any).items?.map((i: any) => ({
+      p.items?.map((i) => ({
         id: i.id,
         description: i.description,
         price: i.price.toString(),

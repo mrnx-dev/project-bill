@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     });
 
     // Remove password from response
-    const { password: _, ...userWithoutPassword } = newUser;
+    const { password: _password, ...userWithoutPassword } = newUser;
 
     return NextResponse.json(
       {
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       },
       { status: 201 },
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Setup error:", error);
     return NextResponse.json(
       { error: "An error occurred during setup." },

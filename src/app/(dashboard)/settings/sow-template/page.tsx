@@ -98,7 +98,7 @@ export default function SOWTemplateListPage() {
                                         {template.name}
                                     </h4>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Last updated: {new Date(template.updatedAt).toLocaleDateString()}
+                                        Last updated: {new Date(template.updatedAt).toLocaleDateString("en-US")}
                                     </p>
                                 </div>
                             </div>
