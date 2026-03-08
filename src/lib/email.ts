@@ -1,6 +1,41 @@
 import { Resend } from "resend";
+import { render } from "@react-email/render";
+import { prisma } from "@/lib/prisma";
+import { InvoiceEmail } from "@/emails/InvoiceEmail";
+import { ReminderEmail } from "@/emails/ReminderEmail";
+import { PaymentSuccessEmail } from "@/emails/PaymentSuccessEmail";
+import type { ReminderType } from "@/emails/ReminderEmail";
+import type { CompanyInfo, Language } from "@/emails/EmailLayout";
+
+export type { ReminderType };
 
 const resend = new Resend(process.env.RESEND_API_KEY || "re_mock");
+
+// ── Fetch Company Settings ────────────────────────────────────
+
+async function getCompanyInfo(): Promise<CompanyInfo> {
+  try {
+    const settings = await prisma.settings.findUnique({
+      where: { id: "global" },
+    });
+    return {
+      companyName: settings?.companyName || "ProjectBill",
+      companyEmail: settings?.companyEmail || null,
+      companyLogoUrl: settings?.companyLogoUrl || null,
+      companyAddress: settings?.companyAddress || null,
+    };
+  } catch {
+    return { companyName: "ProjectBill", companyEmail: null, companyLogoUrl: null, companyAddress: null };
+  }
+}
+
+function getSenderFrom(companyName: string): string {
+  const fromDomain = process.env.RESEND_FROM_EMAIL;
+  if (fromDomain) return `${companyName} <noreply@${fromDomain}>`;
+  return `${companyName} <noreply@projectbill.mrndev.me>`;
+}
+
+// ── Invoice Email ─────────────────────────────────────────────
 
 export interface SendInvoiceEmailParams {
   to: string;
@@ -8,6 +43,7 @@ export interface SendInvoiceEmailParams {
   projectTitle: string;
   amountStr: string;
   invoiceLink: string;
+  lang?: Language;
 }
 
 export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
@@ -18,31 +54,31 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
   }
 
   try {
+    const company = await getCompanyInfo();
+    const lang = params.lang || "id";
+
+    const html = await render(
+      InvoiceEmail({
+        clientName: params.clientName,
+        invoiceId: "",
+        projectName: params.projectTitle,
+        amount: params.amountStr,
+        dueDate: null,
+        invoiceLink: params.invoiceLink,
+        company,
+        lang,
+      })
+    );
+
+    const subject = lang === "id"
+      ? `Invoice untuk ${params.projectTitle} - Diperlukan Tindakan`
+      : `Invoice for ${params.projectTitle} - Action Required`;
+
     const data = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || "Project Bill <noreply@projectbill.mrndev.me>",
+      from: getSenderFrom(company.companyName),
       to: [params.to],
-      subject: `Invoice for ${params.projectTitle} - Action Required`,
-      html: `
-                <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px;">
-                    <h2 style="color: #333;">Hello ${params.clientName},</h2>
-                    <p>This is a formal invoice for the completion of the project: <strong>${params.projectTitle}</strong>.</p>
-                    
-                    <div style="background-color: #f9fafb; padding: 15px; border-radius: 6px; margin: 20px 0;">
-                        <p style="margin: 0; font-size: 16px;">Amount Due:</p>
-                        <h1 style="margin: 5px 0 0 0; color: #111;">${params.amountStr}</h1>
-                    </div>
-                    
-                    <p>You can securely view and pay this invoice using the link below:</p>
-                    
-                    <a href="${params.invoiceLink}" style="display: inline-block; background-color: #0F172A; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">
-                        View Your Invoice
-                    </a>
-                    
-                    <p style="margin-top: 30px; font-size: 12px; color: #666;">
-                        Powered by <strong>Project Bill</strong>. The friction-free workspace for freelancers.
-                    </p>
-                </div>
-            `,
+      subject,
+      html,
     });
 
     return { success: true, data };
@@ -52,72 +88,42 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
   }
 }
 
-// --- Reminder Email Templates ---
-
-export type ReminderType = "pre_due" | "overdue_d1" | "overdue_d3" | "late_fee";
+// ── Reminder Email ────────────────────────────────────────────
 
 export interface SendReminderEmailParams {
   to: string;
   clientName: string;
   projectTitle: string;
+  invoiceId: string;
   amountStr: string;
   invoiceLink: string;
   reminderType: ReminderType;
   lateFeeAmountStr?: string;
+  lang?: Language;
 }
 
-const REMINDER_SUBJECTS: Record<ReminderType, (title: string) => string> = {
-  pre_due: (t) => `Reminder: Invoice for "${t}" is due in 3 days`,
-  overdue_d1: (t) => `Overdue: Invoice for "${t}" is now past due`,
-  overdue_d3: (t) => `Follow-up: Invoice for "${t}" is 3 days overdue`,
-  late_fee: (t) => `Notice: Late fee applied to invoice for "${t}"`,
-};
-
-const REMINDER_BODIES: Record<
-  ReminderType,
-  (p: SendReminderEmailParams) => string
-> = {
-  pre_due: (p) => `
-        <h2 style="color: #333;">Hello ${p.clientName},</h2>
-        <p>This is a friendly reminder that your invoice for <strong>${p.projectTitle}</strong> is due in <strong>3 days</strong>.</p>
-        <div style="background-color: #f0fdf4; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #22c55e;">
-            <p style="margin: 0; font-size: 16px;">Amount Due:</p>
-            <h1 style="margin: 5px 0 0 0; color: #111;">${p.amountStr}</h1>
-        </div>
-        <p>Please complete the payment at your earliest convenience to avoid any delays.</p>
-    `,
-  overdue_d1: (p) => `
-        <h2 style="color: #333;">Hello ${p.clientName},</h2>
-        <p>Your invoice for <strong>${p.projectTitle}</strong> was due <strong>yesterday</strong> and is now overdue.</p>
-        <div style="background-color: #fefce8; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #eab308;">
-            <p style="margin: 0; font-size: 16px;">Amount Due:</p>
-            <h1 style="margin: 5px 0 0 0; color: #111;">${p.amountStr}</h1>
-        </div>
-        <p>Please process this payment as soon as possible.</p>
-    `,
-  overdue_d3: (p) => `
-        <h2 style="color: #333;">Hello ${p.clientName},</h2>
-        <p>This is a follow-up reminder. Your invoice for <strong>${p.projectTitle}</strong> is now <strong>3 days overdue</strong>.</p>
-        <div style="background-color: #fff7ed; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f97316;">
-            <p style="margin: 0; font-size: 16px;">Amount Due:</p>
-            <h1 style="margin: 5px 0 0 0; color: #111;">${p.amountStr}</h1>
-        </div>
-        <p>Please note that a late fee may be applied if payment remains outstanding.</p>
-    `,
-  late_fee: (p) => `
-        <h2 style="color: #333;">Hello ${p.clientName},</h2>
-        <p>Your invoice for <strong>${p.projectTitle}</strong> is now <strong>7 days overdue</strong>. A <strong>5% late fee</strong> has been applied.</p>
-        <div style="background-color: #fef2f2; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #ef4444;">
-            <p style="margin: 0; font-size: 16px;">New Amount Due (incl. late fee):</p>
-            <h1 style="margin: 5px 0 0 0; color: #dc2626;">${p.lateFeeAmountStr || p.amountStr}</h1>
-        </div>
-        <p>Please settle this invoice immediately to prevent further action.</p>
-    `,
+const REMINDER_SUBJECTS: Record<ReminderType, Record<Language, (title: string) => string>> = {
+  pre_due: {
+    id: (t) => `Pengingat: Invoice untuk "${t}" jatuh tempo dalam 3 hari`,
+    en: (t) => `Reminder: Invoice for "${t}" is due in 3 days`,
+  },
+  overdue_d1: {
+    id: (t) => `Terlambat: Invoice untuk "${t}" telah melewati jatuh tempo`,
+    en: (t) => `Overdue: Invoice for "${t}" is now past due`,
+  },
+  overdue_d3: {
+    id: (t) => `Follow-up: Invoice untuk "${t}" terlambat 3 hari`,
+    en: (t) => `Follow-up: Invoice for "${t}" is 3 days overdue`,
+  },
+  late_fee: {
+    id: (t) => `Pemberitahuan: Denda keterlambatan berlaku untuk invoice "${t}"`,
+    en: (t) => `Notice: Late fee applied to invoice for "${t}"`,
+  },
 };
 
 export async function sendReminderEmail(params: SendReminderEmailParams) {
-  const subject = REMINDER_SUBJECTS[params.reminderType](params.projectTitle);
-  const bodyContent = REMINDER_BODIES[params.reminderType](params);
+  const lang = params.lang || "id";
+  const subject = REMINDER_SUBJECTS[params.reminderType][lang](params.projectTitle);
 
   if (!process.env.RESEND_API_KEY) {
     console.warn("[MOCK REMINDER EMAIL]", params.reminderType);
@@ -126,21 +132,27 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
   }
 
   try {
+    const company = await getCompanyInfo();
+
+    const html = await render(
+      ReminderEmail({
+        clientName: params.clientName,
+        projectName: params.projectTitle,
+        invoiceId: params.invoiceId,
+        amount: params.amountStr,
+        invoiceLink: params.invoiceLink,
+        reminderType: params.reminderType,
+        lateFeeAmount: params.lateFeeAmountStr,
+        company,
+        lang,
+      })
+    );
+
     const data = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || "Project Bill <noreply@projectbill.mrndev.me>",
+      from: getSenderFrom(company.companyName),
       to: [params.to],
       subject,
-      html: `
-                <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px;">
-                    ${bodyContent}
-                    <a href="${params.invoiceLink}" style="display: inline-block; background-color: #0F172A; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px;">
-                        View Your Invoice
-                    </a>
-                    <p style="margin-top: 30px; font-size: 12px; color: #666;">
-                        Powered by <strong>Project Bill</strong>. The friction-free workspace for freelancers.
-                    </p>
-                </div>
-            `,
+      html,
     });
 
     return { success: true, data };
@@ -150,18 +162,22 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
   }
 }
 
-// --- Payment Success Email ---
+// ── Payment Success Email ─────────────────────────────────────
 
 export interface SendPaymentSuccessEmailParams {
   to: string;
   clientName: string;
   projectTitle: string;
+  invoiceId: string;
   amountStr: string;
   invoiceLink: string;
   sowPdfBuffer?: Buffer;
+  lang?: Language;
 }
 
 export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailParams) {
+  const lang = params.lang || "id";
+
   if (!process.env.RESEND_API_KEY) {
     console.warn("[MOCK PAYMENT SUCCESS EMAIL]");
     console.log(`  To: ${params.to} | Subject: Payment Received for ${params.projectTitle}`);
@@ -169,39 +185,38 @@ export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailPar
   }
 
   try {
+    const company = await getCompanyInfo();
+
     const attachments = [];
     if (params.sowPdfBuffer) {
       attachments.push({
         filename: `Statement_of_Work_${params.projectTitle.replace(/[^a-z0-9]/gi, '_')}.pdf`,
-        content: params.sowPdfBuffer
+        content: params.sowPdfBuffer,
       });
     }
 
-    const data = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || "Project Bill <noreply@projectbill.mrndev.me>",
-      to: [params.to],
-      subject: `Payment Received - Thank you for your business!`,
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px;">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <h2 style="color: #10B981; margin: 0;">Payment Successful</h2>
-            </div>
-            <h2 style="color: #333;">Hello ${params.clientName},</h2>
-            <p>We have successfully received your payment of <strong>${params.amountStr}</strong> for the project: <strong>${params.projectTitle}</strong>.</p>
-            
-            <p>Your invoice has been marked as paid. You can view the full details and receipt using the link below:</p>
-            
-            <a href="${params.invoiceLink}" style="display: inline-block; background-color: #0F172A; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px; margin-bottom: 20px;">
-                View Receipt
-            </a>
+    const html = await render(
+      PaymentSuccessEmail({
+        clientName: params.clientName,
+        projectName: params.projectTitle,
+        invoiceId: params.invoiceId,
+        amount: params.amountStr,
+        invoiceLink: params.invoiceLink,
+        hasSowAttachment: !!params.sowPdfBuffer,
+        company,
+        lang,
+      })
+    );
 
-            ${params.sowPdfBuffer ? '<p>Please find attached your official digital Statement of Work (SOW) document containing the electronic signature audit trail for your records.</p>' : ''}
-            
-            <p style="margin-top: 30px; font-size: 12px; color: #666; border-top: 1px solid #eaeaea; padding-top: 20px;">
-                Powered by <strong>Project Bill</strong>. The friction-free workspace for freelancers.
-            </p>
-        </div>
-      `,
+    const subject = lang === "id"
+      ? "Pembayaran Diterima - Terima kasih atas kerjasamanya!"
+      : "Payment Received - Thank you for your business!";
+
+    const data = await resend.emails.send({
+      from: getSenderFrom(company.companyName),
+      to: [params.to],
+      subject,
+      html,
       attachments: attachments.length > 0 ? attachments : undefined,
     });
 

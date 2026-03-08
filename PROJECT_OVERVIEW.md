@@ -7,6 +7,7 @@ ProjectBill is a web-based, self-hosted invoicing and project tracking applicati
 - **Styling:** Tailwind CSS + Shadcn UI components (including modern Charts)
 - **Database:** PostgreSQL (Containerized via Docker Compose)
 - **ORM:** Prisma
+- **Email:** React Email + Resend
 - **Language:** TypeScript
 
 ## Current State: V1.4 Complete
@@ -155,8 +156,15 @@ The full MVP through V1.4 features have been successfully implemented:
       - **Card Enhancements:** Added `Wallet` and `Clock` icons to revenue cards for visual balance. Increased card padding for better breathing room.
     - **Environment Variable Cleanup:** Consolidated `NEXT_PUBLIC_APP_URL` to `APP_URL` across all server-side code (`env.ts`, `pay/route.ts`, `webhook/route.ts`, `pdf-generator.ts`).
 
-## Upcoming: Sprint 12 (V2 Feature Expansion)
-The next development cycle will focus on expanding core functionality to support a wider array of business models and improving overall client journey Quality of Life. Potential candidates for Sprint 12:
+25. **Email System Overhaul & Internationalization (Sprint 12):**
+    - **React Email Migration:** Replaced all raw HTML email templates in `email.ts` with proper React Email components under `src/emails/`. File reduced from ~365 lines of inline HTML to ~190 lines of clean rendering logic.
+    - **Shared Component Architecture:** Built `EmailLayout.tsx` as a shared wrapper with reusable sub-components (`StatusBadge`, `InvoiceCard`, `DetailRow`, `CtaButton`). All email types (`InvoiceEmail`, `ReminderEmail`, `PaymentSuccessEmail`) extend this layout for design consistency.
+    - **Dynamic Company Settings:** Email header, sender `from:` field, and footer support email now read from the `Settings` database table (`companyName`, `companyLogoUrl`, `companyEmail`). If a logo URL is set, it renders as an image in the header; otherwise, the company name is displayed as text.
+    - **Bilingual Email Templates (ID/EN):** All email components accept a `lang` prop sourced from `project.language`. Greeting text, body copy, status badges (e.g., BELUM BAYAR / UNPAID), card labels (Tagihan Kepada / Billed To), CTA buttons (Lihat Invoice & Bayar / View Invoice & Pay), and email subject lines are fully translated.
+    - **Unified Email Types:** 7 email types consolidated into 3 React Email components: `InvoiceEmail` (manual + auto-generated), `ReminderEmail` (pre_due, overdue_d1, overdue_d3, late_fee), and `PaymentSuccessEmail` (with optional SOW PDF attachment).
+
+## Upcoming: Sprint 13 (V2 Feature Expansion)
+The next development cycle will focus on expanding core functionality to support a wider array of business models and improving overall client journey Quality of Life. Potential candidates for Sprint 13:
 
 1. **Client Portal (Multitenant Dashboards)** — A dedicated login area or permanent token link for clients to view all their past invoices, project status, and download SOWs from a single unified screen.
 2. **Recurring Invoices (Retainers)** — Auto-generate and send monthly invoices for retainer-based projects via scheduled Cron jobs.
@@ -177,6 +185,9 @@ All planned features for V1.4 have been completed.
 - Standalone Node scripts (e.g. `scripts/reset-password.js`) must use the `pg` + `@prisma/adapter-pg` pattern to connect to the database, matching `src/lib/prisma.ts`.
 - USD currency is temporarily disabled. The schema and logic still support it — re-enable the `SelectItem` in `projects-client.tsx` and uncomment USD chart data in `page.tsx` (dashboard) when ready.
 - All payments are handled exclusively via **Mayar.id** (IDR). Manual bank transfer has been fully removed.
+- **Email components** live in `src/emails/`. All templates extend `EmailLayout.tsx` for shared styling. Adding a new email type: create a component in `src/emails/`, add a sender function in `src/lib/email.ts` that calls `render()` + `resend.emails.send()`.
+- To preview and develop email components locally, run: `npx react-email dev --dir src/emails --port 3333`.
+- Email language is determined by `project.language` (`"id"` or `"en"`). Always pass `lang` when calling email sender functions.
 - Payment link creation is centralized in `src/lib/mayar.ts` via `createPaymentLink()`. Do NOT duplicate Mayar API calls in route handlers.
 - Use `APP_URL` (not `NEXT_PUBLIC_APP_URL`) for server-side base URL resolution.
 - All delete confirmation dialogs use the reusable `ConfirmDialog` component (`src/components/confirm-dialog.tsx`).

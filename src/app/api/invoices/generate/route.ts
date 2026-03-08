@@ -48,6 +48,13 @@ export async function POST(request: Request) {
       amountToPay -= Number(project.dpAmount);
     }
 
+    if (amountToPay <= 0) {
+      return NextResponse.json(
+        { error: "Cannot generate an invoice for an amount of 0 or less." },
+        { status: 400 }
+      );
+    }
+
     // Payment link generation is fully deferred to the "Pay Now" button
     // To ensure users always see the Invoice Detail first and payment links don't expire prematurely.
     const paymentLinkRes = null as { link?: string; id?: string } | null;
@@ -94,6 +101,7 @@ export async function POST(request: Request) {
           projectTitle: project.title,
           amountStr: formatCurrency,
           invoiceLink: invoiceDetailUrl,
+          lang: project.language as "id" | "en",
         });
 
         emailSuccess = emailRes.success;

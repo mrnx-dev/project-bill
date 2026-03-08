@@ -101,10 +101,12 @@ export async function GET(request: Request) {
           to: clientEmail,
           clientName: invoice.project.client.name,
           projectTitle: invoice.project.title,
+          invoiceId: invoice.id,
           amountStr: formatter.format(Number(invoice.amount)),
           invoiceLink,
           reminderType,
           lateFeeAmountStr,
+          lang: invoice.project.language as "id" | "en",
         });
 
         if (emailResult.success) {
@@ -114,6 +116,8 @@ export async function GET(request: Request) {
               data: {
                 amount: newAmount,
                 lateFeeApplied: true,
+                paymentLink: null,
+                paymentId: null,
               },
             }),
             prisma.invoice.update({
@@ -131,10 +135,12 @@ export async function GET(request: Request) {
           to: clientEmail,
           clientName: invoice.project.client.name,
           projectTitle: invoice.project.title,
+          invoiceId: invoice.id,
           amountStr: formatter.format(Number(invoice.amount)),
           invoiceLink,
           reminderType,
           lateFeeAmountStr,
+          lang: invoice.project.language as "id" | "en",
         });
 
         if (emailResult.success) {

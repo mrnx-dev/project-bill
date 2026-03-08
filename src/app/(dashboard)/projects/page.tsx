@@ -10,6 +10,7 @@ export default async function ProjectsPage() {
   });
 
   const clientsRaw = await prisma.client.findMany({
+    where: { isArchived: false },
     orderBy: { name: "asc" },
   });
 

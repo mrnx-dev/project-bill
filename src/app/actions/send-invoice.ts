@@ -3,6 +3,8 @@
 import { Resend } from "resend";
 import { InvoiceEmail } from "@/emails/InvoiceEmail";
 import { prisma } from "@/lib/prisma";
+import type { CompanyInfo } from "@/emails/EmailLayout";
+
 export async function sendInvoiceEmail(invoiceId: string) {
   try {
     // Fetch invoice details
@@ -24,6 +26,18 @@ export async function sendInvoiceEmail(invoiceId: string) {
     if (!invoice.project.client.email) {
       return { success: false, error: "Client has no email address" };
     }
+
+    // Fetch company settings
+    const settings = await prisma.settings.findUnique({
+      where: { id: "global" },
+    });
+
+    const company: CompanyInfo = {
+      companyName: settings?.companyName || "ProjectBill",
+      companyEmail: settings?.companyEmail || null,
+      companyLogoUrl: settings?.companyLogoUrl || null,
+      companyAddress: settings?.companyAddress || null,
+    };
 
     // Format the amount
     const formatter = new Intl.NumberFormat(
@@ -59,12 +73,17 @@ export async function sendInvoiceEmail(invoiceId: string) {
 
     const resend = new Resend(resendApiKey);
 
+    // Build sender from address
+    const fromDomain = process.env.RESEND_FROM_EMAIL;
+    const senderFrom = fromDomain
+      ? `${company.companyName} <noreply@${fromDomain}>`
+      : `${company.companyName} <onboarding@resend.dev>`;
+
     // Send the email
     const { data, error } = await resend.emails.send({
-      from:
-        process.env.RESEND_FROM_EMAIL || "ProjectBill <onboarding@resend.dev>",
+      from: senderFrom,
       to: [invoice.project.client.email],
-      subject: `Invoice from ProjectBill for ${invoice.project.title}`,
+      subject: `Invoice from ${company.companyName} for ${invoice.project.title}`,
       react: InvoiceEmail({
         clientName: invoice.project.client.name,
         invoiceId: invoice.id,
@@ -72,6 +91,8 @@ export async function sendInvoiceEmail(invoiceId: string) {
         amount: amountStr,
         dueDate: invoice.dueDate,
         invoiceLink: invoiceLink,
+        company,
+        lang: invoice.project.language as "id" | "en",
       }) as React.ReactElement,
     });
 

@@ -38,6 +38,16 @@ export async function POST(request: Request) {
       }
 
       if (invoiceId) {
+        // Fetch existing first to check if already paid
+        const existingInvoice = await prisma.invoice.findUnique({
+          where: { id: invoiceId },
+        });
+
+        if (existingInvoice?.status === "paid") {
+          console.log(`[Webhook] Invoice ${invoiceId} is already paid. Ignoring duplicate webhook.`);
+          return NextResponse.json({ received: true, ignored: true }, { status: 200 });
+        }
+
         const updatedInvoice = await prisma.invoice.update({
           where: { id: invoiceId },
           data: {
@@ -80,9 +90,11 @@ export async function POST(request: Request) {
               to: project.client.email!,
               clientName: project.client.name,
               projectTitle: project.title,
+              invoiceId: updatedInvoice.id,
               amountStr: formatCurrency,
               invoiceLink: invoiceDetailUrl,
               sowPdfBuffer: pdfBuffer,
+              lang: project.language as "id" | "en",
             });
             console.log(`[Webhook] Payment success email sent for Invoice ${updatedInvoice.id}`);
           } catch (err) {

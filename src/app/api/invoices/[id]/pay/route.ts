@@ -41,6 +41,20 @@ export async function POST(
 
     const baseUrl = process.env.APP_URL || "http://localhost:3000";
 
+    let expiredAtDate: string | undefined;
+    if (invoice.dueDate) {
+      const due = new Date(invoice.dueDate);
+      const now = new Date();
+      if (due < now) {
+        // If it's already past due, give them 3 days from now to pay the new link
+        const newDue = new Date();
+        newDue.setDate(newDue.getDate() + 3);
+        expiredAtDate = newDue.toISOString();
+      } else {
+        expiredAtDate = due.toISOString();
+      }
+    }
+
     // Prepare payload for Mayar API `create payment link`
     const mayarRes = await createPaymentLink({
       amount: Math.round(Number(invoice.amount)),
@@ -49,9 +63,7 @@ export async function POST(
       customerMobile: invoice.project.client.phone || "081234567890",
       description: `Invoice for ${invoice.project.title}. ID: ${invoice.id}`,
       redirectUrl: `${baseUrl}/invoices/${invoice.id}`,
-      expiredAt: invoice.dueDate
-        ? new Date(invoice.dueDate).toISOString()
-        : undefined,
+      expiredAt: expiredAtDate,
     });
 
     const paymentUrl = mayarRes.link;
