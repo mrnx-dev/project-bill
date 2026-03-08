@@ -67,8 +67,8 @@ export function SetupFormClient() {
 
       // Success! The user is created. Now redirect to login page.
       router.push("/login?setup=success");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     } finally {
       setIsLoading(false);
     }

@@ -11,6 +11,8 @@ export interface CreatePaymentLinkParams {
   customerEmail: string;
   customerMobile: string;
   description: string;
+  redirectUrl: string;
+  expiredAt?: string;
 }
 
 export interface MayarPaymentLinkResponse {
@@ -44,6 +46,8 @@ export async function createPaymentLink(
       email: params.customerEmail,
       mobile: params.customerMobile,
       description: params.description,
+      redirectUrl: params.redirectUrl,
+      expiredAt: params.expiredAt,
     }),
   });
 

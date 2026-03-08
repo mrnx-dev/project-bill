@@ -7,6 +7,13 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Form,
   FormControl,
   FormDescription,
@@ -16,61 +23,63 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2, Building2, MapPin, Mail, ImageIcon } from "lucide-react";
+import { Loader2, Building2, MapPin, Mail, ImageIcon, Phone, Target } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 
 const settingsSchema = z.object({
-  companyName: z.string().min(2, "Company Name must be at least 2 characters."),
+  companyName: z.string().min(1, "Company name is required"),
   companyAddress: z.string().optional(),
-  companyEmail: z
-    .string()
-    .email("Invalid email address")
-    .or(z.literal(""))
-    .optional(),
-  companyLogoUrl: z
-    .string()
-    .url("Must be a valid URL")
-    .or(z.literal(""))
-    .optional(),
+  companyEmail: z.string().email("Invalid email").optional().or(z.literal("")),
+  companyLogoUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
+  companyWhatsApp: z.string().optional(),
 });
+
+type SettingsFormValues = z.infer<typeof settingsSchema>;
 
 export default function SettingsPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const form = useForm<z.infer<typeof settingsSchema>>({
+  const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
       companyName: "ProjectBill Consulting",
       companyAddress: "",
       companyEmail: "",
       companyLogoUrl: "",
+      companyWhatsApp: "",
     },
   });
 
+  const { isSubmitting } = form.formState;
+
+  // Load existing settings
   useEffect(() => {
-    async function fetchSettings() {
+    async function loadSettings() {
       try {
         const res = await fetch("/api/settings");
-        if (!res.ok) throw new Error("Failed to fetch settings");
-        const data = await res.json();
-
-        form.reset({
-          companyName: data.companyName || "",
-          companyAddress: data.companyAddress || "",
-          companyEmail: data.companyEmail || "",
-          companyLogoUrl: data.companyLogoUrl || "",
-        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data) {
+            form.reset({
+              companyName: data.companyName,
+              companyAddress: data.companyAddress || "",
+              companyEmail: data.companyEmail || "",
+              companyLogoUrl: data.companyLogoUrl || "",
+              companyWhatsApp: data.companyWhatsApp || "",
+            });
+          }
+        }
       } catch (error) {
-        console.error("Error loading settings:", error);
+        console.error("Failed to load settings:", error);
       } finally {
         setIsLoading(false);
       }
     }
-    fetchSettings();
+    loadSettings();
   }, [form]);
 
   async function onSubmit(values: z.infer<typeof settingsSchema>) {
@@ -151,6 +160,7 @@ export default function SettingsPage() {
                       <div className="flex gap-3">
                         <div className="flex items-center justify-center w-12 h-12 rounded bg-slate-100 border dark:bg-slate-800 shrink-0 overflow-hidden">
                           {field.value ? (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img src={field.value} alt="Logo" className="w-full h-full object-contain p-1" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                           ) : (
                             <ImageIcon className="w-5 h-5 text-slate-400" />
@@ -208,9 +218,29 @@ export default function SettingsPage() {
 
                 <FormField
                   control={form.control}
-                  name="companyAddress"
+                  name="companyWhatsApp"
                   render={({ field }) => (
                     <FormItem>
+                      <FormLabel className="flex items-center gap-1">
+                        <Phone className="w-3.5 h-3.5 text-slate-400" /> WhatsApp Number
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="+628123456789"
+                          type="text"
+                          className="bg-slate-50 dark:bg-slate-900 border-slate-200"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="companyAddress"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
                       <FormLabel>Business Address</FormLabel>
                       <FormControl>
                         <Input
@@ -226,6 +256,7 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
 
           <div className="flex justify-end pt-2">
             <Button type="submit" disabled={isSaving} className="px-8 shadow-md">

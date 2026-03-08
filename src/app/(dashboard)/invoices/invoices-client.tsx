@@ -21,13 +21,13 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { Send, Loader2 } from "lucide-react";
 import { sendInvoiceEmail } from "@/app/actions/send-invoice";
+import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Prisma } from "@prisma/client";
-
 export function InvoicesClient({
   initialInvoices,
 }: {
-  initialInvoices: Prisma.InvoiceGetPayload<{ include: { project: { include: { client: true } } } }>[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  initialInvoices: any[];
 }) {
   const [invoices, setInvoices] = useState(initialInvoices);
   const [searchQuery, setSearchQuery] = useState("");
@@ -71,16 +71,32 @@ export function InvoicesClient({
       const res = await sendInvoiceEmail(id);
       if (res.success) {
         if (res.manual) {
-          alert(`${res.message}\n\nInvoice Link: ${res.invoiceLink}`);
+          toast.success(res.message, {
+            description: `Invoice Link: ${res.invoiceLink}`,
+            duration: 10000,
+            action: res.invoiceLink ? {
+              label: "Copy Link",
+              onClick: () => {
+                navigator.clipboard.writeText(res.invoiceLink!);
+                toast.info("Link copied to clipboard!");
+              },
+            } : undefined,
+          });
         } else {
-          alert("Email sent successfully!");
+          toast.success("Email sent successfully!", {
+            description: "The client will receive the invoice in their inbox shortly.",
+          });
         }
       } else {
-        alert("Failed to send email: " + res.error);
+        toast.error("Failed to send email", {
+          description: res.error,
+        });
       }
     } catch (e: unknown) {
       console.error(e);
-      alert("An error occurred: " + (e instanceof Error ? e.message : String(e)));
+      toast.error("An error occurred", {
+        description: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setSendingId(null);
     }

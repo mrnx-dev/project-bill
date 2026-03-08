@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { createPaymentLink } from "@/lib/mayar";
 
-// Mayar Headless API Base URL (adjust to production/sandbox based on environment)
-const MAYAR_API_BASE_URL =
-  process.env.MAYAR_API_URL || "https://api.mayar.id/hl/v1";
-
-const MAYAR_API_KEY = process.env.MAYAR_API_KEY;
 
 export async function POST(
   req: Request,
@@ -13,12 +9,6 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-
-    if (!MAYAR_API_KEY) {
-      throw new Error(
-        "Mayar API Key is not configured in environment variables.",
-      );
-    }
 
     const invoice = await prisma.invoice.findUnique({
       where: { id },
@@ -49,45 +39,23 @@ export async function POST(
       );
     }
 
+    const baseUrl = process.env.APP_URL || "http://localhost:3000";
+
     // Prepare payload for Mayar API `create payment link`
-    const payload = {
-      name: invoice.project.client.name,
-      email: invoice.project.client.email || "client@company.com",
-      mobile: invoice.project.client.phone || "081234567890",
+    const mayarRes = await createPaymentLink({
       amount: Math.round(Number(invoice.amount)),
+      customerName: invoice.project.client.name,
+      customerEmail: invoice.project.client.email || "client@company.com",
+      customerMobile: invoice.project.client.phone || "081234567890",
       description: `Invoice for ${invoice.project.title}. ID: ${invoice.id}`,
-      referenceId: invoice.id, // Important for webhook tracing
-      isSingleUse: true, // Usually we want one-time payment for one invoice
+      redirectUrl: `${baseUrl}/invoices/${invoice.id}`,
       expiredAt: invoice.dueDate
         ? new Date(invoice.dueDate).toISOString()
         : undefined,
-    };
-
-    // Request Mayar Headless API to create payment link
-    const mayarRes = await fetch(`${MAYAR_API_BASE_URL}/payment/create`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${MAYAR_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
     });
 
-    if (!mayarRes.ok) {
-      const errorData = await mayarRes.json();
-      console.error("Mayar API Error:", errorData);
-      throw new Error(
-        `Failed to create Mayar payment link: ${errorData.message || mayarRes.statusText}`,
-      );
-    }
-
-    const data = await mayarRes.json();
-
-    // The response structure usually contains a link attribute (e.g. data.link) depending on Mayar's exact schema.
-    // Replace `data.data.link` if their schema differs.
-    // Typically: { statusCode: 200, data: { link: "...", id: "..." } }
-    const paymentUrl = data.data?.link;
-    const paymentId = data.data?.id;
+    const paymentUrl = mayarRes.link;
+    const paymentId = mayarRes.id;
 
     if (!paymentUrl) {
       throw new Error("Mayar did not return a valid payment link.");

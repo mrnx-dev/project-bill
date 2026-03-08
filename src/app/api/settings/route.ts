@@ -35,13 +35,22 @@ export async function PUT(req: Request) {
     const body = await req.json();
 
     // Update the global settings
+    const parsedBody = body as {
+      companyName: string;
+      companyAddress?: string | null;
+      companyEmail?: string | null;
+      companyLogoUrl?: string | null;
+      companyWhatsApp?: string | null;
+    };
+
     const settings = await prisma.settings.update({
       where: { id: "global" },
       data: {
-        companyName: body.companyName,
-        companyAddress: body.companyAddress,
-        companyEmail: body.companyEmail,
-        companyLogoUrl: body.companyLogoUrl,
+        companyName: parsedBody.companyName,
+        companyAddress: parsedBody.companyAddress,
+        companyEmail: parsedBody.companyEmail,
+        companyLogoUrl: parsedBody.companyLogoUrl,
+        companyWhatsApp: parsedBody.companyWhatsApp,
       },
     });
 

@@ -19,10 +19,7 @@ test.describe("API Integration", () => {
   });
 
   // Adding basic Zod payload validation coverage
-  test("rejects invalid payload structures even if logged in via mock", async ({
-    request,
-    page,
-  }) => {
+  test("rejects invalid payload structures even if logged in via mock", async () => {
     // Because full E2E auth requires browser cookies, this specific payload
     // test can either rely on browser session state or just expect the 401 first.
     // We will do a robust validation check inside the core journey file.

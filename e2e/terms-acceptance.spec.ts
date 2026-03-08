@@ -3,8 +3,8 @@ import { prisma } from "../src/lib/prisma"; // Assumes E2E runs in the same envi
 import crypto from "crypto";
 
 test.describe("Terms of Service Acceptance Flow", () => {
-  let testProject: any;
-  let testInvoice: any;
+  let testProject: { id: string; terms: string | null } | null = null;
+  let testInvoice: { id: string } | null = null;
 
   test.beforeAll(async () => {
     // Find the test client (seeded from core-journey.spec.ts or seed-test-user.ts)
@@ -65,6 +65,9 @@ test.describe("Terms of Service Acceptance Flow", () => {
   test("Client must accept terms to see the Pay Now button", async ({
     page,
   }) => {
+    expect(testInvoice).toBeDefined();
+    if (!testInvoice) return;
+
     // 1. Visit the public invoice URL
     await page.goto(`/invoices/${testInvoice.id}`);
 

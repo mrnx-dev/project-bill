@@ -4,14 +4,14 @@ ProjectBill is a web-based, self-hosted invoicing and project tracking applicati
 
 ## Tech Stack
 - **Framework:** Next.js 15+ (App Router)
-- **Styling:** Tailwind CSS + Shadcn UI components
+- **Styling:** Tailwind CSS + Shadcn UI components (including modern Charts)
 - **Database:** PostgreSQL (Containerized via Docker Compose)
 - **ORM:** Prisma
 - **Language:** TypeScript
 
-## Current State: V1.2 Complete
+## Current State: V1.4 Complete
 
-The full MVP through V1.2 features have been successfully implemented:
+The full MVP through V1.4 features have been successfully implemented:
 
 1. **Infrastructure & Core Entity (Phase 1-2):**
    - Next.js 15+ App Router, Tailwind CSS, Shadcn UI setup.
@@ -41,9 +41,9 @@ The full MVP through V1.2 features have been successfully implemented:
    - Built a Server Action (`send-invoice.ts`) that triggers a clean, professional React Email template to the client containing their invoice URL.
 
 6. **Reporting & Analytics (Phase 8):**
-   - Enhanced Dashboard page with financial insight cards.
-   - Shows "Total Paid Revenue", "Pending Revenue", "Active Clients", and "Unpaid Invoices" counts.
-   - Included Recharts visualizations to map revenue streams and project status distributions.
+   - Enhanced Dashboard page with financial insight cards (Total Paid Revenue, Pending Revenue, Active Clients, Unpaid Invoices).
+   - Migrated to **Shadcn UI Charts** for modern, themeable visualizations with native Light/Dark mode support.
+   - Revenue bar charts and project status donut charts rendered via `ChartContainer`, `ChartTooltip`, and `ChartLegend`.
 
 7. **Export & PDF Generation (Phase 9):**
    - Built a flawless physical document output using optimized CSS `@media print` directives.
@@ -127,8 +127,36 @@ The full MVP through V1.2 features have been successfully implemented:
     - **Swipeable Sidebar:** Implemented a native-feeling gesture allowing users to seamlessly swipe right from the left edge of their mobile screens to open the sidebar, bypassing the top navbar hamburger menu.
     - Added an invisible `touchAction: "pan-y"` intercept zone to prevent default mobile browser behaviors from blocking the gesture.
 
-## Upcoming: Sprint 11 (V2 Feature Expansion)
-The next development cycle will focus on expanding core functionality to support a wider array of business models and improving overall client journey Quality of Life. Potential candidates for Sprint 11:
+20. **Project-Level Localization (Sprint 9):**
+    - **Granular Settings:** Moved from global to project-level language toggles (ID/EN).
+    - **Dynamic Rendering:** Invoices, SOWs, and Print Views automatically adapt their labels and date formatting based on the project's specific locale.
+
+21. **Refined Project Scopes & DP Locks (Sprint 9):**
+    - **Qty & Rate Inputs:** Scope items now support `Quantity` and `Rate` fields with automatic `Amount` calculation.
+    - **Anti-Tampering Lock:** The Down Payment (DP) amount is strictly locked both on UI and API levels once the first invoice has been generated for a project.
+
+22. **Digital Contracts & SOW Templates Redesign (Sprint 10):**
+    - **Premium UI Revamp:** The SOW Template management area features a complete redesign with modern gradients, card layouts, and enhanced edit forms.
+    - **Markdown Editor:** Professional-grade template editor with toggleable side-by-side or fullscreen live previews.
+    - **Audit Trails:** Legal non-repudiation tracking (IP, User Agent, Session ID) stored for every SOW acceptance.
+
+23. **UI/UX Polish & Communication (Sprint 10):**
+    - **Toast Notifications:** Replaced all remaining browser `alert()` and `confirm()` calls with high-fidelity `sonner` toasts, including "Copy Link" actions for manual email modes.
+    - **Sidebar Logic:** Refined navigation highlighting to prevent overlapping active states between parent and sub-routes.
+    - **Company WhatsApp:** Added business WhatsApp support in Settings, with automatic population on document headers.
+
+24. **Payment Architecture & Dashboard Overhaul (Sprint 11):**
+    - **Centralized Payment Helper:** Refactored `/api/invoices/[id]/pay/route.ts` to use the shared `createPaymentLink()` function from `src/lib/mayar.ts`, eliminating code duplication and ensuring consistency with `redirectUrl` and `expiredAt` parameters.
+    - **Shadcn UI Charts Migration:** Replaced raw Recharts components with the modern Shadcn UI Chart library (`ChartContainer`, `ChartTooltip`, `ChartLegend`) for native Light/Dark theme support via CSS variables.
+    - **Dashboard UI Polish:**
+      - **Color Consistency:** Revenue bars now match card colors (emerald for Paid, amber for Pending) across all dashboard elements.
+      - **Compact Y-Axis:** Revenue axis now displays abbreviated values (`10 Jt`, `500 Rb`, `1,2 M`) instead of raw numbers.
+      - **Donut Center Label:** Project Status chart displays the total project count as a large centered number inside the donut ring.
+      - **Card Enhancements:** Added `Wallet` and `Clock` icons to revenue cards for visual balance. Increased card padding for better breathing room.
+    - **Environment Variable Cleanup:** Consolidated `NEXT_PUBLIC_APP_URL` to `APP_URL` across all server-side code (`env.ts`, `pay/route.ts`, `webhook/route.ts`, `pdf-generator.ts`).
+
+## Upcoming: Sprint 12 (V2 Feature Expansion)
+The next development cycle will focus on expanding core functionality to support a wider array of business models and improving overall client journey Quality of Life. Potential candidates for Sprint 12:
 
 1. **Client Portal (Multitenant Dashboards)** — A dedicated login area or permanent token link for clients to view all their past invoices, project status, and download SOWs from a single unified screen.
 2. **Recurring Invoices (Retainers)** — Auto-generate and send monthly invoices for retainer-based projects via scheduled Cron jobs.
@@ -139,7 +167,7 @@ The next development cycle will focus on expanding core functionality to support
 
 ## Future Development Plan (V2 & Beyond)
 
-All planned features for V1.2 have been completed.
+All planned features for V1.4 have been completed.
 - **Multi-Currency Payment Gateway** — Currently disabled. If international clients are targeted, re-enable USD in `projects-client.tsx` and integrate Stripe Checkout for USD invoices alongside Mayar (IDR).
 ## Notes for the Next Agent
 - All layout components and global CSS are already set up.
@@ -149,5 +177,7 @@ All planned features for V1.2 have been completed.
 - Standalone Node scripts (e.g. `scripts/reset-password.js`) must use the `pg` + `@prisma/adapter-pg` pattern to connect to the database, matching `src/lib/prisma.ts`.
 - USD currency is temporarily disabled. The schema and logic still support it — re-enable the `SelectItem` in `projects-client.tsx` and uncomment USD chart data in `page.tsx` (dashboard) when ready.
 - All payments are handled exclusively via **Mayar.id** (IDR). Manual bank transfer has been fully removed.
+- Payment link creation is centralized in `src/lib/mayar.ts` via `createPaymentLink()`. Do NOT duplicate Mayar API calls in route handlers.
+- Use `APP_URL` (not `NEXT_PUBLIC_APP_URL`) for server-side base URL resolution.
 - All delete confirmation dialogs use the reusable `ConfirmDialog` component (`src/components/confirm-dialog.tsx`).
 - The sidebar uses `collapsible="icon"` mode — it shrinks to icons when collapsed.

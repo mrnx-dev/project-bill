@@ -26,6 +26,7 @@ model Project {
   totalPrice             Decimal       @db.Decimal(19, 4)
   dpAmount               Decimal?      @db.Decimal(19, 4)
   currency               String        @default("IDR") // IDR or USD
+  language               String        @default("id") // "id" or "en"
   items                  ProjectItem[]
   invoices               Invoice[]
   deadline               DateTime?
@@ -47,6 +48,8 @@ model ProjectItem {
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   description String
   price       Decimal  @db.Decimal(19, 4)
+  quantity    Decimal? @db.Decimal(19, 4)
+  rate        Decimal? @db.Decimal(19, 4)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -85,9 +88,10 @@ model Settings {
   id             String   @id @default("global") // Enforce single row
   companyName    String   @default("ProjectBill Consulting")
   companyAddress String?
-  companyEmail   String?
-  companyLogoUrl String?
-  updatedAt      DateTime @updatedAt
+  companyEmail    String?
+  companyLogoUrl  String?
+  companyWhatsApp String?
+  updatedAt       DateTime @updatedAt
 }
 
 model SOWTemplate {

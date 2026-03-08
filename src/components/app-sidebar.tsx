@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import {
@@ -7,6 +8,7 @@ import {
   FileText,
   LogOut,
   LayoutDashboard,
+  NotepadTextDashed,
   Settings,
   ChevronUp,
   User,
@@ -119,7 +121,7 @@ const navGroups: NavGroup[] = [
       {
         title: "SOW Templates",
         url: "/settings/sow-template",
-        icon: FileText,
+        icon: NotepadTextDashed,
       },
     ],
   },
@@ -208,7 +210,9 @@ export function AppSidebar({ user, company }: AppSidebarProps) {
                   const isActive =
                     item.url === "/"
                       ? pathname === "/"
-                      : pathname?.startsWith(item.url);
+                      : item.url === "/settings"
+                        ? pathname === "/settings"
+                        : pathname?.startsWith(item.url);
 
                   if (item.subItems) {
                     return (

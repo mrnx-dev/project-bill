@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -14,11 +14,14 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { NumericFormat } from "react-number-format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { AlertCircle } from "lucide-react";
 
 type ProjectItem = {
   id: string;
   description: string;
   price: string;
+  quantity?: number | null;
+  rate?: string | null;
 };
 
 type ProjectDetailsDialogProps = {
@@ -30,6 +33,7 @@ type ProjectDetailsDialogProps = {
   onClose: () => void;
   onItemAdded: (item: ProjectItem, newTotal: string) => void;
   onItemDeleted: (itemId: string, newTotal: string) => void;
+  hasInvoices?: boolean;
 };
 
 export function ProjectDetailsDialog({
@@ -41,9 +45,13 @@ export function ProjectDetailsDialog({
   onClose,
   onItemAdded,
   onItemDeleted,
+  hasInvoices = false,
 }: ProjectDetailsDialogProps) {
   const [newItemDesc, setNewItemDesc] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
+  const [newItemQty, setNewItemQty] = useState("");
+  const [newItemRate, setNewItemRate] = useState("");
+
   const [isSaving, setIsSaving] = useState(false);
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
 
@@ -55,15 +63,32 @@ export function ProjectDetailsDialog({
     }).format(Number(amount));
   };
 
+  // Auto-calculate price if rating & qty are used instead of fixed price
+  const computedPrice = useMemo(() => {
+    if (newItemQty && newItemRate) {
+      const q = parseFloat(newItemQty);
+      const r = parseFloat(newItemRate);
+      if (!isNaN(q) && !isNaN(r)) return (q * r).toString();
+    }
+    return newItemPrice;
+  }, [newItemQty, newItemRate, newItemPrice]);
+
   const handleAddItem = async () => {
-    if (!newItemDesc || !newItemPrice) return;
+    if (!newItemDesc || !computedPrice) return;
 
     setIsSaving(true);
     try {
+      const payload: any = { description: newItemDesc, price: computedPrice };
+
+      if (newItemQty && newItemRate) {
+        payload.quantity = parseFloat(newItemQty);
+        payload.rate = newItemRate;
+      }
+
       const res = await fetch(`/api/projects/${projectId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: newItemDesc, price: newItemPrice }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
@@ -71,14 +96,16 @@ export function ProjectDetailsDialog({
         onItemAdded(data.item, data.projectTotal);
         setNewItemDesc("");
         setNewItemPrice("");
+        setNewItemQty("");
+        setNewItemRate("");
         toast.success("Scope item added");
       } else {
         const errData = await res.json().catch(() => ({}));
         toast.error(errData.error || "Failed to add scope item.");
       }
-    } catch (error) {
-      console.error("Failed to add logic", error);
-      toast.error("Network error while adding item");
+    } catch (error: unknown) {
+      console.error("Failed to add item:", error);
+      alert(error instanceof Error ? error.message : "Failed to add item");
     } finally {
       setIsSaving(false);
     }
@@ -106,7 +133,7 @@ export function ProjectDetailsDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[650px]">
         <DialogHeader>
           <DialogTitle>Project Details</DialogTitle>
           <DialogDescription>
@@ -114,10 +141,22 @@ export function ProjectDetailsDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {hasInvoices && (
+          <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-md p-3 flex items-start gap-3 mt-2">
+            <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-800 dark:text-amber-200">
+              <span className="font-semibold block">Scope Locked</span>
+              You have already generated invoices for this project. The deliverables scope is now locked to maintain financial consistency.
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col gap-4 py-4">
-          <div className="flex justify-between items-center text-sm font-semibold text-muted-foreground pb-2 border-b">
+          <div className="grid grid-cols-[1fr_60px_100px_110px] gap-3 items-center text-sm font-semibold text-muted-foreground pb-2 border-b px-2">
             <span>Description</span>
-            <span>Price</span>
+            <span className="text-right">Qty</span>
+            <span className="text-right">Rate</span>
+            <span className="text-right">Amount</span>
           </div>
 
           {items.length === 0 ? (
@@ -129,20 +168,28 @@ export function ProjectDetailsDialog({
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className="flex justify-between items-center text-sm"
+                  className="grid grid-cols-[1fr_60px_100px_110px] gap-3 items-center text-sm group px-2"
                 >
-                  <span className="flex-1">{item.description}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium">
+                  <span className="truncate" title={item.description}>{item.description}</span>
+                  <span className="text-right text-muted-foreground">
+                    {item.quantity ? item.quantity : "-"}
+                  </span>
+                  <span className="text-right text-muted-foreground truncate" title={item.rate ? formatCurrency(item.rate) : "-"}>
+                    {item.rate ? formatCurrency(item.rate) : "-"}
+                  </span>
+                  <div className="flex items-center justify-end gap-1">
+                    <span className="font-medium text-right">
                       {formatCurrency(item.price)}
                     </span>
-                    <button
-                      onClick={() => setDeleteItemId(item.id)}
-                      className="text-red-500 hover:text-red-700 text-xs font-semibold px-2"
-                      title="Remove Item"
-                    >
-                      ✕
-                    </button>
+                    {!hasInvoices && (
+                      <button
+                        onClick={() => setDeleteItemId(item.id)}
+                        className="text-red-500 hover:text-red-700 text-xs font-semibold px-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove Item"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -151,35 +198,60 @@ export function ProjectDetailsDialog({
 
           <Separator className="my-2" />
 
-          <div className="flex flex-col gap-3 bg-muted/30 p-3 rounded-lg border">
-            <span className="text-sm font-medium">
-              Add Change Request / Deliverable
-            </span>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Task description..."
-                value={newItemDesc}
-                onChange={(e) => setNewItemDesc(e.target.value)}
-                className="flex-1 text-sm h-8"
-              />
-              <NumericFormat
-                value={newItemPrice}
-                onValueChange={(values) => setNewItemPrice(values.value)}
-                placeholder="Price"
-                thousandSeparator="."
-                decimalSeparator=","
-                className="w-[120px] flex h-8 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              />
+          {!hasInvoices && (
+            <div className="flex flex-col gap-3 bg-muted/30 p-3 rounded-lg border">
+              <span className="text-sm font-medium">
+                Add Change Request / Deliverable
+              </span>
+              <div className="grid grid-cols-[1fr_60px_100px_110px] gap-2">
+                <Input
+                  placeholder="Task desc..."
+                  value={newItemDesc}
+                  onChange={(e) => setNewItemDesc(e.target.value)}
+                  className="text-sm h-8"
+                />
+                <Input
+                  type="number"
+                  placeholder="Qty"
+                  value={newItemQty}
+                  onChange={(e) => setNewItemQty(e.target.value)}
+                  className="text-sm h-8 px-2"
+                  min="0"
+                  step="0.01"
+                />
+                <NumericFormat
+                  value={newItemRate}
+                  onValueChange={(values) => setNewItemRate(values.value)}
+                  placeholder="Rate"
+                  thousandSeparator="."
+                  decimalSeparator=","
+                  className="h-8 rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+                <NumericFormat
+                  value={computedPrice}
+                  onValueChange={(values) => {
+                    // Prevent manual override if computed from qty*rate
+                    if (!newItemQty && !newItemRate) {
+                      setNewItemPrice(values.value);
+                    }
+                  }}
+                  disabled={!!(newItemQty && newItemRate)}
+                  placeholder="Amount"
+                  thousandSeparator="."
+                  decimalSeparator=","
+                  className="h-8 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-800"
+                />
+              </div>
+              <Button
+                size="sm"
+                disabled={isSaving || !newItemDesc || !computedPrice}
+                onClick={handleAddItem}
+                className="w-full text-xs h-8 mt-1"
+              >
+                {isSaving ? "Adding..." : "+ Add to Scope"}
+              </Button>
             </div>
-            <Button
-              size="sm"
-              disabled={isSaving || !newItemDesc || !newItemPrice}
-              onClick={handleAddItem}
-              className="w-full text-xs h-8"
-            >
-              {isSaving ? "Adding..." : "+ Add to Scope"}
-            </Button>
-          </div>
+          )}
         </div>
       </DialogContent>
 

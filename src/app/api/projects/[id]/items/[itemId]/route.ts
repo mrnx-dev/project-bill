@@ -31,12 +31,10 @@ export async function DELETE(
       include: { invoices: true },
     });
 
-    if (
-      project?.invoices.some((i) => i.type === "full_payment" && i.paymentLink)
-    ) {
+    if (project?.invoices && project.invoices.length > 0) {
       return NextResponse.json(
         {
-          error: "Cannot delete items. An invoice has already been generated.",
+          error: "Cannot delete items. Invoices have already been generated for this project.",
         },
         { status: 403 },
       );

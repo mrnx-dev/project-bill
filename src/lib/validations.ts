@@ -6,13 +6,16 @@ export const projectSchema = z.object({
   totalPrice: z.coerce.number().nonnegative("Total price must be non-negative"),
   dpAmount: z.union([z.coerce.number().nonnegative(), z.null()]).optional(),
   currency: z.enum(["IDR", "USD"]).default("IDR"),
+  language: z.enum(["id", "en"]).default("id"),
   deadline: z.string().nullable().optional(),
   terms: z.string().nullable().optional(),
   items: z
     .array(
       z.object({
         description: z.string().min(1, "Item description is required"),
-        price: z.coerce.number().positive("Price must be a positive number"),
+        price: z.coerce.number().nonnegative("Price must be a non-negative number"),
+        quantity: z.coerce.number().nonnegative().optional().nullable(),
+        rate: z.coerce.number().nonnegative().optional().nullable(),
       }),
     )
     .optional(),

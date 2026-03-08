@@ -39,6 +39,8 @@ export default async function ProjectsPage() {
         id: i.id,
         description: i.description,
         price: i.price.toString(),
+        quantity: i.quantity ? i.quantity.toNumber() : null,
+        rate: i.rate ? i.rate.toString() : null,
       })) || [],
   }));
 

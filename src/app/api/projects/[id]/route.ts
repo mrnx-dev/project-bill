@@ -20,6 +20,7 @@ export async function PATCH(
       dpAmount,
       status,
       currency,
+      language,
       deadline,
       terms,
     } = json;
@@ -33,31 +34,50 @@ export async function PATCH(
       updateData.dpAmount = dpAmount ? parseFloat(dpAmount) : null;
     if (status !== undefined) updateData.status = status;
     if (currency !== undefined) updateData.currency = currency;
+    if (language !== undefined) updateData.language = language;
     if (deadline !== undefined)
       updateData.deadline = deadline ? new Date(deadline) : null;
     if (terms !== undefined) updateData.terms = terms ? terms : null;
+
+    const existing = await prisma.project.findUnique({
+      where: { id },
+      include: { invoices: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    // Phase 4: Lock DP Amount
+    if (
+      updateData.dpAmount !== undefined &&
+      existing.invoices.length > 0 &&
+      updateData.dpAmount !== (existing.dpAmount ? Number(existing.dpAmount) : null)
+    ) {
+      return NextResponse.json(
+        { error: "Cannot modify DP amount. Invoices have already been generated for this project." },
+        { status: 403 },
+      );
+    }
 
     // Validate DP does not exceed totalPrice
     if (
       updateData.totalPrice !== undefined ||
       updateData.dpAmount !== undefined
     ) {
-      const existing = await prisma.project.findUnique({ where: { id } });
-      if (existing) {
-        const effectiveTotal =
-          updateData.totalPrice ?? Number(existing.totalPrice);
-        const effectiveDp =
-          updateData.dpAmount !== undefined
-            ? updateData.dpAmount
-            : existing.dpAmount
-              ? Number(existing.dpAmount)
-              : null;
-        if (effectiveDp !== null && effectiveDp > effectiveTotal) {
-          return NextResponse.json(
-            { error: "DP amount cannot exceed total price" },
-            { status: 400 },
-          );
-        }
+      const effectiveTotal =
+        updateData.totalPrice ?? Number(existing.totalPrice);
+      const effectiveDp =
+        updateData.dpAmount !== undefined
+          ? updateData.dpAmount
+          : existing.dpAmount
+            ? Number(existing.dpAmount)
+            : null;
+      if (effectiveDp !== null && effectiveDp > effectiveTotal) {
+        return NextResponse.json(
+          { error: "DP amount cannot exceed total price" },
+          { status: 400 },
+        );
       }
     }
 

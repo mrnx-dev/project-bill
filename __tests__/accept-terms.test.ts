@@ -27,7 +27,7 @@ class MockRequest {
   }
 }
 // Cast it as any to bypass strict Request typing in the test global
-global.Request = MockRequest as any;
+global.Request = MockRequest as unknown as typeof Request;
 
 // Mock Prisma
 jest.mock("@/lib/prisma", () => ({
@@ -53,7 +53,7 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
     );
     const params = Promise.resolve({ id: "1" });
 
-    const response = await PATCH(request as any, { params });
+    const response = await PATCH(request as unknown as Request, { params });
     const data = await response.json();
 
     expect(response.status).toBe(404);
@@ -73,7 +73,7 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
     );
     const params = Promise.resolve({ id: "1" });
 
-    const response = await PATCH(request as any, { params });
+    const response = await PATCH(request as unknown as Request, { params });
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -93,7 +93,7 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
     );
     const params = Promise.resolve({ id: "1" });
 
-    const response = await PATCH(request as any, { params });
+    const response = await PATCH(request as unknown as Request, { params });
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -102,10 +102,19 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
 
   it("should successfully accept terms and return 200", async () => {
     const fakeDate = new Date();
+    const fakeSessionId = "fake-session-id";
+
+    // Mock crypto.randomUUID
+    Object.defineProperty(globalThis, 'crypto', {
+      value: {
+        randomUUID: () => fakeSessionId
+      }
+    });
 
     (prisma.project.findUnique as jest.Mock).mockResolvedValue({
       terms: "Some terms",
       termsAcceptedAt: null,
+      termsVersionId: 0,
       updatedAt: new Date("2026-03-01T00:00:00Z"),
     });
 
@@ -117,12 +126,12 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
       "http://localhost:3000/api/projects/1/accept-terms",
       {
         method: "PATCH",
-        headers: { "x-forwarded-for": "192.168.1.100" }
+        headers: { "user-agent": "Test Browser" }
       },
     );
     const params = Promise.resolve({ id: "1" });
 
-    const response = await PATCH(request as any, { params });
+    const response = await PATCH(request as unknown as Request, { params });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -131,8 +140,9 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
       where: { id: "1" },
       data: {
         termsAcceptedAt: expect.any(Date),
-        termsAcceptedIp: "192.168.1.100",
-        termsVersionId: new Date("2026-03-01T00:00:00Z").toISOString(),
+        termsAcceptedUserAgent: "Test Browser",
+        termsAcceptedSessionId: fakeSessionId,
+        termsVersionId: 1,
       },
     });
   });

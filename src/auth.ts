@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { authConfig } from "./auth.config";
 
-const { providers: _providers, ...restConfig } = authConfig;
+const { ...restConfig } = authConfig;
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...restConfig,

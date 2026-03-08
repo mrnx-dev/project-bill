@@ -40,6 +40,8 @@ export default async function BoardPage() {
       id: i.id,
       description: i.description,
       price: i.price.toString(),
+      quantity: i.quantity ? i.quantity.toNumber() : null,
+      rate: i.rate ? i.rate.toString() : null,
     })),
   }));
 

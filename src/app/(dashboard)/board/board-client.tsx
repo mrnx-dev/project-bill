@@ -54,7 +54,7 @@ type Project = {
   currency?: string;
   client: Client;
   items?: ProjectItem[];
-  invoices?: any[];
+  invoices?: { id: string; type: string; status: string }[];
   deadline?: string | null;
 };
 
@@ -97,7 +97,7 @@ export function DashboardClient({
   const isFullyPaidDone = (project: Project) => {
     if (project.status !== "done") return false;
     const fullInv = project.invoices?.find(
-      (i: any) => i.type === "full_payment",
+      (i) => i.type === "full_payment",
     );
     return fullInv?.status === "paid";
   };
@@ -215,10 +215,10 @@ export function DashboardClient({
 
   // Calculate invoice status for completion dialog
   const completionHasFullInvoice = completionProject?.invoices?.some(
-    (i: any) => i.type === "full_payment",
+    (i) => i.type === "full_payment",
   );
   const completionHasDpInvoice = completionProject?.invoices?.some(
-    (i: any) => i.type === "dp",
+    (i) => i.type === "dp",
   );
   const completionCanGenerateInvoice = !completionHasFullInvoice;
 
@@ -357,17 +357,17 @@ export function DashboardClient({
 
                               {project.status === "done" && (
                                 <div className="w-full mt-1">
-                                  {project.invoices && project.invoices.find((i: any) => i.type === "full_payment") ? (
+                                  {project.invoices && project.invoices.find((i) => i.type === "full_payment") ? (
                                     <Button
                                       variant="default"
                                       size="sm"
                                       className="w-full h-7 text-[11px] font-semibold bg-green-600 hover:bg-green-700 text-white"
                                       onClick={() => {
-                                        const inv = project.invoices!.find((i: any) => i.type === "full_payment");
+                                        const inv = project.invoices!.find((i) => i.type === "full_payment");
                                         if (inv?.id) window.open(`/invoices/${inv.id}`, "_blank");
                                       }}
                                     >
-                                      {project.invoices.find((i: any) => i.type === "full_payment").status === "paid"
+                                      {project.invoices?.find((i) => i.type === "full_payment")?.status === "paid"
                                         ? "View Receipt"
                                         : "View Invoice"}
                                     </Button>
@@ -492,17 +492,17 @@ export function DashboardClient({
                                   </Badge>
                                 </div>
                               )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-2 h-6 text-[10px] px-2 shrink-0"
+                                onClick={() =>
+                                  setSelectedProjectForItems(project.id)
+                                }
+                              >
+                                Scope / Items
+                              </Button>
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-6 text-[10px] px-2 shrink-0"
-                              onClick={() =>
-                                setSelectedProjectForItems(project.id)
-                              }
-                            >
-                              Scope / Items
-                            </Button>
                           </div>
                         </CardHeader>
                         <CardContent className="p-4 pt-0 pb-3">
@@ -540,7 +540,7 @@ export function DashboardClient({
                             <div className="w-full mt-2">
                               {project.invoices &&
                                 project.invoices.find(
-                                  (i: any) => i.type === "full_payment",
+                                  (i) => i.type === "full_payment",
                                 ) ? (
                                 <Button
                                   variant="default"
@@ -548,16 +548,16 @@ export function DashboardClient({
                                   className="w-full text-xs font-semibold bg-green-600 hover:bg-green-700 text-white"
                                   onClick={() => {
                                     const inv = project.invoices!.find(
-                                      (i: any) => i.type === "full_payment",
+                                      (i) => i.type === "full_payment",
                                     );
                                     if (inv?.id) {
                                       window.open(`/invoices/${inv.id}`, "_blank");
                                     }
                                   }}
                                 >
-                                  {project.invoices.find(
-                                    (i: any) => i.type === "full_payment",
-                                  ).status === "paid"
+                                  {project.invoices?.find(
+                                    (i) => i.type === "full_payment",
+                                  )?.status === "paid"
                                     ? "View Receipt"
                                     : "View Invoice"}
                                 </Button>
@@ -714,6 +714,7 @@ export function DashboardClient({
               ),
             );
           }}
+          hasInvoices={(activeItemProject.invoices?.length ?? 0) > 0}
         />
       )}
     </div>

@@ -46,6 +46,8 @@ type ProjectItem = {
   id?: string;
   description: string;
   price: string | number;
+  quantity?: string | number | null;
+  rate?: string | number | null;
 };
 
 type Project = {
@@ -58,6 +60,7 @@ type Project = {
   totalPrice: string;
   dpAmount: string | null;
   currency: string;
+  language?: string;
   terms?: string | null;
   termsAcceptedAt: Date | null;
   invoices: { type: string; status: string; amount: string; paidAt: string | null; dueDate: string | null }[];
@@ -86,12 +89,27 @@ export function ProjectsClient({
   const [totalPrice, setTotalPrice] = useState("");
   const [dpAmount, setDpAmount] = useState("");
   const [currency, setCurrency] = useState("IDR");
+  const [language, setLanguage] = useState("id");
   const [deadline, setDeadline] = useState("");
   const [terms, setTerms] = useState("");
   const [isSowLocked, setIsSowLocked] = useState(false);
+  const [hasInvoices, setHasInvoices] = useState(false);
   const [items, setItems] = useState<ProjectItem[]>([]);
   const [newItemDesc, setNewItemDesc] = useState("");
+  const [newItemQty, setNewItemQty] = useState("");
+  const [newItemRate, setNewItemRate] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
+
+  // Auto calculate price based on Qty and Rate
+  useEffect(() => {
+    if (newItemQty && newItemRate) {
+      const q = parseFloat(newItemQty);
+      const r = parseFloat(newItemRate);
+      if (!isNaN(q) && !isNaN(r)) {
+        setNewItemPrice((q * r).toString());
+      }
+    }
+  }, [newItemQty, newItemRate]);
 
   // Confirm Dialog State
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -124,6 +142,7 @@ export function ProjectsClient({
       setTotalPrice(project.totalPrice);
       setDpAmount(project.dpAmount || "");
       setCurrency(project.currency || "IDR");
+      setLanguage(project.language || "id");
       setDeadline(
         project.deadline
           ? new Date(project.deadline).toISOString().split("T")[0]
@@ -131,8 +150,9 @@ export function ProjectsClient({
       );
       setTerms(project.terms || "");
       setItems(project.items || []);
-      const hasPaid = project.invoices?.some((i) => i.status === "paid") || false;
-      setIsSowLocked(hasPaid);
+      const paid = project.invoices?.some((i) => i.status === "paid") || false;
+      setIsSowLocked(paid);
+      setHasInvoices(project.invoices && project.invoices.length > 0 ? true : false);
     } else {
       setEditingId(null);
       setTitle("");
@@ -140,12 +160,16 @@ export function ProjectsClient({
       setTotalPrice("");
       setDpAmount("");
       setCurrency("IDR");
+      setLanguage("id");
       setDeadline("");
       setTerms("");
       setItems([]);
       setIsSowLocked(false);
+      setHasInvoices(false);
     }
     setNewItemDesc("");
+    setNewItemQty("");
+    setNewItemRate("");
     setNewItemPrice("");
     setIsDialogOpen(true);
   };
@@ -221,6 +245,7 @@ export function ProjectsClient({
         totalPrice: finalTotalPrice,
         dpAmount: dpAmount || null,
         currency,
+        language,
         deadline: deadline || null,
         terms: terms || null,
         items: editingId ? undefined : items,
@@ -373,6 +398,7 @@ export function ProjectsClient({
                     type="date"
                     value={deadline}
                     onChange={(e) => setDeadline(e.target.value)}
+                    onClick={(e) => e.currentTarget.showPicker()}
                   />
                 </div>
 
@@ -426,7 +452,7 @@ export function ProjectsClient({
                   )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="currency">Currency</Label>
                     <Select value={currency} onValueChange={setCurrency}>
@@ -438,6 +464,18 @@ export function ProjectsClient({
                         <SelectItem value="USD" disabled>
                           USD (Pending feature)
                         </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="language">Language</Label>
+                    <Select value={language} onValueChange={setLanguage}>
+                      <SelectTrigger className="truncate">
+                        <SelectValue placeholder="Language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="id">🇮🇩 ID</SelectItem>
+                        <SelectItem value="en">🇬🇧 EN</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -500,6 +538,7 @@ export function ProjectsClient({
                           </span>
                           <div className="flex items-center gap-3">
                             <span className="font-medium text-xs">
+                              {item.quantity && item.rate ? `${item.quantity} x ${formatCurrency(item.rate, currency)} = ` : ""}
                               {formatCurrency(item.price, currency)}
                             </span>
                             <button
@@ -523,20 +562,35 @@ export function ProjectsClient({
                     </div>
                   )}
 
-                  <div className="flex gap-2">
+                  <div className="grid grid-cols-[3fr_1fr_1.5fr_1.5fr_auto] gap-2 items-start">
                     <Input
                       placeholder="Task description..."
                       value={newItemDesc}
                       onChange={(e) => setNewItemDesc(e.target.value)}
-                      className="flex-1 text-sm h-9"
+                      className="text-sm h-9"
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Qty"
+                      value={newItemQty}
+                      onChange={(e) => setNewItemQty(e.target.value)}
+                      className="text-sm h-9"
+                    />
+                    <NumericFormat
+                      value={newItemRate}
+                      onValueChange={(values) => setNewItemRate(values.value)}
+                      placeholder="Rate"
+                      thousandSeparator="."
+                      decimalSeparator=","
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                     />
                     <NumericFormat
                       value={newItemPrice}
                       onValueChange={(values) => setNewItemPrice(values.value)}
-                      placeholder="Price"
+                      placeholder="Total Price"
                       thousandSeparator="."
                       decimalSeparator=","
-                      className="w-[120px] flex h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                     />
                     <Button
                       type="button"
@@ -554,6 +608,8 @@ export function ProjectsClient({
                                 body: JSON.stringify({
                                   description: newItemDesc,
                                   price: newItemPrice,
+                                  quantity: newItemQty || null,
+                                  rate: newItemRate || null,
                                 }),
                               },
                             );
@@ -565,10 +621,14 @@ export function ProjectsClient({
                                   id: data.item.id,
                                   description: data.item.description,
                                   price: String(data.item.price),
+                                  quantity: data.item.quantity ? String(data.item.quantity) : null,
+                                  rate: data.item.rate ? String(data.item.rate) : null,
                                 },
                               ]);
                               setTotalPrice(String(data.projectTotal));
                               setNewItemDesc("");
+                              setNewItemQty("");
+                              setNewItemRate("");
                               setNewItemPrice("");
                             } else {
                               const errData = await res
@@ -584,13 +644,20 @@ export function ProjectsClient({
                         } else {
                           setItems([
                             ...items,
-                            { description: newItemDesc, price: newItemPrice },
+                            {
+                              description: newItemDesc,
+                              price: newItemPrice,
+                              quantity: newItemQty || null,
+                              rate: newItemRate || null
+                            },
                           ]);
                           setNewItemDesc("");
+                          setNewItemQty("");
+                          setNewItemRate("");
                           setNewItemPrice("");
                         }
                       }}
-                      className="h-9"
+                      className="h-9 whitespace-nowrap"
                     >
                       Add
                     </Button>

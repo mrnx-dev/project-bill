@@ -73,7 +73,7 @@ export async function POST(request: Request) {
               },
             ).format(Number(updatedInvoice.amount));
 
-            const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+            const baseUrl = process.env.APP_URL || "http://localhost:3000";
             const invoiceDetailUrl = `${baseUrl}/invoices/${updatedInvoice.id}`;
 
             await sendPaymentSuccessEmail({

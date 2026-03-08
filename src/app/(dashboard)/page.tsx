@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { OverviewCharts } from "@/components/dashboard/overview-charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, FileText } from "lucide-react";
+import { Users, FileText, Wallet, Clock } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -83,12 +83,13 @@ export default async function DashboardPage() {
             <CardTitle className="text-sm font-medium">
               Total Revenue (IDR)
             </CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1 pb-5">
             <div className="text-2xl font-bold text-emerald-600">
               {formatCurrency(totalRevenueIDR, "IDR")}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-2">
               From Paid Invoices
             </p>
           </CardContent>
@@ -98,12 +99,13 @@ export default async function DashboardPage() {
             <CardTitle className="text-sm font-medium">
               Pending Revenue (IDR)
             </CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1 pb-5">
             <div className="text-2xl font-bold text-amber-500">
               {formatCurrency(pendingRevenueIDR, "IDR")}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-2">
               From Unpaid Invoices
             </p>
           </CardContent>
@@ -115,7 +117,7 @@ export default async function DashboardPage() {
             </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1 pb-5">
             <div className="text-2xl font-bold">{totalClients}</div>
           </CardContent>
         </Card>
@@ -126,7 +128,7 @@ export default async function DashboardPage() {
             </CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-1 pb-5">
             <div className="text-2xl font-bold">{unpaidInvoices}</div>
           </CardContent>
         </Card>

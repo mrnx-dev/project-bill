@@ -84,6 +84,7 @@ export async function POST(request: Request) {
       totalPrice,
       dpAmount: data.dpAmount ?? null,
       currency: data.currency,
+      language: data.language,
       deadline: data.deadline ? new Date(data.deadline) : null,
       status: "to_do",
     };
@@ -95,6 +96,8 @@ export async function POST(request: Request) {
         create: data.items.map((i) => ({
           description: i.description,
           price: i.price,
+          quantity: i.quantity ?? null,
+          rate: i.rate ?? null,
         })),
       };
     }

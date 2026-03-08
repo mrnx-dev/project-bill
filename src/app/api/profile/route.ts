@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import bcrypt from "bcryptjs";
 
-export async function GET(_req: Request) {
+export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.email) {

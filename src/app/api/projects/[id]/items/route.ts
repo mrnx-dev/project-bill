@@ -22,6 +22,14 @@ export async function POST(
 
     const numericPrice = parseFloat(price);
 
+    let parsedQuantity = null;
+    let parsedRate = null;
+
+    if (json.quantity !== undefined && json.rate !== undefined && json.rate !== "") {
+      parsedQuantity = parseFloat(json.quantity);
+      parsedRate = parseFloat(json.rate);
+    }
+
     // 1. Check if the project exists
     const project = await prisma.project.findUnique({
       where: { id: projectId },
@@ -32,11 +40,11 @@ export async function POST(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    if (
-      project.invoices.some((i) => i.type === "full_payment" && i.paymentLink)
-    ) {
+    // Phase 4: Mechanism for Price/Scope Immutability
+    // Assert that the parent project does not have any generated invoices.
+    if (project.invoices && project.invoices.length > 0) {
       return NextResponse.json(
-        { error: "Cannot add items. An invoice has already been generated." },
+        { error: "Cannot modify scope. Invoices have already been generated for this project." },
         { status: 403 },
       );
     }
@@ -48,6 +56,8 @@ export async function POST(
           projectId,
           description,
           price: numericPrice,
+          ...(parsedQuantity !== null ? { quantity: parsedQuantity } : {}),
+          ...(parsedRate !== null ? { rate: parsedRate } : {})
         },
       }),
       prisma.project.update({
