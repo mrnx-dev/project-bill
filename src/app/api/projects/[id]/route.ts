@@ -52,7 +52,30 @@ export async function PATCH(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    // Phase 4: Lock Financial Fields
+    // Phase 4.1: Lock Entire Project (except status) if SOW is signed
+    if (existing.termsAcceptedAt) {
+      // Allow only status changes if signed
+      const isTryingToChangeCoreFields =
+        (updateData.title !== undefined && updateData.title !== existing.title) ||
+        (updateData.clientId !== undefined && updateData.clientId !== existing.clientId) ||
+        (updateData.totalPrice !== undefined && updateData.totalPrice !== Number(existing.totalPrice)) ||
+        (updateData.dpAmount !== undefined && updateData.dpAmount !== (existing.dpAmount ? Number(existing.dpAmount) : null)) ||
+        (updateData.currency !== undefined && updateData.currency !== existing.currency) ||
+        (updateData.language !== undefined && updateData.language !== existing.language) ||
+        (deadline !== undefined && (deadline ? new Date(deadline).getTime() : null) !== existing.deadline?.getTime()) ||
+        (updateData.terms !== undefined && updateData.terms !== existing.terms) ||
+        (updateData.taxName !== undefined && updateData.taxName !== existing.taxName) ||
+        (updateData.taxRate !== undefined && updateData.taxRate !== (existing.taxRate ? Number(existing.taxRate) : null));
+
+      if (isTryingToChangeCoreFields) {
+        return NextResponse.json(
+          { error: "Cannot modify project details because the SOW has been signed." },
+          { status: 403 },
+        );
+      }
+    }
+
+    // Phase 4.2: Lock Financial Fields due to generated invoices
     if (existing.invoices.length > 0) {
       const isFinanciallyModified =
         (updateData.totalPrice !== undefined && updateData.totalPrice !== Number(existing.totalPrice)) ||

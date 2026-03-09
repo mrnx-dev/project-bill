@@ -165,8 +165,8 @@ The full MVP through V1.4 features have been successfully implemented:
 
 26. **Flexible Tax & Financial Protections (Sprint 12 Patch):**
     - **Single Flexible Tax:** Projects now support an optional `taxName` (e.g., PPN, VAT) and `taxRate` (percentage). The tax amount is dynamically calculated and added to the Total Price gracefully.
-    - **Financial Field Locks:** Once an invoice is generated for a project, critical financial fields (`Currency`, `Language`, `Total Price`, `DP Amount`) and Project Scope Items are strictly locked via UI disablers and robust API validation (`403 Forbidden`). Unpaid invoices must be deleted to unlock modifications.
-    - **Invoice Deletion UI:** Invoices list (`/invoices`) now features a `Delete` action for Unpaid status invoices, guarded by a custom `ConfirmDialog`.
+    - **Financial & SOW Locks:** Once a client has signed a project's SOW (`termsAcceptedAt`), the entire project is locked from further modifications. Additionally, when an invoice is generated, critical financial fields (`Currency`, `Language`, `Total Price`, `DP Amount`) and Project Scope Items are strictly locked via UI disablers and robust API validation (`403 Forbidden`). 
+    - **Invoice Deletion & Auto-Unlock:** Invoices list (`/invoices`) now features a `Delete` action for Unpaid status invoices, guarded by a custom `ConfirmDialog`. Deleting the last existing invoice for a project automatically drops the SOW signature (`termsAcceptedAt = null`), unlocking the project for further editing.
     - **Mobile Layout Polish:** Refactored line item grids and financial metadata containers into vertically stacked flexible/responsive grids on mobile displays for optimal data entry and readability.
     - **SOW Full-Screen Editor:** Added a dedicated "Full Screen Edit" modal for Terms & Conditions (SOW) on the Project form, complete with side-by-side Markdown writing and live rendering preview logic.
 

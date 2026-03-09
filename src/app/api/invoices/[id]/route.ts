@@ -49,8 +49,42 @@ export async function DELETE(
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
     const resolvedParams = await params;
     const id = resolvedParams.id;
-    await prisma.invoice.delete({
+    const invoice = await prisma.invoice.findUnique({
       where: { id },
+      select: { projectId: true },
+    });
+
+    if (!invoice) {
+      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    }
+
+    const { projectId } = invoice;
+
+    // Count remaining invoices for this project (excluding the one being deleted)
+    const remainingInvoicesCount = await prisma.invoice.count({
+      where: {
+        projectId,
+        id: { not: id },
+      },
+    });
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete the invoice
+      await tx.invoice.delete({
+        where: { id },
+      });
+
+      // 2. If it was the last invoice, unlock the project
+      if (remainingInvoicesCount === 0) {
+        await tx.project.update({
+          where: { id: projectId },
+          data: {
+            termsAcceptedAt: null,
+            termsAcceptedUserAgent: null,
+            termsAcceptedSessionId: null,
+          },
+        });
+      }
     });
 
     return new NextResponse(null, { status: 204 });

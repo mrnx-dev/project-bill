@@ -102,6 +102,7 @@ export function ProjectsClient({
   const [taxRate, setTaxRate] = useState("");
   const [hasInvoices, setHasInvoices] = useState(false);
   const [isSowLocked, setIsSowLocked] = useState(false);
+  const [isSowSigned, setIsSowSigned] = useState(false);
   const [items, setItems] = useState<ProjectItem[]>([]);
   const [newItemDesc, setNewItemDesc] = useState("");
   const [newItemQty, setNewItemQty] = useState("");
@@ -167,6 +168,7 @@ export function ProjectsClient({
       setItems(project.items || []);
       const paid = project.invoices?.some((i) => i.status === "paid") || false;
       setIsSowLocked(paid);
+      setIsSowSigned(!!project.termsAcceptedAt);
       setHasInvoices((project.invoices && project.invoices.length > 0) ? true : false);
     } else {
       setEditingId(null);
@@ -182,6 +184,7 @@ export function ProjectsClient({
       setTaxRate("");
       setItems([]);
       setIsSowLocked(false);
+      setIsSowSigned(false);
       setHasInvoices(false);
     }
     setNewItemDesc("");
@@ -391,13 +394,14 @@ export function ProjectsClient({
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required
+                    disabled={isSowSigned}
                     placeholder="Website Redesign"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="client">Client</Label>
-                  <Select value={clientId} onValueChange={setClientId} required>
+                  <Select value={clientId} onValueChange={setClientId} required disabled={isSowSigned}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a client" />
                     </SelectTrigger>
@@ -416,6 +420,7 @@ export function ProjectsClient({
                     id="deadline"
                     type="date"
                     value={deadline}
+                    disabled={isSowSigned}
                     onChange={(e) => setDeadline(e.target.value)}
                     onClick={(e) => e.currentTarget.showPicker()}
                   />
@@ -472,22 +477,22 @@ export function ProjectsClient({
                     id="terms"
                     rows={4}
                     value={terms}
-                    disabled={isSowLocked}
+                    disabled={isSowLocked || isSowSigned}
                     onChange={(e) => setTerms(e.target.value)}
                     className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="e.g. 1. Revisions are limited to 2 rounds. 2. Payments are non-refundable."
                   />
-                  {isSowLocked && (
+                  {(isSowLocked || isSowSigned) && (
                     <p className="text-[10px] text-amber-600 font-medium">
-                      Terms cannot be edited because a payment has already been made.
+                      Terms cannot be edited because {isSowSigned ? "the client has already signed the SOW" : "a payment has already been made"}.
                     </p>
                   )}
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {hasInvoices && (
+                  {(hasInvoices || isSowSigned) && (
                     <div className="col-span-full p-3 bg-amber-50 text-amber-800 text-sm border border-amber-200 rounded-md">
-                      <strong>Note:</strong> Financial fields (Currency, Pricing, Tax, and Items) are locked because an invoice has already been generated. Delete the unpaid invoice to modify them.
+                      <strong>Note:</strong> Financial fields (Currency, Pricing, Tax, and Items) are locked. {isSowSigned ? "The SOW has already been signed by the client." : "An invoice has already been generated. Delete the unpaid invoice to modify them."}
                     </div>
                   )}
                   <div className="space-y-2">
@@ -530,7 +535,7 @@ export function ProjectsClient({
                       }
                       onValueChange={(values) => setTotalPrice(values.value)}
                       required
-                      disabled={items.length > 0 || hasInvoices}
+                      disabled={items.length > 0 || hasInvoices || isSowSigned}
                       placeholder={
                         items.length > 0 ? "Auto-calculated" : "1,000"
                       }
@@ -546,7 +551,7 @@ export function ProjectsClient({
                       id="dpAmount"
                       value={dpAmount}
                       onValueChange={(values) => setDpAmount(values.value)}
-                      disabled={hasInvoices}
+                      disabled={hasInvoices || isSowSigned}
                       placeholder="300"
                       thousandSeparator="."
                       decimalSeparator=","
@@ -565,7 +570,7 @@ export function ProjectsClient({
                       onChange={(e) => setTaxName(e.target.value)}
                       placeholder="e.g. PPN, VAT"
                       required={Number(taxRate) > 0}
-                      disabled={hasInvoices}
+                      disabled={hasInvoices || isSowSigned}
                     />
                   </div>
                   <div className="space-y-2">
@@ -574,7 +579,7 @@ export function ProjectsClient({
                       id="taxRate"
                       value={taxRate}
                       onValueChange={(values) => setTaxRate(values.value)}
-                      disabled={hasInvoices}
+                      disabled={hasInvoices || isSowSigned}
                       placeholder="e.g. 11"
                       allowNegative={false}
                       className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
@@ -582,7 +587,7 @@ export function ProjectsClient({
                   </div>
                 </div>
 
-                <div className="space-y-3 pt-2 border-t mt-4">
+                <div className="space-y-3 pt-2 border-t mt-4 text-sm">
                   <Label>
                     Project Scope / Items {editingId ? "" : "(Optional)"}
                   </Label>
@@ -608,7 +613,7 @@ export function ProjectsClient({
                             <button
                               type="button"
                               onClick={async () => {
-                                if (hasInvoices) return;
+                                if (hasInvoices || isSowSigned) return;
                                 if (editingId && item.id) {
                                   setItemRemoveConfirm({ idx, item });
                                 } else {
@@ -618,7 +623,7 @@ export function ProjectsClient({
                               }}
                               className="text-red-500 hover:text-red-700 text-[10px] font-bold px-1 disabled:opacity-50"
                               title="Remove"
-                              disabled={hasInvoices}
+                              disabled={hasInvoices || isSowSigned}
                             >
                               ✕
                             </button>
@@ -633,7 +638,7 @@ export function ProjectsClient({
                       placeholder="Task description..."
                       value={newItemDesc}
                       onChange={(e) => setNewItemDesc(e.target.value)}
-                      disabled={hasInvoices}
+                      disabled={hasInvoices || isSowSigned}
                       maxLength={120}
                       className="text-sm h-9"
                     />
@@ -642,13 +647,13 @@ export function ProjectsClient({
                       placeholder="Qty"
                       value={newItemQty}
                       onChange={(e) => setNewItemQty(e.target.value)}
-                      disabled={hasInvoices}
+                      disabled={hasInvoices || isSowSigned}
                       className="text-sm h-9"
                     />
                     <NumericFormat
                       value={newItemRate}
                       onValueChange={(values) => setNewItemRate(values.value)}
-                      disabled={hasInvoices}
+                      disabled={hasInvoices || isSowSigned}
                       placeholder="Rate"
                       thousandSeparator="."
                       decimalSeparator=","
@@ -657,7 +662,7 @@ export function ProjectsClient({
                     <NumericFormat
                       value={newItemPrice}
                       onValueChange={(values) => setNewItemPrice(values.value)}
-                      disabled={hasInvoices}
+                      disabled={hasInvoices || isSowSigned}
                       placeholder="Total Price"
                       thousandSeparator="."
                       decimalSeparator=","
@@ -667,7 +672,7 @@ export function ProjectsClient({
                       type="button"
                       variant="secondary"
                       size="sm"
-                      disabled={!newItemDesc || !newItemPrice || hasInvoices}
+                      disabled={!newItemDesc || !newItemPrice || hasInvoices || isSowSigned}
                       onClick={async () => {
                         if (editingId) {
                           try {
