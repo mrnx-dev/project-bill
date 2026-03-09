@@ -19,6 +19,7 @@ export default async function BoardPage() {
     ...p,
     totalPrice: p.totalPrice.toString(),
     dpAmount: p.dpAmount?.toString() || null,
+    taxRate: p.taxRate?.toString() || null,
     deadline: p.deadline?.toISOString() || null,
     currency: p.currency,
     createdAt: p.createdAt.toISOString(),

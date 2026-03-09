@@ -23,6 +23,8 @@ export async function PATCH(
       language,
       deadline,
       terms,
+      taxName,
+      taxRate,
     } = json;
 
     const updateData: Prisma.ProjectUncheckedUpdateInput = {};
@@ -38,6 +40,8 @@ export async function PATCH(
     if (deadline !== undefined)
       updateData.deadline = deadline ? new Date(deadline) : null;
     if (terms !== undefined) updateData.terms = terms ? terms : null;
+    if (taxName !== undefined) updateData.taxName = taxName ? taxName : null;
+    if (taxRate !== undefined) updateData.taxRate = taxRate !== null ? parseFloat(taxRate) : null;
 
     const existing = await prisma.project.findUnique({
       where: { id },
@@ -48,16 +52,21 @@ export async function PATCH(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    // Phase 4: Lock DP Amount
-    if (
-      updateData.dpAmount !== undefined &&
-      existing.invoices.length > 0 &&
-      updateData.dpAmount !== (existing.dpAmount ? Number(existing.dpAmount) : null)
-    ) {
-      return NextResponse.json(
-        { error: "Cannot modify DP amount. Invoices have already been generated for this project." },
-        { status: 403 },
-      );
+    // Phase 4: Lock Financial Fields
+    if (existing.invoices.length > 0) {
+      const isFinanciallyModified =
+        (updateData.totalPrice !== undefined && updateData.totalPrice !== Number(existing.totalPrice)) ||
+        (updateData.dpAmount !== undefined && updateData.dpAmount !== (existing.dpAmount ? Number(existing.dpAmount) : null)) ||
+        (updateData.currency !== undefined && updateData.currency !== existing.currency) ||
+        (updateData.taxName !== undefined && updateData.taxName !== existing.taxName) ||
+        (updateData.taxRate !== undefined && updateData.taxRate !== (existing.taxRate ? Number(existing.taxRate) : null));
+
+      if (isFinanciallyModified) {
+        return NextResponse.json(
+          { error: "Cannot modify financial fields (Price, DP, Currency, Tax). Invoices have already been generated for this project." },
+          { status: 403 },
+        );
+      }
     }
 
     // Validate DP does not exceed totalPrice

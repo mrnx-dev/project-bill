@@ -35,6 +35,8 @@ model Project {
   termsAcceptedUserAgent String?
   termsAcceptedSessionId String?
   termsVersionId         Int?
+  taxName                String?
+  taxRate                Decimal?      @db.Decimal(19, 4)
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
 

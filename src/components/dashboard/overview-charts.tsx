@@ -113,7 +113,7 @@ export function OverviewCharts({ data }: { data: ChartData }) {
         <CardContent className="flex-1 pb-6">
           <ChartContainer
             config={revenueConfig}
-            className="mx-auto w-full max-h-[320px]"
+            className="mx-auto w-full min-h-[200px] max-h-[320px]"
           >
             <BarChart
               data={data.revenueData}
@@ -175,7 +175,7 @@ export function OverviewCharts({ data }: { data: ChartData }) {
         <CardContent className="flex-1 pb-4">
           <ChartContainer
             config={statusConfig}
-            className="mx-auto aspect-square max-h-[280px]"
+            className="mx-auto aspect-square min-h-[200px] max-h-[280px]"
           >
             <PieChart>
               <ChartTooltip

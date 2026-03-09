@@ -30,6 +30,7 @@ export default async function InvoicesPage() {
       ...inv.project,
       totalPrice: inv.project.totalPrice.toString(),
       dpAmount: inv.project.dpAmount?.toString() || null,
+      taxRate: inv.project.taxRate?.toString() || null,
       createdAt: inv.project.createdAt.toISOString(),
       updatedAt: inv.project.updatedAt.toISOString(),
       client: {

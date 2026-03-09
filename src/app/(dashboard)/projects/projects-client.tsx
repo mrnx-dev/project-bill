@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -34,11 +35,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Plus, FileText } from "lucide-react";
+import { Pencil, Trash2, Plus, FileText, Maximize2, NotepadTextDashed } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { NumericFormat } from "react-number-format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 
 type Client = { id: string; name: string };
 
@@ -62,6 +66,8 @@ type Project = {
   currency: string;
   language?: string;
   terms?: string | null;
+  taxName?: string | null;
+  taxRate?: string | null;
   termsAcceptedAt: Date | null;
   invoices: { type: string; status: string; amount: string; paidAt: string | null; dueDate: string | null }[];
   items?: ProjectItem[];
@@ -92,8 +98,10 @@ export function ProjectsClient({
   const [language, setLanguage] = useState("id");
   const [deadline, setDeadline] = useState("");
   const [terms, setTerms] = useState("");
-  const [isSowLocked, setIsSowLocked] = useState(false);
+  const [taxName, setTaxName] = useState("");
+  const [taxRate, setTaxRate] = useState("");
   const [hasInvoices, setHasInvoices] = useState(false);
+  const [isSowLocked, setIsSowLocked] = useState(false);
   const [items, setItems] = useState<ProjectItem[]>([]);
   const [newItemDesc, setNewItemDesc] = useState("");
   const [newItemQty, setNewItemQty] = useState("");
@@ -113,10 +121,15 @@ export function ProjectsClient({
 
   // Confirm Dialog State
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [sowTemplateConfirm, setSowTemplateConfirm] = useState<string | null>(null);
   const [itemRemoveConfirm, setItemRemoveConfirm] = useState<{
     idx: number;
     item: ProjectItem;
   } | null>(null);
+
+  // Full Screen TOS Editor State
+  const [isTosEditorOpen, setIsTosEditorOpen] = useState(false);
+  const [isTosPreview, setIsTosPreview] = useState(false);
 
   // Invoice Form State
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
@@ -149,10 +162,12 @@ export function ProjectsClient({
           : "",
       );
       setTerms(project.terms || "");
+      setTaxName(project.taxName || "");
+      setTaxRate(project.taxRate ? String(project.taxRate) : "");
       setItems(project.items || []);
       const paid = project.invoices?.some((i) => i.status === "paid") || false;
       setIsSowLocked(paid);
-      setHasInvoices(project.invoices && project.invoices.length > 0 ? true : false);
+      setHasInvoices((project.invoices && project.invoices.length > 0) ? true : false);
     } else {
       setEditingId(null);
       setTitle("");
@@ -163,6 +178,8 @@ export function ProjectsClient({
       setLanguage("id");
       setDeadline("");
       setTerms("");
+      setTaxName("");
+      setTaxRate("");
       setItems([]);
       setIsSowLocked(false);
       setHasInvoices(false);
@@ -248,6 +265,8 @@ export function ProjectsClient({
         language,
         deadline: deadline || null,
         terms: terms || null,
+        taxName: taxName || null,
+        taxRate: taxRate ? Number(taxRate) : null,
         items: editingId ? undefined : items,
       };
 
@@ -407,6 +426,16 @@ export function ProjectsClient({
                     <Label htmlFor="terms">
                       Terms & Conditions (SOW/Contract)
                     </Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsTosEditorOpen(true)}
+                      className="h-6 px-2 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/50"
+                    >
+                      <Maximize2 className="w-3 h-3 mr-1" />
+                      Full Screen Edit
+                    </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     If provided, the client must digitally accept these terms
@@ -420,8 +449,11 @@ export function ProjectsClient({
                         if (!val) return;
                         const tpl = sowTemplates.find(t => t.id === val);
                         if (tpl) {
-                          if (terms && !confirm("This will overwrite your existing terms. Proceed?")) return;
-                          setTerms(tpl.content);
+                          if (terms) {
+                            setSowTemplateConfirm(tpl.content);
+                          } else {
+                            setTerms(tpl.content);
+                          }
                         }
                       }}
                     >
@@ -452,10 +484,15 @@ export function ProjectsClient({
                   )}
                 </div>
 
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {hasInvoices && (
+                    <div className="col-span-full p-3 bg-amber-50 text-amber-800 text-sm border border-amber-200 rounded-md">
+                      <strong>Note:</strong> Financial fields (Currency, Pricing, Tax, and Items) are locked because an invoice has already been generated. Delete the unpaid invoice to modify them.
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="currency">Currency</Label>
-                    <Select value={currency} onValueChange={setCurrency}>
+                    <Select value={currency} onValueChange={setCurrency} disabled={hasInvoices}>
                       <SelectTrigger>
                         <SelectValue placeholder="Currency" />
                       </SelectTrigger>
@@ -493,7 +530,7 @@ export function ProjectsClient({
                       }
                       onValueChange={(values) => setTotalPrice(values.value)}
                       required
-                      disabled={items.length > 0}
+                      disabled={items.length > 0 || hasInvoices}
                       placeholder={
                         items.length > 0 ? "Auto-calculated" : "1,000"
                       }
@@ -509,10 +546,37 @@ export function ProjectsClient({
                       id="dpAmount"
                       value={dpAmount}
                       onValueChange={(values) => setDpAmount(values.value)}
+                      disabled={hasInvoices}
                       placeholder="300"
                       thousandSeparator="."
                       decimalSeparator=","
                       prefix={currency === "IDR" ? "Rp " : "$ "}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="taxName">Tax Name {Number(taxRate) > 0 ? "" : "(Optional)"}</Label>
+                    <Input
+                      id="taxName"
+                      value={taxName}
+                      onChange={(e) => setTaxName(e.target.value)}
+                      placeholder="e.g. PPN, VAT"
+                      required={Number(taxRate) > 0}
+                      disabled={hasInvoices}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="taxRate">Tax Rate % (Optional)</Label>
+                    <NumericFormat
+                      id="taxRate"
+                      value={taxRate}
+                      onValueChange={(values) => setTaxRate(values.value)}
+                      disabled={hasInvoices}
+                      placeholder="e.g. 11"
+                      allowNegative={false}
                       className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                     />
                   </div>
@@ -544,6 +608,7 @@ export function ProjectsClient({
                             <button
                               type="button"
                               onClick={async () => {
+                                if (hasInvoices) return;
                                 if (editingId && item.id) {
                                   setItemRemoveConfirm({ idx, item });
                                 } else {
@@ -551,8 +616,9 @@ export function ProjectsClient({
                                   toast.success("Item removed");
                                 }
                               }}
-                              className="text-red-500 hover:text-red-700 text-[10px] font-bold px-1"
+                              className="text-red-500 hover:text-red-700 text-[10px] font-bold px-1 disabled:opacity-50"
                               title="Remove"
+                              disabled={hasInvoices}
                             >
                               ✕
                             </button>
@@ -562,11 +628,13 @@ export function ProjectsClient({
                     </div>
                   )}
 
-                  <div className="grid grid-cols-[3fr_1fr_1.5fr_1.5fr_auto] gap-2 items-start">
+                  <div className="flex flex-col md:grid md:grid-cols-[3fr_1fr_1.5fr_1.5fr_auto] gap-2 md:items-start items-stretch">
                     <Input
                       placeholder="Task description..."
                       value={newItemDesc}
                       onChange={(e) => setNewItemDesc(e.target.value)}
+                      disabled={hasInvoices}
+                      maxLength={120}
                       className="text-sm h-9"
                     />
                     <Input
@@ -574,11 +642,13 @@ export function ProjectsClient({
                       placeholder="Qty"
                       value={newItemQty}
                       onChange={(e) => setNewItemQty(e.target.value)}
+                      disabled={hasInvoices}
                       className="text-sm h-9"
                     />
                     <NumericFormat
                       value={newItemRate}
                       onValueChange={(values) => setNewItemRate(values.value)}
+                      disabled={hasInvoices}
                       placeholder="Rate"
                       thousandSeparator="."
                       decimalSeparator=","
@@ -587,6 +657,7 @@ export function ProjectsClient({
                     <NumericFormat
                       value={newItemPrice}
                       onValueChange={(values) => setNewItemPrice(values.value)}
+                      disabled={hasInvoices}
                       placeholder="Total Price"
                       thousandSeparator="."
                       decimalSeparator=","
@@ -596,7 +667,7 @@ export function ProjectsClient({
                       type="button"
                       variant="secondary"
                       size="sm"
-                      disabled={!newItemDesc || !newItemPrice}
+                      disabled={!newItemDesc || !newItemPrice || hasInvoices}
                       onClick={async () => {
                         if (editingId) {
                           try {
@@ -763,6 +834,91 @@ export function ProjectsClient({
                   </Button>
                 </DialogFooter>
               </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* SOW Template Overwrite Dialog */}
+          <ConfirmDialog
+            open={sowTemplateConfirm !== null}
+            onOpenChange={(open) => !open && setSowTemplateConfirm(null)}
+            title="Overwrite Terms?"
+            description="This will overwrite your existing terms and conditions. Do you want to proceed?"
+            confirmLabel="Overwrite"
+            onConfirm={() => {
+              if (sowTemplateConfirm) {
+                setTerms(sowTemplateConfirm);
+                setSowTemplateConfirm(null);
+              }
+            }}
+          />
+
+          {/* Full Screen TOS Editor Dialog */}
+          <Dialog open={isTosEditorOpen} onOpenChange={setIsTosEditorOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden bg-slate-50 dark:bg-zinc-950">
+              <div className="flex items-center justify-between px-6 py-4 border-b bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-lg border border-indigo-100 dark:border-indigo-500/20">
+                    <NotepadTextDashed className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-lg">Contract Editor</DialogTitle>
+                    <DialogDescription className="text-xs">
+                      Write your terms of service or scope of work using Markdown.
+                    </DialogDescription>
+                  </div>
+                </div>
+                {/* Menambahkan mr-8 agar tidak menabrak tombol X (close) bawaan Dialog */}
+                <div className="flex bg-slate-100 dark:bg-zinc-800/50 p-1 rounded-lg border border-slate-200 dark:border-zinc-700/50 mr-8 sm:mr-10">
+                  <button
+                    onClick={() => setIsTosPreview(false)}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${!isTosPreview
+                      ? 'bg-white dark:bg-zinc-700 shadow-sm text-slate-900 dark:text-zinc-100'
+                      : 'text-slate-500 hover:text-slate-700 dark:hover:text-zinc-300'}`}
+                  >
+                    Write
+                  </button>
+                  <button
+                    onClick={() => setIsTosPreview(true)}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${isTosPreview
+                      ? 'bg-white dark:bg-zinc-700 shadow-sm text-slate-900 dark:text-zinc-100'
+                      : 'text-slate-500 hover:text-slate-700 dark:hover:text-zinc-300'}`}
+                  >
+                    Preview
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-hidden flex flex-col items-stretch min-h-[50vh]">
+                {isTosPreview ? (
+                  <div className="flex-1 overflow-y-auto p-6 lg:px-12 bg-slate-50 dark:bg-zinc-950">
+                    <div className="prose prose-sm md:prose-base prose-slate dark:prose-invert max-w-3xl mx-auto prose-headings:font-semibold prose-a:text-indigo-600 dark:prose-a:text-indigo-400 text-slate-700 dark:text-zinc-300 leading-relaxed text-justify">
+                      {terms ? (
+                        <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                          {terms}
+                        </ReactMarkdown>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-40 opacity-50">
+                          <span className="italic">No content provided yet.</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <Textarea
+                    className="flex-1 font-mono text-sm leading-relaxed p-6 rounded-none border-0 focus-visible:ring-0 resize-none bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-200"
+                    value={terms}
+                    disabled={isSowLocked}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setTerms(e.target.value)}
+                    placeholder="Write your contract using Markdown here..."
+                  />
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 px-6 py-4 border-t bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800">
+                <Button variant="outline" onClick={() => setIsTosEditorOpen(false)}>
+                  Done
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         </div>

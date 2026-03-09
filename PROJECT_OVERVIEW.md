@@ -161,7 +161,14 @@ The full MVP through V1.4 features have been successfully implemented:
     - **Shared Component Architecture:** Built `EmailLayout.tsx` as a shared wrapper with reusable sub-components (`StatusBadge`, `InvoiceCard`, `DetailRow`, `CtaButton`). All email types (`InvoiceEmail`, `ReminderEmail`, `PaymentSuccessEmail`) extend this layout for design consistency.
     - **Dynamic Company Settings:** Email header, sender `from:` field, and footer support email now read from the `Settings` database table (`companyName`, `companyLogoUrl`, `companyEmail`). If a logo URL is set, it renders as an image in the header; otherwise, the company name is displayed as text.
     - **Bilingual Email Templates (ID/EN):** All email components accept a `lang` prop sourced from `project.language`. Greeting text, body copy, status badges (e.g., BELUM BAYAR / UNPAID), card labels (Tagihan Kepada / Billed To), CTA buttons (Lihat Invoice & Bayar / View Invoice & Pay), and email subject lines are fully translated.
-    - **Unified Email Types:** 7 email types consolidated into 3 React Email components: `InvoiceEmail` (manual + auto-generated), `ReminderEmail` (pre_due, overdue_d1, overdue_d3, late_fee), and `PaymentSuccessEmail` (with optional SOW PDF attachment).
+    - Unified Email Types: 7 email types consolidated into 3 React Email components: `InvoiceEmail` (manual + auto-generated), `ReminderEmail` (pre_due, overdue_d1, overdue_d3, late_fee), and `PaymentSuccessEmail` (with optional SOW PDF attachment).
+
+26. **Flexible Tax & Financial Protections (Sprint 12 Patch):**
+    - **Single Flexible Tax:** Projects now support an optional `taxName` (e.g., PPN, VAT) and `taxRate` (percentage). The tax amount is dynamically calculated and added to the Total Price gracefully.
+    - **Financial Field Locks:** Once an invoice is generated for a project, critical financial fields (`Currency`, `Language`, `Total Price`, `DP Amount`) and Project Scope Items are strictly locked via UI disablers and robust API validation (`403 Forbidden`). Unpaid invoices must be deleted to unlock modifications.
+    - **Invoice Deletion UI:** Invoices list (`/invoices`) now features a `Delete` action for Unpaid status invoices, guarded by a custom `ConfirmDialog`.
+    - **Mobile Layout Polish:** Refactored line item grids and financial metadata containers into vertically stacked flexible/responsive grids on mobile displays for optimal data entry and readability.
+    - **SOW Full-Screen Editor:** Added a dedicated "Full Screen Edit" modal for Terms & Conditions (SOW) on the Project form, complete with side-by-side Markdown writing and live rendering preview logic.
 
 ## Upcoming: Sprint 13 (V2 Feature Expansion)
 The next development cycle will focus on expanding core functionality to support a wider array of business models and improving overall client journey Quality of Life. Potential candidates for Sprint 13:
@@ -171,7 +178,6 @@ The next development cycle will focus on expanding core functionality to support
 3. **File Attachments (S3/R2 Integration)** — Enabling a "Deliverables" section on the Project board where agencies can upload result files (ZIPs, Videos) that unlock for the client only after payment is complete.
 4. **Partial Payments & Milestones** — Expanding beyond DP & Balance to support multi-stage payment terms (e.g., 30% Design, 40% Develop, 30% Launch).
 5. **Time-Tracking & Hourly Billing** — An in-app stopwatch linked to projects that automatically compiles hours worked into billable invoice line-items at the end of the month.
-6. **Native Tax & Discount Calculation** — Adding dynamic percentage fields for corporate VAT (PPN 11%) or loyalty discounts directly on the invoice creation screen.
 
 ## Future Development Plan (V2 & Beyond)
 

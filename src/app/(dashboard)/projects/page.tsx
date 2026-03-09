@@ -22,6 +22,7 @@ export default async function ProjectsPage() {
     deadline: p.deadline?.toISOString() || null,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
+    taxRate: p.taxRate?.toString() || null,
     client: {
       ...p.client,
       createdAt: p.client.createdAt.toISOString(),

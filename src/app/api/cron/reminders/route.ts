@@ -89,12 +89,17 @@ export async function GET(request: Request) {
           : "http://localhost:3000");
       const invoiceLink = `${baseUrl}/invoices/${invoice.id}`;
 
+      const invoiceAmountBase = Number(invoice.amount);
+      const taxRate = invoice.project.taxRate ? Number(invoice.project.taxRate) : 0;
+      const grandTotal = invoiceAmountBase + (invoiceAmountBase * (taxRate / 100));
+
       if (reminderType === "late_fee") {
-        const currentAmount = Number(invoice.amount);
+        const currentAmount = invoiceAmountBase;
         const lateFee = currentAmount * 0.05;
         const newAmount = currentAmount + lateFee;
+        const newGrandTotal = newAmount + (newAmount * (taxRate / 100));
 
-        lateFeeAmountStr = formatter.format(newAmount);
+        lateFeeAmountStr = formatter.format(newGrandTotal);
 
         // Send reminder email first before updating DB
         const emailResult = await sendReminderEmail({
@@ -102,7 +107,7 @@ export async function GET(request: Request) {
           clientName: invoice.project.client.name,
           projectTitle: invoice.project.title,
           invoiceId: invoice.id,
-          amountStr: formatter.format(Number(invoice.amount)),
+          amountStr: formatter.format(grandTotal),
           invoiceLink,
           reminderType,
           lateFeeAmountStr,
@@ -136,7 +141,7 @@ export async function GET(request: Request) {
           clientName: invoice.project.client.name,
           projectTitle: invoice.project.title,
           invoiceId: invoice.id,
-          amountStr: formatter.format(Number(invoice.amount)),
+          amountStr: formatter.format(grandTotal),
           invoiceLink,
           reminderType,
           lateFeeAmountStr,

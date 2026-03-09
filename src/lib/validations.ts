@@ -9,6 +9,8 @@ export const projectSchema = z.object({
   language: z.enum(["id", "en"]).default("id"),
   deadline: z.string().nullable().optional(),
   terms: z.string().nullable().optional(),
+  taxName: z.string().nullable().optional(),
+  taxRate: z.coerce.number().nonnegative().optional().nullable(),
   items: z
     .array(
       z.object({
@@ -19,6 +21,14 @@ export const projectSchema = z.object({
       }),
     )
     .optional(),
+}).superRefine((data, ctx) => {
+  if (data.taxRate && data.taxRate > 0 && (!data.taxName || data.taxName.trim() === "")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["taxName"],
+      message: "Tax Name is required when Tax Rate is greater than 0",
+    });
+  }
 });
 
 export const invoiceSchema = z.object({

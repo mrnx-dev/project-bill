@@ -90,6 +90,8 @@ export async function POST(request: Request) {
     };
 
     projectData.terms = data.terms ?? null;
+    projectData.taxName = data.taxName ?? null;
+    projectData.taxRate = data.taxRate ?? null;
 
     if (data.items && data.items.length > 0) {
       projectData.items = {

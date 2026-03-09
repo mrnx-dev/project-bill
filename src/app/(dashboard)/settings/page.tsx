@@ -7,13 +7,6 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Form,
   FormControl,
   FormDescription,
@@ -23,7 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2, Building2, MapPin, Mail, ImageIcon, Phone, Target } from "lucide-react";
+import { Loader2, Building2, MapPin, Mail, ImageIcon, Phone } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
@@ -53,8 +46,6 @@ export default function SettingsPage() {
       companyWhatsApp: "",
     },
   });
-
-  const { isSubmitting } = form.formState;
 
   // Load existing settings
   useEffect(() => {

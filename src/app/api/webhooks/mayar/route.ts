@@ -74,6 +74,11 @@ export async function POST(request: Request) {
               pdfBuffer = await generateSowPdfBuffer(updatedInvoice.id);
             }
 
+            const invoiceAmount = Number(updatedInvoice.amount);
+            const taxRate = project.taxRate ? Number(project.taxRate) : 0;
+            const taxAmount = invoiceAmount * (taxRate / 100);
+            const grandTotal = invoiceAmount + taxAmount;
+
             const formatCurrency = new Intl.NumberFormat(
               project.currency === "IDR" ? "id-ID" : "en-US",
               {
@@ -81,7 +86,7 @@ export async function POST(request: Request) {
                 currency: project.currency || "IDR",
                 minimumFractionDigits: 0,
               },
-            ).format(Number(updatedInvoice.amount));
+            ).format(grandTotal);
 
             const baseUrl = process.env.APP_URL || "http://localhost:3000";
             const invoiceDetailUrl = `${baseUrl}/invoices/${updatedInvoice.id}`;

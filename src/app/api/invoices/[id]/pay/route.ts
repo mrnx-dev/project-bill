@@ -55,9 +55,14 @@ export async function POST(
       }
     }
 
+    const invoiceAmount = Number(invoice.amount);
+    const taxRate = invoice.project.taxRate ? Number(invoice.project.taxRate) : 0;
+    const taxAmount = invoiceAmount * (taxRate / 100);
+    const grandTotal = invoiceAmount + taxAmount;
+
     // Prepare payload for Mayar API `create payment link`
     const mayarRes = await createPaymentLink({
-      amount: Math.round(Number(invoice.amount)),
+      amount: Math.round(grandTotal),
       customerName: invoice.project.client.name,
       customerEmail: invoice.project.client.email || "client@company.com",
       customerMobile: invoice.project.client.phone || "081234567890",

@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, Trash2 } from "lucide-react";
 import { sendInvoiceEmail } from "@/app/actions/send-invoice";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -33,6 +33,8 @@ export function InvoicesClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [toggleConfirmId, setToggleConfirmId] = useState<{ id: string, currentStatus: string } | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const formatCurrency = (amount: string | number, currencyStr: string) => {
     return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
@@ -62,6 +64,26 @@ export function InvoicesClient({
     } catch (e) {
       console.error(e);
       setInvoices(initialInvoices); // Revert on error
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setInvoices(invoices.filter((inv) => inv.id !== id));
+        toast.success("Invoice deleted");
+        setDeleteConfirmId(null);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        toast.error(errData.error || "Failed to delete invoice");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Network error while deleting");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -161,7 +183,7 @@ export function InvoicesClient({
                   <span className="font-semibold text-foreground">{formatCurrency(Number(inv.amount), inv.project.currency || "IDR")}</span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/50">
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/50">
                   <Button
                     variant="outline"
                     size="sm"
@@ -199,6 +221,16 @@ export function InvoicesClient({
                     >
                       View
                     </Link>
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="w-full px-1 text-xs"
+                    onClick={() => setDeleteConfirmId(inv.id)}
+                    disabled={inv.status === "paid"}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
                   </Button>
                 </div>
               </CardContent>
@@ -298,6 +330,16 @@ export function InvoicesClient({
                           View
                         </Link>
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                        onClick={() => setDeleteConfirmId(inv.id)}
+                        disabled={inv.status === "paid"}
+                        title="Delete invoice"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -317,6 +359,18 @@ export function InvoicesClient({
           if (toggleConfirmId) {
             toggleStatus(toggleConfirmId.id, toggleConfirmId.currentStatus);
             setToggleConfirmId(null);
+          }
+        }}
+      />
+      <ConfirmDialog
+        open={!!deleteConfirmId}
+        onOpenChange={(open) => !open && setDeleteConfirmId(null)}
+        title="Delete Invoice?"
+        description="Are you sure you want to delete this invoice? This action cannot be undone."
+        confirmLabel={isDeleting ? "Deleting..." : "Delete"}
+        onConfirm={() => {
+          if (deleteConfirmId) {
+            handleDelete(deleteConfirmId);
           }
         }}
       />

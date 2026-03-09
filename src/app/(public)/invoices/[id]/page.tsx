@@ -109,6 +109,12 @@ export default async function InvoiceViewPage(props: {
 
   const hasQtyRate = invoice.project.items?.some(i => i.quantity !== null && i.rate !== null);
 
+  const invoiceAmount = Number(invoice.amount);
+  const taxRate = invoice.project.taxRate ? Number(invoice.project.taxRate) : 0;
+  const taxName = invoice.project.taxName || t.tax;
+  const taxAmount = invoiceAmount * (taxRate / 100);
+  const grandTotal = invoiceAmount + taxAmount;
+
   return (
     <div className="light-theme min-h-screen bg-neutral-100 py-10 print:py-0 print:bg-white flex justify-center flex-col items-center gap-6">
       {invoice.status !== "paid" && <RealtimeInvoicePoller invoiceId={invoice.id} />}
@@ -363,22 +369,27 @@ export default async function InvoiceViewPage(props: {
                 <span>{t.subtotal}</span>
                 <span>
                   {formatCurrency(
-                    invoice.amount.toString(),
+                    invoiceAmount,
                     invoice.project.currency || "IDR",
                   )}
                 </span>
               </div>
-              <div className="flex justify-between py-2 text-sm text-slate-600 border-b border-slate-200">
-                <span>{t.tax} (0%)</span>
-                <span>
-                  {formatCurrency(0, invoice.project.currency || "IDR")}
-                </span>
-              </div>
-              <div className="flex justify-between py-4 text-xl font-bold text-slate-900 border-b-4 border-slate-800">
+              {taxRate > 0 && (
+                <div className="flex justify-between py-2 text-sm text-slate-600 border-b border-slate-200">
+                  <span>{taxName} ({taxRate}%)</span>
+                  <span>
+                    {formatCurrency(
+                      taxAmount,
+                      invoice.project.currency || "IDR"
+                    )}
+                  </span>
+                </div>
+              )}
+              <div className={`flex justify-between py-4 text-xl font-bold text-slate-900 border-b-4 border-slate-800 ${taxRate === 0 ? 'border-t border-slate-200' : ''}`}>
                 <span>{t.totalDue}</span>
                 <span>
                   {formatCurrency(
-                    invoice.amount.toString(),
+                    grandTotal,
                     invoice.project.currency || "IDR",
                   )}
                 </span>
@@ -402,13 +413,13 @@ export default async function InvoiceViewPage(props: {
               >
                 <PayButton
                   invoiceId={invoice.id}
-                  amountStr={formatCurrency(invoice.amount.toString(), "IDR")}
+                  amountStr={formatCurrency(grandTotal, "IDR")}
                 />
               </TermsAgreement>
             ) : (
               <PayButton
                 invoiceId={invoice.id}
-                amountStr={formatCurrency(invoice.amount.toString(), "IDR")}
+                amountStr={formatCurrency(grandTotal, "IDR")}
               />
             ))}
           <div className="text-center mt-8 text-xs text-slate-400 border-t pt-4">
