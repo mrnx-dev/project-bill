@@ -23,10 +23,8 @@ export async function GET(request: Request) {
       args.skip = (page - 1) * limit;
       args.take = limit;
 
-      const [clients, total] = await Promise.all([
-        prisma.client.findMany(args),
-        prisma.client.count({ where: { isArchived: false } }),
-      ]);
+      const total = await prisma.client.count({ where: { isArchived: false } });
+      const clients = await prisma.client.findMany(args);
 
       return NextResponse.json({
         data: clients,

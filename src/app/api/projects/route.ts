@@ -23,10 +23,8 @@ export async function GET(request: Request) {
       args.skip = (page - 1) * limit;
       args.take = limit;
 
-      const [projects, total] = await Promise.all([
-        prisma.project.findMany(args),
-        prisma.project.count(),
-      ]);
+      const total = await prisma.project.count();
+      const projects = await prisma.project.findMany(args);
 
       return NextResponse.json({
         data: projects,

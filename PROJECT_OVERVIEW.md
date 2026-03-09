@@ -10,9 +10,9 @@ ProjectBill is a web-based, self-hosted invoicing and project tracking applicati
 - **Email:** React Email + Resend
 - **Language:** TypeScript
 
-## Current State: V1.4 Complete
+## Current State: V1.5 Complete
 
-The full MVP through V1.4 features have been successfully implemented:
+The full MVP through V1.5 features have been successfully implemented:
 
 1. **Infrastructure & Core Entity (Phase 1-2):**
    - Next.js 15+ App Router, Tailwind CSS, Shadcn UI setup.
@@ -170,8 +170,28 @@ The full MVP through V1.4 features have been successfully implemented:
     - **Mobile Layout Polish:** Refactored line item grids and financial metadata containers into vertically stacked flexible/responsive grids on mobile displays for optimal data entry and readability.
     - **SOW Full-Screen Editor:** Added a dedicated "Full Screen Edit" modal for Terms & Conditions (SOW) on the Project form, complete with side-by-side Markdown writing and live rendering preview logic.
 
-## Upcoming: Sprint 13 (V2 Feature Expansion)
-The next development cycle will focus on expanding core functionality to support a wider array of business models and improving overall client journey Quality of Life. Potential candidates for Sprint 13:
+27. **API Key Security Hardening (Sprint 13):**
+    - **AES-256-GCM Encryption:** Sensitive API keys (`resendApiKey`, `mayarApiKey`, `mayarWebhookSecret`) are now encrypted at rest in the database using AES-256-GCM via a dedicated `src/lib/crypto.ts` utility. Requires `ENCRYPTION_KEY` environment variable (64-char hex).
+    - **Masked API Responses:** The `GET /api/settings` endpoint returns only masked values (e.g., `****abcd`) for sensitive fields. The backend detects unchanged masked values on `PUT` to avoid unnecessary re-encryption.
+    - **Audit Logging:** An `AuditLog` model tracks all changes to sensitive API key fields, recording the user, action, field name, and masked old/new values for compliance and forensic review.
+    - **Legacy Compatibility:** The `decrypt()` function gracefully handles pre-encryption plaintext values, ensuring a smooth migration without data loss.
+
+28. **Bug Fixes & Stability (Sprint 13):**
+    - **Postgres Concurrency Fix:** Replaced `Promise.all([findMany, count])` with sequential `await` calls in paginated API routes (`/api/invoices`, `/api/projects`, `/api/clients`) to resolve the `pg@9.0` deprecation warning about concurrent `client.query()` calls.
+    - **Hydration Mismatch Fix:** Added `suppressHydrationWarning` to the `<body>` tag in `layout.tsx` to suppress DarkReader browser extension injecting mismatched SVG attributes during hydration.
+    - **Taskboard Button Color:** Added explicit `text-white` to the "Generate Invoice" confirmation button in the completion dialog for proper dark mode visibility.
+    - **Unified Invoice Email Pipeline:** The `/api/invoices/generate` route now calls the centralized `sendInvoiceEmail` Server Action directly (instead of duplicated inline logic), ensuring invoice number, due date, and subject are always consistent across all email dispatch paths.
+    - **Default Due Date:** Invoices created from the invoice table without a specified due date now default to `today + 7 days` instead of `null`.
+    - **Email Subject Sync:** Invoice email subjects now include the invoice number and follow a bilingual pattern: `Invoice [INV-XXX] untuk [Project] - Diperlukan Tindakan` (ID) / `Invoice [INV-XXX] for [Project] - Action Required` (EN).
+    - **Email Logo Styling:** Added `borderRadius: 8px` to the company logo `<Img>` in `EmailLayout.tsx` for a more modern appearance.
+
+29. **Mobile-First Scope Dialog (Sprint 13):**
+    - **Responsive Redesign:** The Project Details / Scope Items dialog (`project-details-dialog.tsx`) has been redesigned with a mobile-first approach. On small screens, items display as vertically stacked cards with clear labels; on desktop (≥`md`), they revert to a clean tabular row layout.
+    - **Touch-Friendly Actions:** The delete button is always visible on mobile (no hover dependency), and input fields are taller (`h-9`) with better touch targets.
+    - **Scrollable Content:** Added `max-h-[60vh] overflow-y-auto` to the items container to prevent the dialog from overflowing on screens with many scope items.
+
+## Upcoming: Sprint 14 (V2 Feature Expansion)
+The next development cycle will focus on expanding core functionality to support a wider array of business models and improving overall client journey Quality of Life. Potential candidates for Sprint 14:
 
 1. **Client Portal (Multitenant Dashboards)** — A dedicated login area or permanent token link for clients to view all their past invoices, project status, and download SOWs from a single unified screen.
 2. **Recurring Invoices (Retainers)** — Auto-generate and send monthly invoices for retainer-based projects via scheduled Cron jobs.
@@ -181,7 +201,7 @@ The next development cycle will focus on expanding core functionality to support
 
 ## Future Development Plan (V2 & Beyond)
 
-All planned features for V1.4 have been completed.
+All planned features for V1.5 have been completed.
 - **Multi-Currency Payment Gateway** — Currently disabled. If international clients are targeted, re-enable USD in `projects-client.tsx` and integrate Stripe Checkout for USD invoices alongside Mayar (IDR).
 ## Notes for the Next Agent
 - All layout components and global CSS are already set up.
@@ -190,6 +210,8 @@ All planned features for V1.4 have been completed.
 - Do NOT use `url` inside the `datasource` block in `schema.prisma`. This project uses Prisma 7, and the `url` must be defined inside `prisma.config.ts`.
 - Standalone Node scripts (e.g. `scripts/reset-password.js`) must use the `pg` + `@prisma/adapter-pg` pattern to connect to the database, matching `src/lib/prisma.ts`.
 - USD currency is temporarily disabled. The schema and logic still support it — re-enable the `SelectItem` in `projects-client.tsx` and uncomment USD chart data in `page.tsx` (dashboard) when ready.
+- **API Key Encryption:** All sensitive keys are encrypted using AES-256-GCM. Requires `ENCRYPTION_KEY` in `.env`. Use `crypto.ts` helpers (`encrypt`, `decrypt`, `maskSecret`, `isMaskedValue`) for any new sensitive fields.
+- **Avoid Prisma `Promise.all`:** Do NOT use `Promise.all` with multiple Prisma queries sharing the same connection — use sequential `await` calls to avoid the `pg@9.0` concurrency deprecation.
 - All payments are handled exclusively via **Mayar.id** (IDR). Manual bank transfer has been fully removed.
 - **Email components** live in `src/emails/`. All templates extend `EmailLayout.tsx` for shared styling. Adding a new email type: create a component in `src/emails/`, add a sender function in `src/lib/email.ts` that calls `render()` + `resend.emails.send()`.
 - To preview and develop email components locally, run: `npx react-email dev --dir src/emails --port 3333`.

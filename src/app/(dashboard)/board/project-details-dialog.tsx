@@ -151,12 +151,12 @@ export function ProjectDetailsDialog({
           </div>
         )}
 
-        <div className="flex flex-col gap-4 py-4">
-          <div className="grid grid-cols-[1fr_60px_100px_110px] gap-3 items-center text-sm font-semibold text-muted-foreground pb-2 border-b px-2">
-            <span>Description</span>
-            <span className="text-right">Qty</span>
-            <span className="text-right">Rate</span>
-            <span className="text-right">Amount</span>
+        <div className="flex flex-col gap-4 py-4 max-h-[60vh] overflow-y-auto px-1 -mx-1">
+          <div className="hidden md:flex gap-3 items-center text-sm font-semibold text-muted-foreground pb-2 border-b px-2">
+            <span className="flex-1">Description</span>
+            <span className="w-[60px] text-right">Qty</span>
+            <span className="w-[100px] text-right">Rate</span>
+            <span className="w-[110px] text-right">Amount</span>
           </div>
 
           {items.length === 0 ? (
@@ -164,32 +164,57 @@ export function ProjectDetailsDialog({
               No items outlined yet.
             </p>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2 md:gap-3">
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className="grid grid-cols-[1fr_60px_100px_110px] gap-3 items-center text-sm group px-2"
+                  className="flex flex-col md:flex-row gap-2 md:gap-3 md:items-center text-sm group px-2 py-3 md:py-1 border border-slate-100 dark:border-slate-800 md:border-transparent rounded-lg md:rounded-none bg-slate-50/50 md:bg-transparent dark:bg-slate-900/50"
                 >
-                  <span className="truncate" title={item.description}>{item.description}</span>
-                  <span className="text-right text-muted-foreground">
-                    {item.quantity ? item.quantity : "-"}
-                  </span>
-                  <span className="text-right text-muted-foreground truncate" title={item.rate ? formatCurrency(item.rate) : "-"}>
-                    {item.rate ? formatCurrency(item.rate) : "-"}
-                  </span>
-                  <div className="flex items-center justify-end gap-1">
-                    <span className="font-medium text-right">
-                      {formatCurrency(item.price)}
+                  <div className="flex justify-between items-start flex-1">
+                    <span className="font-medium md:font-normal line-clamp-2 md:truncate md:flex-1 text-slate-900 dark:text-slate-100" title={item.description}>
+                      {item.description}
                     </span>
                     {!hasInvoices && (
                       <button
                         onClick={() => setDeleteItemId(item.id)}
-                        className="text-red-500 hover:text-red-700 text-xs font-semibold px-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="text-red-500 hover:text-red-700 text-xs font-semibold px-2 md:hidden"
                         title="Remove Item"
                       >
                         ✕
                       </button>
                     )}
+                  </div>
+
+                  <div className="flex justify-between items-center text-muted-foreground text-xs md:text-sm mt-1 md:mt-0">
+                    <div className="flex flex-wrap gap-x-4 md:hidden">
+                      {item.quantity && <span>Qty: {item.quantity}</span>}
+                      {item.rate && <span>Rate: {formatCurrency(item.rate)}</span>}
+                    </div>
+
+                    <div className="hidden md:flex gap-3 items-center">
+                      <span className="w-[60px] text-right shrink-0">
+                        {item.quantity ? item.quantity : "-"}
+                      </span>
+                      <span className="w-[100px] text-right truncate shrink-0" title={item.rate ? formatCurrency(item.rate) : "-"}>
+                        {item.rate ? formatCurrency(item.rate) : "-"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 md:w-[110px] md:justify-end text-foreground shrink-0">
+                      <span className="md:hidden text-muted-foreground">Amount:</span>
+                      <span className="font-semibold md:font-medium text-right text-emerald-600 dark:text-emerald-400 md:text-foreground">
+                        {formatCurrency(item.price)}
+                      </span>
+                      {!hasInvoices && (
+                        <button
+                          onClick={() => setDeleteItemId(item.id)}
+                          className="text-red-500 hover:text-red-700 text-xs font-semibold px-2 opacity-0 group-hover:opacity-100 transition-opacity hidden md:block"
+                          title="Remove Item"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -200,53 +225,52 @@ export function ProjectDetailsDialog({
 
           {!hasInvoices && (
             <div className="flex flex-col gap-3 bg-muted/30 p-3 rounded-lg border">
-              <span className="text-sm font-medium">
-                Add Change Request / Deliverable
-              </span>
-              <div className="grid grid-cols-[1fr_60px_100px_110px] gap-2">
+              <span className="text-sm font-medium">Add Change Request / Deliverable</span>
+              <div className="flex flex-col md:flex-row gap-2 md:gap-3">
                 <Input
                   placeholder="Task desc..."
                   value={newItemDesc}
                   onChange={(e) => setNewItemDesc(e.target.value)}
-                  className="text-sm h-8"
+                  className="text-sm h-9 md:h-8 flex-1"
                 />
-                <Input
-                  type="number"
-                  placeholder="Qty"
-                  value={newItemQty}
-                  onChange={(e) => setNewItemQty(e.target.value)}
-                  className="text-sm h-8 px-2"
-                  min="0"
-                  step="0.01"
-                />
-                <NumericFormat
-                  value={newItemRate}
-                  onValueChange={(values) => setNewItemRate(values.value)}
-                  placeholder="Rate"
-                  thousandSeparator="."
-                  decimalSeparator=","
-                  className="h-8 rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                />
-                <NumericFormat
-                  value={computedPrice}
-                  onValueChange={(values) => {
-                    // Prevent manual override if computed from qty*rate
-                    if (!newItemQty && !newItemRate) {
-                      setNewItemPrice(values.value);
-                    }
-                  }}
-                  disabled={!!(newItemQty && newItemRate)}
-                  placeholder="Amount"
-                  thousandSeparator="."
-                  decimalSeparator=","
-                  className="h-8 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-800"
-                />
+                <div className="flex gap-2 w-full md:w-auto">
+                  <Input
+                    type="number"
+                    placeholder="Qty"
+                    value={newItemQty}
+                    onChange={(e) => setNewItemQty(e.target.value)}
+                    className="text-sm h-9 md:h-8 w-[70px] md:w-[60px] px-2 shrink-0"
+                    min="0"
+                    step="0.01"
+                  />
+                  <NumericFormat
+                    value={newItemRate}
+                    onValueChange={(values) => setNewItemRate(values.value)}
+                    placeholder="Rate"
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    className="h-9 md:h-8 w-full md:w-[100px] shrink rounded-md border border-input bg-transparent px-2 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                  <NumericFormat
+                    value={computedPrice}
+                    onValueChange={(values) => {
+                      if (!newItemQty && !newItemRate) {
+                        setNewItemPrice(values.value);
+                      }
+                    }}
+                    disabled={!!(newItemQty && newItemRate)}
+                    placeholder="Amount"
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    className="h-9 md:h-8 w-full md:w-[110px] shrink rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-800"
+                  />
+                </div>
               </div>
               <Button
                 size="sm"
                 disabled={isSaving || !newItemDesc || !computedPrice}
                 onClick={handleAddItem}
-                className="w-full text-xs h-8 mt-1"
+                className="w-full text-xs h-9 md:h-8 mt-1"
               >
                 {isSaving ? "Adding..." : "+ Add to Scope"}
               </Button>

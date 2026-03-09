@@ -9,7 +9,8 @@ export async function POST(request: Request) {
     const payload = await request.text();
     const signature = request.headers.get("x-callback-token") || request.headers.get("x-mayar-signature") || request.headers.get("authorization");
 
-    if (!signature || !verifyMayarWebhook(payload, signature)) {
+    const isValidSignature = await verifyMayarWebhook(payload, signature || "");
+    if (!signature || !isValidSignature) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 

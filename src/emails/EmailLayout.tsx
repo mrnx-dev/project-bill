@@ -73,7 +73,7 @@ export const EmailLayout = ({ preview, company, lang = "id", children }: EmailLa
                                 src={c.companyLogoUrl}
                                 alt={c.companyName}
                                 height={40}
-                                style={{ margin: "0 auto 8px auto", display: "block" }}
+                                style={{ margin: "0 auto 8px auto", display: "block", borderRadius: "8px" }}
                             />
                         ) : (
                             <Heading

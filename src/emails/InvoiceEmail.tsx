@@ -1,5 +1,4 @@
 import { Text } from "@react-email/components";
-import * as React from "react";
 import { EmailLayout, InvoiceCard, CtaButton, DetailRow } from "./EmailLayout";
 import type { CompanyInfo, Language } from "./EmailLayout";
 
@@ -65,7 +64,7 @@ export const InvoiceEmail = ({
         lang={lang}
         extraRows={
           <>
-            <DetailRow label="No. Invoice" value={`#${invoiceId.split("-")[0]}`} />
+            <DetailRow label="No. Invoice" value={`#${invoiceId}`} />
             <DetailRow label={lang === "id" ? "Jatuh Tempo" : "Due Date"} value={formattedDate} />
           </>
         }

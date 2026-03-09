@@ -87,13 +87,16 @@ model User {
 }
 
 model Settings {
-  id             String   @id @default("global") // Enforce single row
-  companyName    String   @default("ProjectBill Consulting")
-  companyAddress String?
-  companyEmail    String?
-  companyLogoUrl  String?
-  companyWhatsApp String?
-  updatedAt       DateTime @updatedAt
+  id                 String   @id @default("global") // Enforce single row
+  companyName        String   @default("ProjectBill Consulting")
+  companyAddress     String?
+  companyEmail       String?
+  companyLogoUrl     String?
+  companyWhatsApp    String?
+  resendApiKey       String?
+  mayarApiKey        String?
+  mayarWebhookSecret String?
+  updatedAt          DateTime @updatedAt
 }
 
 model SOWTemplate {
@@ -102,4 +105,17 @@ model SOWTemplate {
   content   String   @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String   // e.g., "settings.update"
+  field     String   // e.g., "mayarApiKey"
+  oldValue  String?  // masked value
+  newValue  String?  // masked value
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }

@@ -3,12 +3,8 @@ import { z } from "zod";
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   AUTH_SECRET: z.string().min(1, "AUTH_SECRET is required"),
+  ENCRYPTION_KEY: z.string().length(64, "ENCRYPTION_KEY must be a 64-char hex string (32 bytes)"),
   APP_URL: z.string().optional(),
-  RESEND_API_KEY: z.string().optional(),
-  RESEND_FROM_EMAIL: z.string().optional(),
-  MAYAR_API_URL: z.string().optional(),
-  MAYAR_API_KEY: z.string().optional(),
-  MAYAR_WEBHOOK_SECRET: z.string().optional(),
   CRON_SECRET: z.string().optional(),
 });
 

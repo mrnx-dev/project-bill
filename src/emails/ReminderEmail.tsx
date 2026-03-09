@@ -1,5 +1,4 @@
 import { Text } from "@react-email/components";
-import * as React from "react";
 import { EmailLayout, InvoiceCard, CtaButton, DetailRow } from "./EmailLayout";
 import type { CompanyInfo, Language } from "./EmailLayout";
 
@@ -176,7 +175,7 @@ export const ReminderEmail = ({
                 projectName={projectName}
                 lang={lang}
                 extraRows={
-                    <DetailRow label={lang === "id" ? "No. Invoice" : "Invoice No."} value={`#${invoiceId.split("-")[0]}`} />
+                    <DetailRow label={lang === "id" ? "No. Invoice" : "Invoice No."} value={`#${invoiceId}`} />
                 }
             />
 

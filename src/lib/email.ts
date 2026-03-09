@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { prisma } from "@/lib/prisma";
+import { decrypt } from "@/lib/crypto";
 import { InvoiceEmail } from "@/emails/InvoiceEmail";
 import { ReminderEmail } from "@/emails/ReminderEmail";
 import { PaymentSuccessEmail } from "@/emails/PaymentSuccessEmail";
@@ -9,11 +10,13 @@ import type { CompanyInfo, Language } from "@/emails/EmailLayout";
 
 export type { ReminderType };
 
-const resend = new Resend(process.env.RESEND_API_KEY || "re_mock");
-
 // ── Fetch Company Settings ────────────────────────────────────
 
-async function getCompanyInfo(): Promise<CompanyInfo> {
+export interface CompanySettings extends CompanyInfo {
+  resendApiKey?: string;
+}
+
+export async function getCompanySettings(): Promise<CompanySettings> {
   try {
     const settings = await prisma.settings.findUnique({
       where: { id: "global" },
@@ -23,15 +26,20 @@ async function getCompanyInfo(): Promise<CompanyInfo> {
       companyEmail: settings?.companyEmail || null,
       companyLogoUrl: settings?.companyLogoUrl || null,
       companyAddress: settings?.companyAddress || null,
+      resendApiKey: settings?.resendApiKey ? (decrypt(settings.resendApiKey) || undefined) : undefined,
     };
   } catch {
-    return { companyName: "ProjectBill", companyEmail: null, companyLogoUrl: null, companyAddress: null };
+    return {
+      companyName: "ProjectBill",
+      companyEmail: null,
+      companyLogoUrl: null,
+      companyAddress: null,
+      resendApiKey: undefined,
+    };
   }
 }
 
 function getSenderFrom(companyName: string): string {
-  const fromDomain = process.env.RESEND_FROM_EMAIL;
-  if (fromDomain) return `${companyName} <noreply@${fromDomain}>`;
   return `${companyName} <noreply@projectbill.mrndev.me>`;
 }
 
@@ -47,14 +55,17 @@ export interface SendInvoiceEmailParams {
 }
 
 export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn("No RESEND_API_KEY found. Mocking email delivery.");
+  const settings = await getCompanySettings();
+
+  if (!settings.resendApiKey) {
+    console.warn("No RESEND_API_KEY found in DB. Mocking email delivery.");
     console.log(`[MOCK EMAIL] To: ${params.to} | Link: ${params.invoiceLink}`);
     return { success: true, mocked: true };
   }
 
+  const resend = new Resend(settings.resendApiKey);
+
   try {
-    const company = await getCompanyInfo();
     const lang = params.lang || "id";
 
     const html = await render(
@@ -65,7 +76,7 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
         amount: params.amountStr,
         dueDate: null,
         invoiceLink: params.invoiceLink,
-        company,
+        company: settings,
         lang,
       })
     );
@@ -75,7 +86,7 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
       : `Invoice for ${params.projectTitle} - Action Required`;
 
     const data = await resend.emails.send({
-      from: getSenderFrom(company.companyName),
+      from: getSenderFrom(settings.companyName),
       to: [params.to],
       subject,
       html,
@@ -124,16 +135,17 @@ const REMINDER_SUBJECTS: Record<ReminderType, Record<Language, (title: string) =
 export async function sendReminderEmail(params: SendReminderEmailParams) {
   const lang = params.lang || "id";
   const subject = REMINDER_SUBJECTS[params.reminderType][lang](params.projectTitle);
+  const settings = await getCompanySettings();
 
-  if (!process.env.RESEND_API_KEY) {
+  if (!settings.resendApiKey) {
     console.warn("[MOCK REMINDER EMAIL]", params.reminderType);
     console.log(`  To: ${params.to} | Subject: ${subject}`);
     return { success: true, mocked: true };
   }
 
-  try {
-    const company = await getCompanyInfo();
+  const resend = new Resend(settings.resendApiKey);
 
+  try {
     const html = await render(
       ReminderEmail({
         clientName: params.clientName,
@@ -143,13 +155,13 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
         invoiceLink: params.invoiceLink,
         reminderType: params.reminderType,
         lateFeeAmount: params.lateFeeAmountStr,
-        company,
+        company: settings,
         lang,
       })
     );
 
     const data = await resend.emails.send({
-      from: getSenderFrom(company.companyName),
+      from: getSenderFrom(settings.companyName),
       to: [params.to],
       subject,
       html,
@@ -177,16 +189,17 @@ export interface SendPaymentSuccessEmailParams {
 
 export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailParams) {
   const lang = params.lang || "id";
+  const settings = await getCompanySettings();
 
-  if (!process.env.RESEND_API_KEY) {
+  if (!settings.resendApiKey) {
     console.warn("[MOCK PAYMENT SUCCESS EMAIL]");
     console.log(`  To: ${params.to} | Subject: Payment Received for ${params.projectTitle}`);
     return { success: true, mocked: true };
   }
 
-  try {
-    const company = await getCompanyInfo();
+  const resend = new Resend(settings.resendApiKey);
 
+  try {
     const attachments = [];
     if (params.sowPdfBuffer) {
       attachments.push({
@@ -203,7 +216,7 @@ export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailPar
         amount: params.amountStr,
         invoiceLink: params.invoiceLink,
         hasSowAttachment: !!params.sowPdfBuffer,
-        company,
+        company: settings,
         lang,
       })
     );
@@ -213,7 +226,7 @@ export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailPar
       : "Payment Received - Thank you for your business!";
 
     const data = await resend.emails.send({
-      from: getSenderFrom(company.companyName),
+      from: getSenderFrom(settings.companyName),
       to: [params.to],
       subject,
       html,

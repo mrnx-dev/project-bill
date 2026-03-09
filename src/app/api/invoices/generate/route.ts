@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendInvoiceEmail } from "@/lib/email";
+import { sendInvoiceEmail } from "@/app/actions/send-invoice";
 import { auth } from "@/auth";
 import { generateInvoiceNumber } from "@/lib/invoice-utils";
 
@@ -86,24 +86,7 @@ export async function POST(request: Request) {
     let emailSuccess = false;
     if (project.client.email) {
       try {
-        const formatCurrency = new Intl.NumberFormat(
-          project.currency === "IDR" ? "id-ID" : "en-US",
-          {
-            style: "currency",
-            currency: project.currency || "IDR",
-            minimumFractionDigits: 0,
-          },
-        ).format(amountToPay);
-
-        const emailRes = await sendInvoiceEmail({
-          to: project.client.email,
-          clientName: project.client.name,
-          projectTitle: project.title,
-          amountStr: formatCurrency,
-          invoiceLink: invoiceDetailUrl,
-          lang: project.language as "id" | "en",
-        });
-
+        const emailRes = await sendInvoiceEmail(newInvoice.id);
         emailSuccess = emailRes.success;
       } catch (err) {
         console.error("Email delivery failed non-fatally", err);

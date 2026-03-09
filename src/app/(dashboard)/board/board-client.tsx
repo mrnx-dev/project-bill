@@ -669,7 +669,7 @@ export function DashboardClient({
             </Button>
             {completionCanGenerateInvoice && (
               <Button
-                className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700"
+                className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
                 onClick={() => handleCompletionConfirm(true)}
               >
                 <FileText className="h-4 w-4" />

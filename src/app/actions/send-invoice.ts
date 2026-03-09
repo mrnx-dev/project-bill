@@ -3,6 +3,7 @@
 import { Resend } from "resend";
 import { InvoiceEmail } from "@/emails/InvoiceEmail";
 import { prisma } from "@/lib/prisma";
+import { decrypt } from "@/lib/crypto";
 import type { CompanyInfo } from "@/emails/EmailLayout";
 
 export async function sendInvoiceEmail(invoiceId: string) {
@@ -59,7 +60,7 @@ export async function sendInvoiceEmail(invoiceId: string) {
 
     const invoiceLink = `${baseUrl}/invoices/${invoice.id}`;
 
-    const resendApiKey = process.env.RESEND_API_KEY;
+    const resendApiKey = settings?.resendApiKey ? decrypt(settings.resendApiKey) : null;
     if (!resendApiKey) {
       // Return success with manual flag so UI can handle it gracefully
       return {
@@ -67,26 +68,28 @@ export async function sendInvoiceEmail(invoiceId: string) {
         manual: true,
         invoiceLink,
         message:
-          "No Resend API Key configured. Please send this link manually.",
+          "No Resend API Key configured in Settings. Please send this link manually.",
       };
     }
 
     const resend = new Resend(resendApiKey);
 
     // Build sender from address
-    const fromDomain = process.env.RESEND_FROM_EMAIL;
-    const senderFrom = fromDomain
-      ? `${company.companyName} <noreply@${fromDomain}>`
-      : `${company.companyName} <onboarding@resend.dev>`;
+    const senderFrom = `${company.companyName} <noreply@projectbill.mrndev.me>`;
+
+    const lang = invoice.project.language || "id";
+    const subject = lang === "id"
+      ? `Invoice ${invoice.invoiceNumber} untuk ${invoice.project.title} - Diperlukan Tindakan`
+      : `Invoice ${invoice.invoiceNumber} for ${invoice.project.title} - Action Required`;
 
     // Send the email
     const { data, error } = await resend.emails.send({
       from: senderFrom,
       to: [invoice.project.client.email],
-      subject: `Invoice from ${company.companyName} for ${invoice.project.title}`,
+      subject,
       react: InvoiceEmail({
         clientName: invoice.project.client.name,
-        invoiceId: invoice.id,
+        invoiceId: invoice.invoiceNumber,
         projectName: invoice.project.title,
         amount: amountStr,
         dueDate: invoice.dueDate,

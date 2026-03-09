@@ -1,9 +1,8 @@
 import crypto from "crypto";
+import { prisma } from "./prisma";
+import { decrypt } from "./crypto";
 
-// For MVP, we use placeholder implementation if keys are missing
-const MAYAR_API_URL = process.env.MAYAR_API_URL || "https://api.mayar.id/hl/v1";
-const MAYAR_API_KEY = process.env.MAYAR_API_KEY || "";
-const MAYAR_WEBHOOK_SECRET = process.env.MAYAR_WEBHOOK_SECRET || "";
+const MAYAR_API_URL = "https://api.mayar.id/hl/v1";
 
 export interface CreatePaymentLinkParams {
   amount: number;
@@ -23,9 +22,12 @@ export interface MayarPaymentLinkResponse {
 export async function createPaymentLink(
   params: CreatePaymentLinkParams,
 ): Promise<MayarPaymentLinkResponse> {
+  const settings = await prisma.settings.findUnique({ where: { id: "global" } });
+  const apiKey = settings?.mayarApiKey ? decrypt(settings.mayarApiKey) : null;
+
   // If no API key is provided, we simulate the Mayar API for MVP testing
-  if (!MAYAR_API_KEY) {
-    console.warn("No MAYAR_API_KEY provided. Using simulated payment link.");
+  if (!apiKey) {
+    console.warn("No mayarApiKey provided. Using simulated payment link.");
     return {
       link: `https://api.mayar.id/hl/v1/pay/mock-${crypto.randomBytes(4).toString("hex")}`,
       id: crypto.randomBytes(8).toString("hex"),
@@ -38,7 +40,7 @@ export async function createPaymentLink(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${MAYAR_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       amount: params.amount,
@@ -65,30 +67,33 @@ export async function createPaymentLink(
   };
 }
 
-export function verifyMayarWebhook(
+export async function verifyMayarWebhook(
   payload: string,
   signature: string,
-): boolean {
-  if (!MAYAR_WEBHOOK_SECRET) {
+): Promise<boolean> {
+  const settings = await prisma.settings.findUnique({ where: { id: "global" } });
+  const webhookSecret = settings?.mayarWebhookSecret ? decrypt(settings.mayarWebhookSecret) : null;
+
+  if (!webhookSecret) {
     console.error(
-      "CRITICAL: No MAYAR_WEBHOOK_SECRET provided. Denying webhook verification.",
+      "CRITICAL: No mayarWebhookSecret configured in Settings. Denying webhook verification.",
     );
     return false;
   }
   try {
     // 1. Direct match (in case it is just a static API key/secret passed in header)
-    if (signature === MAYAR_WEBHOOK_SECRET) {
+    if (signature === webhookSecret) {
       return true;
     }
 
     // 2. HMAC SHA-256
-    const expectedSha256 = crypto.createHmac("sha256", MAYAR_WEBHOOK_SECRET).update(payload).digest("hex");
+    const expectedSha256 = crypto.createHmac("sha256", webhookSecret).update(payload).digest("hex");
     if (signature === expectedSha256) {
       return true;
     }
 
     // 3. HMAC SHA-512 (x-callback-token is 128 characters long, which matches exactly SHA-512)
-    const expectedSha512 = crypto.createHmac("sha512", MAYAR_WEBHOOK_SECRET).update(payload).digest("hex");
+    const expectedSha512 = crypto.createHmac("sha512", webhookSecret).update(payload).digest("hex");
     if (signature === expectedSha512) {
       return true;
     }

@@ -23,10 +23,8 @@ export async function GET(request: Request) {
       args.skip = (page - 1) * limit;
       args.take = limit;
 
-      const [invoices, total] = await Promise.all([
-        prisma.invoice.findMany(args),
-        prisma.invoice.count(),
-      ]);
+      const total = await prisma.invoice.count();
+      const invoices = await prisma.invoice.findMany(args);
 
       return NextResponse.json({
         data: invoices,
@@ -74,13 +72,16 @@ export async function POST(request: Request) {
     const data = validation.data;
     const invoiceNumber = await generateInvoiceNumber();
 
+    const defaultDueDate = new Date();
+    defaultDueDate.setDate(defaultDueDate.getDate() + 7);
+
     const invoice = await prisma.invoice.create({
       data: {
         invoiceNumber,
         projectId: data.projectId,
         type: data.type,
         amount: data.amount,
-        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        dueDate: data.dueDate ? new Date(data.dueDate) : defaultDueDate,
         status: "unpaid",
       },
       include: { project: true },

@@ -27,6 +27,9 @@ const settingsSchema = z.object({
   companyEmail: z.string().email("Invalid email").optional().or(z.literal("")),
   companyLogoUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
   companyWhatsApp: z.string().optional(),
+  resendApiKey: z.string().optional().or(z.literal("")),
+  mayarApiKey: z.string().optional().or(z.literal("")),
+  mayarWebhookSecret: z.string().optional().or(z.literal("")),
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -61,6 +64,9 @@ export default function SettingsPage() {
               companyEmail: data.companyEmail || "",
               companyLogoUrl: data.companyLogoUrl || "",
               companyWhatsApp: data.companyWhatsApp || "",
+              resendApiKey: data.resendApiKey || "",
+              mayarApiKey: data.mayarApiKey || "",
+              mayarWebhookSecret: data.mayarWebhookSecret || "",
             });
           }
         }
@@ -240,6 +246,102 @@ export default function SettingsPage() {
                           {...field}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Building2 className="w-5 h-5 text-purple-500" />
+                Integrations
+              </CardTitle>
+              <CardDescription>
+                Configure external services like Payment Gateway (Mayar) and Email Delivery (Resend). Keys are encrypted at rest.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="mayarApiKey"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mayar API Key</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter new Mayar API Key"
+                          type="password"
+                          className="bg-slate-50 dark:bg-slate-900 border-slate-200 font-mono text-sm"
+                          {...field}
+                          onFocus={(e) => {
+                            if (e.target.value?.startsWith("****")) {
+                              field.onChange("");
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        {field.value?.startsWith("****") ? "🔒 Key is set. Clear to replace." : ""}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="mayarWebhookSecret"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mayar Webhook Secret</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter new Mayar Webhook Secret"
+                          type="password"
+                          className="bg-slate-50 dark:bg-slate-900 border-slate-200 font-mono text-sm"
+                          {...field}
+                          onFocus={(e) => {
+                            if (e.target.value?.startsWith("****")) {
+                              field.onChange("");
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        {field.value?.startsWith("****") ? "🔒 Key is set. Clear to replace." : ""}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="resendApiKey"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Resend API Key</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="re_xxxxxxxxxxxxxxxxx"
+                          type="password"
+                          className="bg-slate-50 dark:bg-slate-900 border-slate-200 font-mono text-sm"
+                          {...field}
+                          onFocus={(e) => {
+                            if (e.target.value?.startsWith("****")) {
+                              field.onChange("");
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription className="text-xs">
+                        {field.value?.startsWith("****") ? "🔒 Key is set. Clear to replace." : ""}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

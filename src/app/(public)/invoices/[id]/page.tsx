@@ -160,7 +160,7 @@ export default async function InvoiceViewPage(props: {
                 {t.invoiceNo}
               </span>
               <span className="font-mono font-medium">
-                #{invoice.id.split("-")[0].toUpperCase()}
+                #{invoice.invoiceNumber}
               </span>
               <span className="font-semibold text-slate-500 uppercase">
                 {t.date}
