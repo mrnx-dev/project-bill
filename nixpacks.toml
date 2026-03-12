@@ -1,0 +1,7 @@
+[phases.build]
+# Make sure Prisma Client is generated before Next.js build
+cmds = ['...']
+
+[start]
+# Run database migrations/push before starting Next.js
+cmd = "npx prisma plugin run --schema prisma/schema.prisma || true && npx prisma db push --skip-generate --accept-data-loss && npm run start:next"
