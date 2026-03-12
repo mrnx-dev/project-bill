@@ -12,6 +12,9 @@
     "test:seed": "ts-node --compilerOptions '{\"module\":\"CommonJS\"}' scripts/seed-test-user.ts",
     "reset-password": "node scripts/reset-password.js"
   },
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@prisma/adapter-pg": "^7.4.2",
