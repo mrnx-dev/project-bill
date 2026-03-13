@@ -8,8 +8,8 @@ import {
   YAxis,
   PieChart,
   Pie,
-  Cell,
   Label,
+  Rectangle
 } from "recharts";
 import {
   Card,
@@ -98,7 +98,9 @@ function formatAxisIDR(value: number): string {
 }
 
 export function OverviewCharts({ data }: { data: ChartData }) {
-  const totalProjects = data.statusData.reduce((sum, s) => sum + s.value, 0);
+  const totalProjects = data.statusData
+    .filter((s) => s.name !== "No Projects")
+    .reduce((sum, s) => sum + s.value, 0);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -150,17 +152,17 @@ export function OverviewCharts({ data }: { data: ChartData }) {
                   />
                 }
               />
-              <Bar dataKey="total" radius={[6, 6, 0, 0]} maxBarSize={56}>
-                {data.revenueData.map((entry, index) => {
-                  const config = revenueConfig[entry.name as keyof typeof revenueConfig];
-                  return (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={"color" in config ? config.color : "var(--chart-1)"}
-                    />
-                  );
-                })}
-              </Bar>
+              <Bar
+                dataKey="total"
+                radius={[6, 6, 0, 0]}
+                maxBarSize={56}
+                shape={(props: any) => {
+                  const { payload } = props;
+                  const config = revenueConfig[payload.name as keyof typeof revenueConfig];
+                  const fill = (config as any)?.color || "var(--chart-1)";
+                  return <Rectangle {...props} fill={fill} />;
+                }}
+              />
             </BarChart>
           </ChartContainer>
         </CardContent>
@@ -178,12 +180,20 @@ export function OverviewCharts({ data }: { data: ChartData }) {
             className="mx-auto aspect-square min-h-[200px] max-h-[280px]"
           >
             <PieChart>
-              <ChartTooltip
-                cursor={false}
-                content={<ChartTooltipContent hideLabel />}
-              />
+              {totalProjects > 0 && (
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent hideLabel />}
+                />
+              )}
               <Pie
-                data={data.statusData}
+                data={data.statusData.map((entry) => ({
+                  ...entry,
+                  fill:
+                    entry.name === "No Projects"
+                      ? "hsl(var(--muted))"
+                      : STATUS_COLORS[entry.name] || "var(--chart-1)",
+                }))}
                 dataKey="value"
                 nameKey="name"
                 innerRadius={65}
@@ -191,12 +201,6 @@ export function OverviewCharts({ data }: { data: ChartData }) {
                 strokeWidth={3}
                 paddingAngle={3}
               >
-                {data.statusData.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={STATUS_COLORS[entry.name] || "var(--chart-1)"}
-                  />
-                ))}
                 {/* Center label: total project count */}
                 <Label
                   content={({ viewBox }) => {
@@ -233,21 +237,23 @@ export function OverviewCharts({ data }: { data: ChartData }) {
 
           {/* Custom vertical legend below */}
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-2">
-            {data.statusData.map((entry) => {
-              const cfg = statusConfig[entry.name as keyof typeof statusConfig];
-              const label = cfg && "label" in cfg ? cfg.label : entry.name;
-              const color = STATUS_COLORS[entry.name] || "var(--chart-1)";
-              return (
-                <div key={entry.name} className="flex items-center gap-2 text-sm">
-                  <div
-                    className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
-                    style={{ backgroundColor: color }}
-                  />
-                  <span className="text-muted-foreground">{label as string}</span>
-                  <span className="font-medium tabular-nums">{entry.value}</span>
-                </div>
-              );
-            })}
+            {data.statusData
+              .filter((entry) => entry.name !== "No Projects")
+              .map((entry) => {
+                const cfg = statusConfig[entry.name as keyof typeof statusConfig];
+                const label = cfg && "label" in cfg ? cfg.label : entry.name;
+                const color = STATUS_COLORS[entry.name] || "var(--chart-1)";
+                return (
+                  <div key={entry.name} className="flex items-center gap-2 text-sm">
+                    <div
+                      className="h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                      style={{ backgroundColor: color }}
+                    />
+                    <span className="text-muted-foreground">{label as string}</span>
+                    <span className="font-medium tabular-nums">{entry.value}</span>
+                  </div>
+                );
+              })}
           </div>
         </CardContent>
       </Card>

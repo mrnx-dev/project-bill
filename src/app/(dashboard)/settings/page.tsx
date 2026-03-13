@@ -21,22 +21,10 @@ import { Loader2, Building2, MapPin, Mail, ImageIcon, Phone, Landmark } from "lu
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
-
-const settingsSchema = z.object({
-  companyName: z.string().min(1, "Company name is required"),
-  companyAddress: z.string().optional(),
-  companyEmail: z.string().email("Invalid email").optional().or(z.literal("")),
-  companyLogoUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
-  companyWhatsApp: z.string().optional(),
-  resendApiKey: z.string().optional().or(z.literal("")),
-  mayarApiKey: z.string().optional().or(z.literal("")),
-  mayarWebhookSecret: z.string().optional().or(z.literal("")),
-  bankName: z.string().optional(),
-  bankAccountName: z.string().optional(),
-  bankAccountNumber: z.string().optional(),
-});
-
-type SettingsFormValues = z.infer<typeof settingsSchema>;
+import { settingsSchema, SettingsFormValues } from "@/lib/validations/settings";
+import { CompanyProfileFields } from "@/components/forms/company-profile-fields";
+import { BankDetailsFields } from "@/components/forms/bank-details-fields";
+import { IntegrationsFields } from "@/components/forms/integrations-fields";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -46,7 +34,7 @@ export default function SettingsPage() {
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
-      companyName: "ProjectBill Consulting",
+      companyName: "ProjectBill",
       companyAddress: "",
       companyEmail: "",
       companyLogoUrl: "",
@@ -156,52 +144,7 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <FormField
-                control={form.control}
-                name="companyName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Company Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Acme Corp" className="bg-slate-50 dark:bg-slate-900 border-slate-200" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="companyLogoUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      Company Logo URL
-                    </FormLabel>
-                    <FormControl>
-                      <div className="flex gap-3">
-                        <div className="flex items-center justify-center w-12 h-12 rounded bg-slate-100 border dark:bg-slate-800 shrink-0 overflow-hidden">
-                          {field.value ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={field.value} alt="Logo" className="w-full h-full object-contain p-1" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                          ) : (
-                            <ImageIcon className="w-5 h-5 text-slate-400" />
-                          )}
-                        </div>
-                        <Input
-                          placeholder="https://i.imgur.com/yourlogo.png"
-                          className="flex-1 mt-1 font-mono text-sm bg-slate-50 dark:bg-slate-900 border-slate-200"
-                          {...field}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormDescription>
-                      Provide a direct image URL (e.g. from Imgur or your own site).
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <CompanyProfileFields form={form} />
             </CardContent>
           </Card>
 
@@ -216,248 +159,53 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="companyEmail"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-1">
-                        <Mail className="w-3.5 h-3.5 text-slate-400" /> Email Address
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="hello@acme.com"
-                          type="email"
-                          className="bg-slate-50 dark:bg-slate-900 border-slate-200"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="companyWhatsApp"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-1">
-                        <Phone className="w-3.5 h-3.5 text-slate-400" /> WhatsApp Number
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="+628123456789"
-                          type="text"
-                          className="bg-slate-50 dark:bg-slate-900 border-slate-200"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="companyAddress"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Business Address</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="123 Startup Ave, CA"
-                          className="bg-slate-50 dark:bg-slate-900 border-slate-200"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
             </CardContent>
           </Card>
 
           <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Building2 className="w-5 h-5 text-purple-500" />
-                Integrations
-              </CardTitle>
-              <CardDescription>
-                Configure external services like Payment Gateway (Mayar) and Email Delivery (Resend). Keys are encrypted at rest.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="mayarApiKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Mayar API Key</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter new Mayar API Key"
-                          type="password"
-                          className="bg-slate-50 dark:bg-slate-900 border-slate-200 font-mono text-sm"
-                          {...field}
-                          onFocus={(e) => {
-                            if (e.target.value?.startsWith("****")) {
-                              field.onChange("");
-                            }
-                          }}
-                        />
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        {field.value?.startsWith("****") ? "🔒 Key is set. Clear to replace." : ""}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Building2 className="w-5 h-5 text-purple-500" />
+              Integrations
+            </CardTitle>
+            <CardDescription>
+              Configure external services like Payment Gateway (Mayar) and Email Delivery (Resend). Keys are encrypted at rest.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <IntegrationsFields form={form} />
+          </CardContent>
+        </Card>
 
-                <FormField
-                  control={form.control}
-                  name="mayarWebhookSecret"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Mayar Webhook Secret</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter new Mayar Webhook Secret"
-                          type="password"
-                          className="bg-slate-50 dark:bg-slate-900 border-slate-200 font-mono text-sm"
-                          {...field}
-                          onFocus={(e) => {
-                            if (e.target.value?.startsWith("****")) {
-                              field.onChange("");
-                            }
-                          }}
-                        />
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        {field.value?.startsWith("****") ? "🔒 Key is set. Clear to replace." : ""}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Landmark className="w-5 h-5 text-amber-500" />
+              Manual Payment Instructions
+            </CardTitle>
+            <CardDescription>
+              These details serve as a fallback on the client's invoice if your Mayar API Key is missing or fails to authenticate during processing.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <BankDetailsFields form={form} />
+          </CardContent>
+        </Card>
 
-                <FormField
-                  control={form.control}
-                  name="resendApiKey"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Resend API Key</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="re_xxxxxxxxxxxxxxxxx"
-                          type="password"
-                          className="bg-slate-50 dark:bg-slate-900 border-slate-200 font-mono text-sm"
-                          {...field}
-                          onFocus={(e) => {
-                            if (e.target.value?.startsWith("****")) {
-                              field.onChange("");
-                            }
-                          }}
-                        />
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        {field.value?.startsWith("****") ? "🔒 Key is set. Clear to replace." : ""}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Landmark className="w-5 h-5 text-amber-500" />
-                Manual Payment Instructions
-              </CardTitle>
-              <CardDescription>
-                These details serve as a fallback on the client's invoice if your Mayar API Key is missing or fails to authenticate during processing.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="bankName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bank Name</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g. Chase, Bank of America"
-                          className="bg-slate-50 dark:bg-slate-900 border-slate-200"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="bankAccountName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Account Name</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g. Acme Corp"
-                          className="bg-slate-50 dark:bg-slate-900 border-slate-200"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="bankAccountNumber"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Account Number</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="e.g. 1234567890"
-                          className="bg-slate-50 dark:bg-slate-900 border-slate-200 font-mono"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-end pt-2">
-            <Button type="submit" disabled={isSaving} className="px-8 shadow-md">
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Preferences"
-              )}
-            </Button>
-          </div>
-        </form>
-      </Form>
-    </div>
+        <div className="flex justify-end pt-2">
+          <Button type="submit" disabled={isSaving} className="px-8 shadow-md">
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Preferences"
+            )}
+          </Button>
+        </div>
+      </form>
+    </Form>
+    </div >
   );
 }

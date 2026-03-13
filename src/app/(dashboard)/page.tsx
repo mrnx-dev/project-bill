@@ -37,23 +37,32 @@ export default async function DashboardPage() {
     }).format(amount);
   };
 
-  const revenueData = [
+  // Recharts fails to render (complains about negative width/height) if data array is completely empty.
+  // We ensure there's at least one empty datum if they are all filtered out.
+  let revenueData = [
     { name: "Paid IDR", total: totalRevenueIDR },
     { name: "Pending IDR", total: pendingRevenueIDR },
-    // Temporarily disabled USD metrics for V1.1
-    // { name: 'Paid USD', total: totalRevenueUSD },
-    // { name: 'Pending USD', total: pendingRevenueUSD }
-  ].filter((d) => d.total > 0); // Only show bars that have values
+  ];
+  if (revenueData.every(d => d.total === 0)) {
+    revenueData = [{ name: "No Data", total: 0 }];
+  } else {
+    revenueData = revenueData.filter((d) => d.total > 0);
+  }
 
   const statuses = ["to_do", "in_progress", "review", "done"];
-  const statusCounts = statuses
+  let statusCounts = statuses
     .map((s) => {
       return {
         name: s.replace("_", " ").toUpperCase(),
         value: projectsRaw.filter((p) => p.status === s).length,
       };
-    })
-    .filter((s) => s.value > 0); // Only show statuses that have projects
+    });
+  
+  if (statusCounts.every(s => s.value === 0)) {
+    statusCounts = [{ name: "No Projects", value: 1 }]; // Value 1 ensures pie chart renders a grey circle
+  } else {
+    statusCounts = statusCounts.filter((s) => s.value > 0);
+  }
 
   return (
     <div className="flex flex-col gap-6">

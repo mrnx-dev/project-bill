@@ -234,9 +234,19 @@ The full MVP through V1.5 features have been successfully implemented:
     - **Notification Bell:** `src/components/notifications/notification-bell.tsx` mounted in the dashboard header. Uses `swr` polling every 15 seconds with optimistic UI for mark-as-read. Displays unread badge counter (capped at `99+`).
     - **Real-Time Toasts:** Integrated `sonner` in `layout.tsx` with `position="top-right"` to alert users of new notifications instantly.
     - **Full History Page:** Dedicated `/notifications` route with server-side pre-fetching and client-side SWR pagination (`Previous` / `Next` controls). Type-specific icons and badges (Payment = emerald, Document = blue). Individual "Mark as read" and "View Details" actions per notification.
+    - **Global Onboarding Setup Assistant:** Built a mobile-first, multi-step Setup Assistant modal (`<OnboardingModal />`) that intercepts new users on the dashboard if `onboardingCompleted` is false.
+      - Includes 7 distinct wizard steps: Welcome, Company Profile, Bank Details, Integrations, Create First Client, Create First Project, and Celebration.
+      - Uses forced-completion logic (cannot be dismissed by clicking outside or pressing ESC), ensuring users configure mandatory billing settings before using the app.
+      - Saves data progressively step-by-step to the database (Settings, Clients, Projects) so progress isn't lost.
     - **Hydration-Safe i18n:** Browser locale detection extracted to `src/lib/i18n.ts` (`getBrowserLocale()`). Uses `useState` + `useEffect` pattern to prevent Next.js server/client hydration mismatches. Supports `id` (Indonesian) and `en` (English) date-fns locales.
     - **NextAuth SessionProvider:** Added global `<Providers>` wrapper (`src/components/providers.tsx`) in root `layout.tsx` to provide `useSession` context to all client components.
     - **"View all" Link:** Notification Bell popover footer includes a persistent link to the full `/notifications` history page.
+  
+ 35. **Code Quality & Stability Patches (Sprint 16 Patch):**
+     - **Reusable Form Architecture:** Extracted Zod validation schemas (`src/lib/validations/settings.ts`) and built highly modular, reusable React components (`CompanyProfileFields`, `BankDetailsFields`, `IntegrationsFields`). These are now shared seamlessly between the `/settings` page and the initial `/setup` Onboarding Wizard, eliminating boilerplate.
+     - **Settings API Upsert (P2025 Fix):** Refactored `PUT /api/settings` to use `prisma.settings.upsert` instead of `update`. This ensures the global settings record is safely initialized even if the database was completely cleared, resolving the `P2025 Record not found` Prisma error during onboarding.
+     - **Recharts Deprecation Refactor:** Completely removed usage of the deprecated `<Cell />` component in `OverviewCharts` (protecting against the upcoming Recharts 4.0 removal). Refactored `<Bar />` charts to use the `shape` prop with custom `<Rectangle />` rendering, and refactored `<Pie />` charts by injecting `fill` properties directly into the data array.
+     - **Dashboard Empty State Hardening:** Fixed a fatal `TypeError` crash in Recharts when project/revenue data was entirely empty. Ensured that "No Projects" placeholder data is hidden from the legend hover tooltip and correctly excluded from the "Total Projects" center calculation (shows 0 instead of 1).
 
 ## Upcoming: Sprint 17 (V2 Feature Expansion)
 The next development cycle will focus on expanding core functionality. Potential candidates:

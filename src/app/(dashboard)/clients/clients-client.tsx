@@ -149,8 +149,8 @@ export function ClientsClient({
   const filteredClients = clients.filter(
     (client) => {
       const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            (client.email && client.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                            (client.phone && client.phone.includes(searchQuery));
+        (client.email && client.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (client.phone && client.phone.includes(searchQuery));
       if (statusFilter === "active" && client.isArchived) return false;
       if (statusFilter === "archived" && !client.isArchived) return false;
       return matchesSearch;
@@ -204,7 +204,7 @@ export function ClientsClient({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    placeholder="Acme Corp"
+                    placeholder="Enter client name"
                   />
                 </div>
                 <div className="space-y-2">

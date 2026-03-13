@@ -15,7 +15,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: {
           label: "Email",
           type: "email",
-          placeholder: "admin@example.com",
+          placeholder: "Enter your email",
         },
         password: { label: "Password", type: "password" },
       },

@@ -83,7 +83,7 @@ export default async function InvoiceViewPage(props: {
   const settings = (await prisma.settings.findUnique({
     where: { id: "global" },
   })) || {
-    companyName: "ProjectBill Consulting",
+    companyName: "ProjectBill",
     companyAddress: null,
     companyEmail: null,
     companyLogoUrl: null,

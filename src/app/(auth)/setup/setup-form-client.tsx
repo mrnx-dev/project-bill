@@ -105,7 +105,7 @@ export function SetupFormClient() {
                     <FormLabel>Admin Name</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="John Doe"
+                        placeholder="Enter your name"
                         disabled={isLoading}
                         {...field}
                       />
@@ -124,7 +124,7 @@ export function SetupFormClient() {
                     <FormControl>
                       <Input
                         type="email"
-                        placeholder="admin@example.com"
+                        placeholder="Enter your email"
                         disabled={isLoading}
                         {...field}
                       />

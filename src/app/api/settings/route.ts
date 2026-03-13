@@ -22,7 +22,7 @@ export async function GET() {
       settings = await prisma.settings.create({
         data: {
           id: "global",
-          companyName: "ProjectBill Consulting",
+          companyName: "ProjectBill",
         },
       });
     }
@@ -106,9 +106,14 @@ export async function PUT(req: Request) {
       });
     }
 
-    const settings = await prisma.settings.update({
+    const settings = await prisma.settings.upsert({
       where: { id: "global" },
-      data: dataToUpdate,
+      update: dataToUpdate,
+      create: {
+        id: "global",
+        ...dataToUpdate,
+        companyName: dataToUpdate.companyName as string || "ProjectBill",
+      } as any,
     });
 
     // Write audit log entries
