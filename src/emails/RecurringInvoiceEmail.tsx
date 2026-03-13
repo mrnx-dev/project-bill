@@ -73,7 +73,7 @@ export const RecurringInvoiceEmail = ({
                 extraRows={
                     <>
                         <DetailRow label={lang === "id" ? "Tipe" : "Type"} value={lang === "id" ? "Tagihan Rutin" : "Recurring Invoice"} />
-                        <DetailRow label="No. Invoice" value={`#${invoiceId}`} />
+                        <DetailRow label="No. Invoice" value={invoiceId} />
                         <DetailRow label={lang === "id" ? "Jatuh Tempo" : "Due Date"} value={formattedDate} />
                     </>
                 }

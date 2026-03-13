@@ -93,7 +93,7 @@ export const PaymentSuccessEmail = ({
                     <tbody>
                         <DetailRow label={lang === "id" ? "Tagihan Kepada" : "Billed To"} value={clientName} />
                         <DetailRow label={lang === "id" ? "Proyek" : "Project"} value={projectName} />
-                        <DetailRow label={lang === "id" ? "No. Invoice" : "Invoice No."} value={`#${invoiceId}`} />
+                        <DetailRow label={lang === "id" ? "No. Invoice" : "Invoice No."} value={invoiceId} />
                     </tbody>
                 </table>
             </Section>

@@ -175,7 +175,7 @@ export const ReminderEmail = ({
                 projectName={projectName}
                 lang={lang}
                 extraRows={
-                    <DetailRow label={lang === "id" ? "No. Invoice" : "Invoice No."} value={`#${invoiceId}`} />
+                    <DetailRow label={lang === "id" ? "No. Invoice" : "Invoice No."} value={invoiceId} />
                 }
             />
 

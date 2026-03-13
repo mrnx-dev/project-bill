@@ -200,7 +200,7 @@ export function InvoicesClient({
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="paid">Paid</SelectItem>
-            <SelectItem value="unpaid">Unpaid</SelectItem>
+            <SelectItem value="unpaid">Awaiting Payment</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -228,9 +228,9 @@ export function InvoicesClient({
                     ) : (
                       <Badge
                         variant="destructive"
-                        className="bg-red-100 text-red-800 hover:bg-red-200 border-red-300 dark:bg-red-950 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900 border text-[10px] py-0 px-2 uppercase tracking-widest font-bold"
+                        className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800 dark:hover:bg-amber-900 border text-[10px] py-0 px-2 uppercase tracking-widest font-bold"
                       >
-                        Unpaid
+                        Awaiting Payment
                       </Badge>
                     )}
                     {inv.emailStatus === 'failed' && (
@@ -346,9 +346,9 @@ export function InvoicesClient({
                     ) : (
                       <Badge
                         variant="destructive"
-                        className="bg-red-100 text-red-800 hover:bg-red-200 border-red-300 dark:bg-red-950 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900 border text-xs py-1 px-3 uppercase tracking-widest font-bold"
+                        className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800 dark:hover:bg-amber-900 border text-xs py-1 px-3 uppercase tracking-widest font-bold"
                       >
-                        Unpaid
+                        Awaiting Payment
                       </Badge>
                     )}
                     {inv.emailStatus === 'failed' && (

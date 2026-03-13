@@ -151,11 +151,31 @@ interface StatusBadgeProps {
 }
 
 const BADGE_STYLES: Record<StatusBadgeProps["type"], { bg: string; text: string; label: Record<Language, string> }> = {
-    unpaid: { bg: "#fee2e2", text: "#b91c1c", label: { id: "BELUM BAYAR", en: "UNPAID" } },
-    pre_due: { bg: "#fef3c7", text: "#92400e", label: { id: "SEGERA JATUH TEMPO", en: "DUE SOON" } },
-    overdue: { bg: "#ffedd5", text: "#c2410c", label: { id: "JATUH TEMPO", en: "OVERDUE" } },
-    late_fee: { bg: "#fee2e2", text: "#b91c1c", label: { id: "TERLAMBAT", en: "LATE FEE" } },
-    paid: { bg: "#d1fae5", text: "#065f46", label: { id: "LUNAS", en: "PAID" } },
+    unpaid: {
+        bg: "#fef3c7",
+        text: "#92400e",
+        label: { id: "MENUNGGU PEMBAYARAN", en: "AWAITING PAYMENT" }
+    },
+    pre_due: {
+        bg: "#fff7ed",
+        text: "#c2410c",
+        label: { id: "SEGERA JATUH TEMPO", en: "DUE SOON" }
+    },
+    overdue: {
+        bg: "#ffedd5",
+        text: "#9a3412",
+        label: { id: "JATUH TEMPO", en: "OVERDUE" }
+    },
+    late_fee: {
+        bg: "#fee2e2",
+        text: "#b91c1c",
+        label: { id: "TERLAMBAT", en: "OVERDUE" }
+    },
+    paid: {
+        bg: "#d1fae5",
+        text: "#065f46",
+        label: { id: "LUNAS", en: "PAID" }
+    },
 };
 
 export const StatusBadge = ({ type, lang = "id" }: StatusBadgeProps) => {

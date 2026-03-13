@@ -19,7 +19,7 @@ const TRANSLATIONS: Record<string, Record<TranslationKey, string>> = {
     date: "Date:",
     dueDate: "Due Date:",
     paid: "Paid",
-    unpaid: "Unpaid",
+    unpaid: "Awaiting Payment",
     billTo: "Bill To",
     projectDetails: "Project Details",
     description: "Description",
@@ -45,7 +45,7 @@ const TRANSLATIONS: Record<string, Record<TranslationKey, string>> = {
     date: "Tanggal:",
     dueDate: "Jatuh Tempo:",
     paid: "Lunas",
-    unpaid: "Belum Bayar",
+    unpaid: "Menunggu Pembayaran",
     billTo: "Tagihan Kepada",
     projectDetails: "Detail Proyek",
     description: "Deskripsi",
@@ -174,7 +174,7 @@ export default async function InvoiceViewPage(props: {
                 {t.invoiceNo}
               </span>
               <span className="font-mono font-medium">
-                #{invoice.invoiceNumber}
+                {invoice.invoiceNumber}
               </span>
               <span className="font-semibold text-slate-500 uppercase">
                 {t.date}
@@ -205,7 +205,7 @@ export default async function InvoiceViewPage(props: {
           ) : (
             <Badge
               variant="outline"
-              className="bg-red-100 text-red-800 hover:bg-red-200 border-red-300 border text-xs py-1 px-3 uppercase tracking-widest font-bold"
+              className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300 border text-xs py-1 px-3 uppercase tracking-widest font-bold"
             >
               {t.unpaid}
             </Badge>
