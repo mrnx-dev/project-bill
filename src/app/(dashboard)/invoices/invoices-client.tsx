@@ -23,6 +23,7 @@ import { Send, Loader2, Trash2 } from "lucide-react";
 import { sendInvoiceEmail } from "@/app/actions/send-invoice";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { EmailProviderModal } from "@/components/email-provider-modal";
 import {
   Select,
   SelectContent,
@@ -42,8 +43,10 @@ export function InvoicesClient({
   const [statusFilter, setStatusFilter] = useState("all");
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [toggleConfirmId, setToggleConfirmId] = useState<{ id: string, currentStatus: string } | null>(null);
+  const [markPaidConfirmId, setMarkPaidConfirmId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [emailModalData, setEmailModalData] = useState<{ to: string; subject: string; body: string } | null>(null);
 
   const formatCurrency = (amount: string | number, currencyStr: string) => {
     return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
@@ -54,7 +57,8 @@ export function InvoicesClient({
   };
 
   const toggleStatus = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === "paid" ? "unpaid" : "paid";
+    // Only used for reverting to unpaid now
+    const newStatus = "unpaid";
 
     // Optimistic update
     setInvoices(
@@ -73,6 +77,30 @@ export function InvoicesClient({
     } catch (e) {
       console.error(e);
       setInvoices(initialInvoices); // Revert on error
+    }
+  };
+
+  const handleMarkPaidManual = async (id: string) => {
+    // Optimistic update
+    setInvoices(
+      invoices.map((inv) =>
+        inv.id === id ? { ...inv, status: "paid" } : inv,
+      ),
+    );
+
+    try {
+      const res = await fetch(`/api/invoices/${id}/mark-paid`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to mark paid");
+      }
+      toast.success("Invoice marked as Paid (Manual)");
+    } catch (e: any) {
+      console.error(e);
+      setInvoices(initialInvoices); // Revert on error
+      toast.error(e.message || "Failed to mark as paid");
     }
   };
 
@@ -102,9 +130,9 @@ export function InvoicesClient({
       const res = await sendInvoiceEmail(id);
       if (res.success) {
         if (res.manual) {
-          toast.success(res.message, {
-            description: `Invoice Link: ${res.invoiceLink}`,
-            duration: 10000,
+          toast.success("Manual Mode Enabled", {
+            description: "Please select your preferred email provider.",
+            duration: 5000,
             action: res.invoiceLink ? {
               label: "Copy Link",
               onClick: () => {
@@ -113,6 +141,9 @@ export function InvoicesClient({
               },
             } : undefined,
           });
+          if (res.mailtoData) {
+            setEmailModalData(res.mailtoData);
+          }
         } else {
           toast.success("Email sent successfully!", {
             description: "The client will receive the invoice in their inbox shortly.",
@@ -227,11 +258,11 @@ export function InvoicesClient({
                       if (inv.status === "paid") {
                         setToggleConfirmId({ id: inv.id, currentStatus: inv.status });
                       } else {
-                        toggleStatus(inv.id, inv.status);
+                        setMarkPaidConfirmId(inv.id);
                       }
                     }}
                   >
-                    Mark {inv.status === "paid" ? "Unpaid" : "Paid"}
+                    {inv.status === "paid" ? "Mark Unpaid" : "Mark Paid (Manual)"}
                   </Button>
                   <Button
                     variant="secondary"
@@ -338,11 +369,11 @@ export function InvoicesClient({
                           if (inv.status === "paid") {
                             setToggleConfirmId({ id: inv.id, currentStatus: inv.status });
                           } else {
-                            toggleStatus(inv.id, inv.status);
+                            setMarkPaidConfirmId(inv.id);
                           }
                         }}
                       >
-                        Mark {inv.status === "paid" ? "Unpaid" : "Paid"}
+                        {inv.status === "paid" ? "Mark Unpaid" : "Mark Paid (Manual)"}
                       </Button>
                       <Button
                         variant="secondary"
@@ -398,8 +429,21 @@ export function InvoicesClient({
         confirmLabel="Confirm"
         onConfirm={() => {
           if (toggleConfirmId) {
-            toggleStatus(toggleConfirmId.id, toggleConfirmId.currentStatus);
+            toggleStatus(toggleConfirmId.id, "paid"); // actually reverted to unpaid via the function
             setToggleConfirmId(null);
+          }
+        }}
+      />
+      <ConfirmDialog
+        open={!!markPaidConfirmId}
+        onOpenChange={(open) => !open && setMarkPaidConfirmId(null)}
+        title="Mark Invoice as Paid (Manual)?"
+        description="Are you sure this invoice has been paid? This will manually record the payment as it does not go through the payment gateway."
+        confirmLabel="Yes, Mark as Paid"
+        onConfirm={() => {
+          if (markPaidConfirmId) {
+            handleMarkPaidManual(markPaidConfirmId);
+            setMarkPaidConfirmId(null);
           }
         }}
       />
@@ -414,6 +458,12 @@ export function InvoicesClient({
             handleDelete(deleteConfirmId);
           }
         }}
+      />
+      
+      <EmailProviderModal 
+        isOpen={!!emailModalData}
+        onClose={() => setEmailModalData(null)}
+        emailData={emailModalData}
       />
     </div>
   );

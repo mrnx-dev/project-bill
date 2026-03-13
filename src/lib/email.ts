@@ -49,6 +49,8 @@ export interface SendInvoiceEmailParams {
   to: string;
   clientName: string;
   projectTitle: string;
+  invoiceId: string;
+  dueDate: Date | null;
   amountStr: string;
   invoiceLink: string;
   lang?: Language;
@@ -71,10 +73,10 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
     const html = await render(
       InvoiceEmail({
         clientName: params.clientName,
-        invoiceId: "",
+        invoiceId: params.invoiceId,
         projectName: params.projectTitle,
         amount: params.amountStr,
-        dueDate: null,
+        dueDate: params.dueDate,
         invoiceLink: params.invoiceLink,
         company: settings,
         lang,

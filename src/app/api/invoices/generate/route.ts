@@ -83,18 +83,32 @@ export async function POST(request: Request) {
     const invoiceDetailUrl = `${baseUrl}/invoices/${newInvoice.id}`;
 
     // Soft-fail: Try communicating with Resend, but don't fail the whole block if it errors.
-    let emailSuccess = false;
+    let emailSent = false;
+    let manual = false;
+    let mailtoData: { to: string; subject: string; body: string } | undefined;
+    
     if (project.client.email) {
       try {
-        const emailRes = await sendInvoiceEmail(newInvoice.id);
-        emailSuccess = emailRes.success;
+        const emailRes = await sendInvoiceEmail(newInvoice.id, true);
+        if (emailRes.success && !emailRes.manual) {
+          emailSent = true;
+        }
+        if (emailRes.manual) {
+          manual = true;
+          mailtoData = emailRes.mailtoData;
+        }
       } catch (err) {
         console.error("Email delivery failed non-fatally", err);
       }
     }
 
-    return NextResponse.json(
-      { invoice: newInvoice, emailSent: emailSuccess },
+    return NextResponse.json({ 
+      success: true, 
+      invoice: newInvoice, 
+      emailSent,
+      manual,
+      mailtoData: mailtoData
+    },
       { status: 201 },
     );
   } catch (error) {

@@ -17,7 +17,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2, Building2, MapPin, Mail, ImageIcon, Phone } from "lucide-react";
+import { Loader2, Building2, MapPin, Mail, ImageIcon, Phone, Landmark } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
@@ -31,6 +31,9 @@ const settingsSchema = z.object({
   resendApiKey: z.string().optional().or(z.literal("")),
   mayarApiKey: z.string().optional().or(z.literal("")),
   mayarWebhookSecret: z.string().optional().or(z.literal("")),
+  bankName: z.string().optional(),
+  bankAccountName: z.string().optional(),
+  bankAccountNumber: z.string().optional(),
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -48,6 +51,9 @@ export default function SettingsPage() {
       companyEmail: "",
       companyLogoUrl: "",
       companyWhatsApp: "",
+      bankName: "",
+      bankAccountName: "",
+      bankAccountNumber: "",
     },
   });
 
@@ -68,6 +74,9 @@ export default function SettingsPage() {
               resendApiKey: data.resendApiKey || "",
               mayarApiKey: data.mayarApiKey || "",
               mayarWebhookSecret: data.mayarWebhookSecret || "",
+              bankName: data.bankName || "",
+              bankAccountName: data.bankAccountName || "",
+              bankAccountNumber: data.bankAccountNumber || "",
             });
           }
         }
@@ -111,15 +120,15 @@ export default function SettingsPage() {
 
   // @ts-ignore - Temporary bypass to ensure no type mismatch in session rendering
   if (session?.user?.role !== "admin") {
-     return (
-        <div className="flex flex-col items-center justify-center p-8 gap-4 mt-12">
-            <h2 className="text-2xl font-bold tracking-tight text-red-500">Access Denied</h2>
-            <p className="text-muted-foreground text-center max-w-md">
-               You do not have the required administrative permissions to view or modify application settings.
-            </p>
-            <Button variant="outline" onClick={() => router.push('/')}>Return to Dashboard</Button>
-        </div>
-     )
+    return (
+      <div className="flex flex-col items-center justify-center p-8 gap-4 mt-12">
+        <h2 className="text-2xl font-bold tracking-tight text-red-500">Access Denied</h2>
+        <p className="text-muted-foreground text-center max-w-md">
+          You do not have the required administrative permissions to view or modify application settings.
+        </p>
+        <Button variant="outline" onClick={() => router.push('/')}>Return to Dashboard</Button>
+      </div>
+    )
   }
 
   return (
@@ -366,6 +375,74 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Landmark className="w-5 h-5 text-amber-500" />
+                Manual Payment Instructions
+              </CardTitle>
+              <CardDescription>
+                These details serve as a fallback on the client's invoice if your Mayar API Key is missing or fails to authenticate during processing.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="bankName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bank Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g. Chase, Bank of America"
+                          className="bg-slate-50 dark:bg-slate-900 border-slate-200"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="bankAccountName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Account Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g. Acme Corp"
+                          className="bg-slate-50 dark:bg-slate-900 border-slate-200"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="bankAccountNumber"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Account Number</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g. 1234567890"
+                          className="bg-slate-50 dark:bg-slate-900 border-slate-200 font-mono"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
           <div className="flex justify-end pt-2">
             <Button type="submit" disabled={isSaving} className="px-8 shadow-md">

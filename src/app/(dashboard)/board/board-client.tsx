@@ -42,6 +42,7 @@ import {
   Archive,
 } from "lucide-react";
 import { toast } from "sonner";
+import { EmailProviderModal } from "@/components/email-provider-modal";
 
 type Client = { id: string; name: string };
 type ProjectItem = { id: string; description: string; price: string };
@@ -85,6 +86,9 @@ export function DashboardClient({
 
   // Archive Toggle State
   const [showArchived, setShowArchived] = useState(false);
+
+  // Email Modal State
+  const [emailModalData, setEmailModalData] = useState<{ to: string; subject: string; body: string } | null>(null);
 
   const formatCurrency = (amount: string | number, currencyStr: string) => {
     return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
@@ -192,9 +196,24 @@ export function DashboardClient({
 
         if (data.emailSent) {
           toast.success("Invoice generated and email dispatched to client");
+        } else if (data.manual) {
+          toast.success("Manual Mode Enabled", {
+            description: "Please select your preferred email provider.",
+            duration: 5000,
+            action: data.invoice?.paymentLink ? {
+              label: "Copy Link",
+              onClick: () => {
+                navigator.clipboard.writeText(data.invoice.paymentLink);
+                toast.success("Link copied!");
+              }
+            } : undefined,
+          });
+          if (data.mailtoData) {
+            setEmailModalData(data.mailtoData);
+          }
         } else {
           toast.success(
-            "Invoice generated successfully. (Email skipped or mocked)",
+            "Invoice generated successfully. (Email skipped or failed)",
           );
         }
         router.refresh();
@@ -717,6 +736,12 @@ export function DashboardClient({
           hasInvoices={(activeItemProject.invoices?.length ?? 0) > 0}
         />
       )}
+
+      <EmailProviderModal
+        isOpen={!!emailModalData}
+        onClose={() => setEmailModalData(null)}
+        emailData={emailModalData}
+      />
     </div>
   );
 }

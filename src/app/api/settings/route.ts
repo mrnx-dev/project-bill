@@ -58,6 +58,9 @@ export async function PUT(req: Request) {
       resendApiKey?: string | null;
       mayarApiKey?: string | null;
       mayarWebhookSecret?: string | null;
+      bankName?: string | null;
+      bankAccountName?: string | null;
+      bankAccountNumber?: string | null;
     };
 
     // Fetch current settings to compare for audit log
@@ -72,6 +75,9 @@ export async function PUT(req: Request) {
       companyEmail: parsedBody.companyEmail,
       companyLogoUrl: parsedBody.companyLogoUrl,
       companyWhatsApp: parsedBody.companyWhatsApp,
+      bankName: parsedBody.bankName,
+      bankAccountName: parsedBody.bankAccountName,
+      bankAccountNumber: parsedBody.bankAccountNumber,
     };
 
     // Process sensitive fields: skip if masked (unchanged), encrypt if new value

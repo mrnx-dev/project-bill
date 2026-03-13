@@ -46,6 +46,8 @@ export async function sendInvoiceEmail(
           to: client.email!,
           clientName: client.name,
           projectTitle: project.title,
+          invoiceId: invoice.invoiceNumber,
+          dueDate: invoice.dueDate,
           amountStr: amountStr,
           invoiceLink: invoiceDetailUrl,
           lang: project.language as "id" | "en",
@@ -62,11 +64,25 @@ export async function sendInvoiceEmail(
            throw result.error;
         }
         
+        let mailtoData = undefined;
+        if (result.mocked) {
+           const subject = project.language === "en"
+               ? `Invoice [${invoice.invoiceNumber}] for ${project.title} - Action Required`
+               : `Invoice [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
+           
+           const body = project.language === "en"
+               ? `Hello ${client.name},\n\nPlease find your invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nThank you!`
+               : `Halo ${client.name},\n\nBerikut adalah detail tagihan Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nTerima kasih!`;
+           
+           mailtoData = { to: client.email!, subject, body };
+        }
+        
         return { 
           success: true, 
           manual: result.mocked, 
-          message: result.mocked ? "Sent via mock successfully" : undefined, 
-          invoiceLink: result.mocked ? invoiceDetailUrl : undefined 
+          message: result.mocked ? "Select your preferred email provider..." : undefined, 
+          invoiceLink: result.mocked ? invoiceDetailUrl : undefined,
+          mailtoData
         }
     } catch (emailError: any) {
         console.error("Failed to send email via Resend:", emailError);
