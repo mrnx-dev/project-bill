@@ -38,10 +38,6 @@ export const invoiceSchema = z.object({
   dueDate: z.string().nullable().optional(),
 });
 
-export const clientSchema = z.object({
-  name: z.string().min(2, "Client name must be at least 2 characters"),
-  email: z.string().email("Invalid email").optional().nullable(),
-});
 
 export const recurringInvoiceSchema = z.object({
   projectId: z.string().min(1, "Project ID is required"),

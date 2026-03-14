@@ -14,6 +14,26 @@ import { companyProfileSchema, bankDetailsSchema, integrationsSchema, CompanyPro
 import { CompanyProfileFields } from "@/components/forms/company-profile-fields";
 import { BankDetailsFields } from "@/components/forms/bank-details-fields";
 import { IntegrationsFields } from "@/components/forms/integrations-fields";
+import {
+  onboardingClientSchema,
+  onboardingProjectSchema,
+  OnboardingClientValues,
+  OnboardingProjectValues
+} from "@/lib/validations/onboarding";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -90,7 +110,6 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
     }
   });
 
-  const MathFormTypes = { bankName: "", bankAccountName: "", bankAccountNumber: "" }; // temp ignore
   const bankForm = useForm<BankDetailsFormValues>({
     resolver: zodResolver(bankDetailsSchema),
     defaultValues: {
@@ -110,16 +129,28 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
   });
 
   // Client state
-  const [clientName, setClientName] = useState("");
-  const [clientEmail, setClientEmail] = useState("");
-  const [clientPhone, setClientPhone] = useState("");
+  const clientForm = useForm<OnboardingClientValues>({
+    resolver: zodResolver(onboardingClientSchema),
+    defaultValues: {
+      clientName: "",
+      clientEmail: "",
+      clientPhone: "",
+    }
+  });
+
   const [createdClientId, setCreatedClientId] = useState<string | null>(null);
   const [allClients, setAllClients] = useState(existingClients);
 
   // Project state
-  const [projectTitle, setProjectTitle] = useState("");
-  const [projectPrice, setProjectPrice] = useState("");
-  const [projectClientId, setProjectClientId] = useState("");
+  const projectForm = useForm<OnboardingProjectValues>({
+    resolver: zodResolver(onboardingProjectSchema),
+    defaultValues: {
+      projectTitle: "",
+      projectPrice: "",
+      projectClientId: "",
+    }
+  });
+
   const [projectCreated, setProjectCreated] = useState(false);
 
   const step = STEPS[currentStep];
@@ -173,27 +204,23 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
     if (ok) setCurrentStep((s) => s + 1);
   };
 
-  const handleCreateClient = async () => {
-    if (!clientName.trim()) {
-      toast.error("Client name is required.");
-      return;
-    }
+  const handleCreateClient = async (values: OnboardingClientValues) => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: clientName,
-          email: clientEmail || null,
-          phone: clientPhone || null,
+          name: values.clientName,
+          email: values.clientEmail || null,
+          phone: values.clientPhone || null,
         }),
       });
       if (!res.ok) throw new Error("Failed to create client");
       const client = await res.json();
       setCreatedClientId(client.id);
       setAllClients((prev) => [{ id: client.id, name: client.name }, ...prev]);
-      setProjectClientId(client.id);
+      projectForm.setValue("projectClientId", client.id);
       toast.success(`Client "${client.name}" created!`);
       setCurrentStep((s) => s + 1);
     } catch {
@@ -203,29 +230,17 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
     }
   };
 
-  const handleCreateProject = async () => {
-    if (!projectTitle.trim()) {
-      toast.error("Project title is required.");
-      return;
-    }
-    if (!projectPrice || Number(projectPrice) <= 0) {
-      toast.error("Please enter a valid price.");
-      return;
-    }
-    if (!projectClientId) {
-      toast.error("Please select a client.");
-      return;
-    }
+  const handleCreateProject = async (values: OnboardingProjectValues) => {
     setIsLoading(true);
     try {
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          clientId: projectClientId,
-          title: projectTitle,
-          totalPrice: Number(projectPrice),
-          items: [{ description: projectTitle, price: Number(projectPrice) }],
+          clientId: values.projectClientId,
+          title: values.projectTitle,
+          totalPrice: Number(values.projectPrice),
+          items: [{ description: values.projectTitle, price: Number(values.projectPrice) }],
         }),
       });
       if (!res.ok) throw new Error("Failed to create project");
@@ -374,45 +389,68 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
                 </div>
                 <div>
                   <p className="text-base font-medium">Client Created!</p>
-                  <p className="text-sm text-muted-foreground">{clientName}</p>
+                  <p className="text-sm text-muted-foreground">{clientForm.getValues("clientName")}</p>
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="clientName">Client Name <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="clientName"
-                    placeholder="Enter client name"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    className="bg-slate-50 dark:bg-slate-900"
+              <Form {...clientForm}>
+                <form id="client-form" onSubmit={clientForm.handleSubmit(handleCreateClient)} className="space-y-4">
+                  <FormField
+                    control={clientForm.control}
+                    name="clientName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Client Name <span className="text-destructive">*</span></FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter client name"
+                            className="bg-slate-50 dark:bg-slate-900"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="clientEmail">Email (Optional)</Label>
-                    <Input
-                      id="clientEmail"
-                      type="email"
-                      placeholder="contact@acme.com"
-                      value={clientEmail}
-                      onChange={(e) => setClientEmail(e.target.value)}
-                      className="bg-slate-50 dark:bg-slate-900"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                      control={clientForm.control}
+                      name="clientEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="email"
+                              placeholder="contact@acme.com"
+                              className="bg-slate-50 dark:bg-slate-900"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={clientForm.control}
+                      name="clientPhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="081234567890"
+                              className="bg-slate-50 dark:bg-slate-900"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="clientPhone">Phone (Optional)</Label>
-                    <Input
-                      id="clientPhone"
-                      placeholder="081234567890"
-                      value={clientPhone}
-                      onChange={(e) => setClientPhone(e.target.value)}
-                      className="bg-slate-50 dark:bg-slate-900"
-                    />
-                  </div>
-                </div>
-              </div>
+                </form>
+              </Form>
             )}
           </div>
         );
@@ -436,49 +474,73 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
                 </div>
                 <div>
                   <p className="text-base font-medium">Project Created!</p>
-                  <p className="text-sm text-muted-foreground">{projectTitle}</p>
+                  <p className="text-sm text-muted-foreground">{projectForm.getValues("projectTitle")}</p>
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {allClients.length > 0 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="projectClientId">Select Client <span className="text-destructive">*</span></Label>
-                    <select
-                      id="projectClientId"
-                      value={projectClientId}
-                      onChange={(e) => setProjectClientId(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <option value="">Choose...</option>
-                      {allClients.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="projectTitle">Project Title <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="projectTitle"
-                    placeholder="Website Redesign"
-                    value={projectTitle}
-                    onChange={(e) => setProjectTitle(e.target.value)}
-                    className="bg-slate-50 dark:bg-slate-900"
+              <Form {...projectForm}>
+                <form id="project-form" onSubmit={projectForm.handleSubmit(handleCreateProject)} className="space-y-4">
+                  {allClients.length > 0 && (
+                    <FormField
+                      control={projectForm.control}
+                      name="projectClientId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Select Client <span className="text-destructive">*</span></FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="bg-slate-50 dark:bg-slate-900">
+                                <SelectValue placeholder="Choose..." />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {allClients.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                  <FormField
+                    control={projectForm.control}
+                    name="projectTitle"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Project Title <span className="text-destructive">*</span></FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Website Redesign"
+                            className="bg-slate-50 dark:bg-slate-900"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="projectPrice">Total Price (IDR) <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="projectPrice"
-                    type="number"
-                    placeholder="10000000"
-                    value={projectPrice}
-                    onChange={(e) => setProjectPrice(e.target.value)}
-                    className="bg-slate-50 dark:bg-slate-900 font-mono"
+                  <FormField
+                    control={projectForm.control}
+                    name="projectPrice"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Total Price (IDR) <span className="text-destructive">*</span></FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="10000000"
+                            className="bg-slate-50 dark:bg-slate-900 font-mono"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
-              </div>
+                </form>
+              </Form>
             )}
           </div>
         );
@@ -557,7 +619,7 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
           };
           primaryLabel = "Next";
         } else {
-          primaryAction = handleCreateClient;
+          primaryAction = clientForm.handleSubmit(handleCreateClient);
           primaryLabel = "Create";
         }
         break;
@@ -566,7 +628,7 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
           primaryAction = () => setCurrentStep(STEPS.length - 1);
           primaryLabel = "Next";
         } else {
-          primaryAction = handleCreateProject;
+          primaryAction = projectForm.handleSubmit(handleCreateProject);
           primaryLabel = "Create";
         }
         break;

@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma"
-import { sendInvoiceEmail as baseSendInvoiceEmail } from "@/lib/email"
+import { sendInvoiceEmail as baseSendInvoiceEmail, sendRecurringInvoiceEmail } from "@/lib/email"
 
 export async function sendInvoiceEmail(
   invoiceId: string,
@@ -42,16 +42,32 @@ export async function sendInvoiceEmail(
 
     // Fix potential issue where resend API keys fail silently
     try {
-        const result = await baseSendInvoiceEmail({
-          to: client.email!,
-          clientName: client.name,
-          projectTitle: project.title,
-          invoiceId: invoice.invoiceNumber,
-          dueDate: invoice.dueDate,
-          amountStr: amountStr,
-          invoiceLink: invoiceDetailUrl,
-          lang: project.language as "id" | "en",
-        });
+        let result;
+
+        if (invoice.type === "recurring") {
+          result = await sendRecurringInvoiceEmail({
+            to: client.email!,
+            clientName: client.name,
+            projectTitle: project.title,
+            invoiceId: invoice.invoiceNumber,
+            dueDate: invoice.dueDate,
+            amountStr: amountStr,
+            invoiceLink: invoiceDetailUrl,
+            description: customNotes || invoice.notes,
+            lang: project.language as "id" | "en",
+          });
+        } else {
+          result = await baseSendInvoiceEmail({
+            to: client.email!,
+            clientName: client.name,
+            projectTitle: project.title,
+            invoiceId: invoice.invoiceNumber,
+            dueDate: invoice.dueDate,
+            amountStr: amountStr,
+            invoiceLink: invoiceDetailUrl,
+            lang: project.language as "id" | "en",
+          });
+        }
 
         if (result.success && !result.mocked) {
           await prisma.invoice.update({
@@ -66,13 +82,26 @@ export async function sendInvoiceEmail(
         
         let mailtoData = undefined;
         if (result.mocked) {
-           const subject = project.language === "en"
-               ? `Invoice [${invoice.invoiceNumber}] for ${project.title} - Action Required`
-               : `Invoice [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
-           
-           const body = project.language === "en"
-               ? `Hello ${client.name},\n\nPlease find your invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nThank you!`
-               : `Halo ${client.name},\n\nBerikut adalah detail tagihan Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nTerima kasih!`;
+           let subject = "";
+           let body = "";
+
+           if (invoice.type === "recurring") {
+               subject = project.language === "en"
+                   ? `Recurring Invoice [${invoice.invoiceNumber}] for ${project.title} - Action Required`
+                   : `Tagihan Rutin [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
+               
+               body = project.language === "en"
+                   ? `Hello ${client.name},\n\nPlease find your recurring invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nThank you!`
+                   : `Halo ${client.name},\n\nBerikut adalah detail tagihan rutin Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nTerima kasih!`;
+           } else {
+               subject = project.language === "en"
+                   ? `Invoice [${invoice.invoiceNumber}] for ${project.title} - Action Required`
+                   : `Invoice [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
+               
+               body = project.language === "en"
+                   ? `Hello ${client.name},\n\nPlease find your invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nThank you!`
+                   : `Halo ${client.name},\n\nBerikut adalah detail tagihan Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nTerima kasih!`;
+           }
            
            mailtoData = { to: client.email!, subject, body };
         }

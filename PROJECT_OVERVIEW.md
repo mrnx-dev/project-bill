@@ -248,6 +248,13 @@ The full MVP through V1.5 features have been successfully implemented:
      - **Recharts Deprecation Refactor:** Completely removed usage of the deprecated `<Cell />` component in `OverviewCharts` (protecting against the upcoming Recharts 4.0 removal). Refactored `<Bar />` charts to use the `shape` prop with custom `<Rectangle />` rendering, and refactored `<Pie />` charts by injecting `fill` properties directly into the data array.
      - **Dashboard Empty State Hardening:** Fixed a fatal `TypeError` crash in Recharts when project/revenue data was entirely empty. Ensured that "No Projects" placeholder data is hidden from the legend hover tooltip and correctly excluded from the "Total Projects" center calculation (shows 0 instead of 1).
 
+ 36. **UI Polish, Auth Fixes & Tech Debt Cleanup (Sprint 16 Patch 2):**
+     - **Settings Route Stabilization:** Converted the `/settings` page from a Client Component to a Server Component using `auth()` to resolve stale session states that caused "Access Denied" errors immediately after initial onboarding.
+     - **Onboarding Modal Form Upgrade:** Refactored the Client and Project creation steps inside `<OnboardingModal />` to fully utilize ShadcnUI `FormField`, `FormItem`, and `Select` components, backed by strict Zod schemas and `react-hook-form` for robust validation.
+     - **Sidebar Aesthetics:** Enhanced the collapsible sidebar so the header gracefully hides text and retains only the company logo when compressed into icon mode, keeping the UI uncluttered.
+     - **Recurring Invoice Email Template:** The server action `send-invoice.ts` now dynamically detects if `invoice.type === "recurring"` and routes the email through the specialized `RecurringInvoiceEmail.tsx` template, featuring custom messaging for subscription billing.
+     - **Knip Core Cleanup:** Resolved technical debt by configuring `knip.json` to properly ignore valid ShadcnUI exports and raw React Email templates, eliminating false-positive bloat. Removed completely unused packages (e.g., `jest-mock-extended`) to lighten `.node_modules` footprint.
+
 ## Upcoming: Sprint 17 (V2 Feature Expansion)
 The next development cycle will focus on expanding core functionality. Potential candidates:
 

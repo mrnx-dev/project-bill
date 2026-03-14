@@ -1,0 +1,22 @@
+{
+  "ignoreDependencies": [
+    "react-email",
+    "@react-email/preview-server",
+    "@react-pdf/renderer",
+    "@types/bcryptjs",
+    "@tailwindcss/typography",
+    "shadcn",
+    "tailwindcss",
+    "tw-animate-css"
+  ],
+  "ignoreExportsUsedInFile": true,
+  "project": [
+    "src/**/*.{ts,tsx}"
+  ],
+  "ignore": [
+    "src/components/ui/**",
+    "src/components/pdf/sow-document.tsx",
+    "src/emails/**",
+    "src/components/mode-toggle.tsx"
+  ]
+}

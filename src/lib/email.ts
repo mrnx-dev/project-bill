@@ -3,6 +3,7 @@ import { render } from "@react-email/render";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
 import { InvoiceEmail } from "@/emails/InvoiceEmail";
+import { RecurringInvoiceEmail } from "@/emails/RecurringInvoiceEmail";
 import { ReminderEmail } from "@/emails/ReminderEmail";
 import { PaymentSuccessEmail } from "@/emails/PaymentSuccessEmail";
 import type { ReminderType } from "@/emails/ReminderEmail";
@@ -97,6 +98,66 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
     return { success: true, data };
   } catch (error) {
     console.error("Failed to send email via Resend:", error);
+    return { success: false, error };
+  }
+}
+
+// ── Recurring Invoice Email ───────────────────────────────────
+
+export interface SendRecurringInvoiceEmailParams {
+  to: string;
+  clientName: string;
+  projectTitle: string;
+  invoiceId: string;
+  dueDate: Date | null;
+  amountStr: string;
+  invoiceLink: string;
+  description?: string | null;
+  lang?: Language;
+}
+
+export async function sendRecurringInvoiceEmail(params: SendRecurringInvoiceEmailParams) {
+  const settings = await getCompanySettings();
+
+  if (!settings.resendApiKey) {
+    console.warn("No RESEND_API_KEY found in DB. Mocking recurring email delivery.");
+    console.log(`[MOCK RECURRING EMAIL] To: ${params.to} | Link: ${params.invoiceLink}`);
+    return { success: true, mocked: true };
+  }
+
+  const resend = new Resend(settings.resendApiKey);
+
+  try {
+    const lang = params.lang || "id";
+
+    const html = await render(
+      RecurringInvoiceEmail({
+        clientName: params.clientName,
+        invoiceId: params.invoiceId,
+        projectName: params.projectTitle,
+        amount: params.amountStr,
+        dueDate: params.dueDate,
+        invoiceLink: params.invoiceLink,
+        description: params.description,
+        company: settings,
+        lang,
+      })
+    );
+
+    const subject = lang === "id"
+      ? `Tagihan Rutin untuk ${params.projectTitle} - Diperlukan Tindakan`
+      : `Recurring Invoice for ${params.projectTitle} - Action Required`;
+
+    const data = await resend.emails.send({
+      from: getSenderFrom(settings.companyName),
+      to: [params.to],
+      subject,
+      html,
+    });
+
+    return { success: true, data };
+  } catch (error) {
+    console.error("Failed to send recurring email via Resend:", error);
     return { success: false, error };
   }
 }

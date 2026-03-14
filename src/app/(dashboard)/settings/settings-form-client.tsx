@@ -6,17 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Loader2, Building2, MapPin, Mail, ImageIcon, Phone, Landmark } from "lucide-react";
+import { Form } from "@/components/ui/form";
+import { Loader2, Building2, MapPin, Landmark } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
@@ -147,49 +138,49 @@ export function SettingsFormClient() {
           </Card>
 
           <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Building2 className="w-5 h-5 text-purple-500" />
-              Integrations
-            </CardTitle>
-            <CardDescription>
-              Configure external services like Payment Gateway (Mayar) and Email Delivery (Resend). Keys are encrypted at rest.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <IntegrationsFields form={form} />
-          </CardContent>
-        </Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Building2 className="w-5 h-5 text-purple-500" />
+                Integrations
+              </CardTitle>
+              <CardDescription>
+                Configure external services like Payment Gateway (Mayar) and Email Delivery (Resend). Keys are encrypted at rest.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <IntegrationsFields form={form} />
+            </CardContent>
+          </Card>
 
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Landmark className="w-5 h-5 text-amber-500" />
-              Manual Payment Instructions
-            </CardTitle>
-            <CardDescription>
-              These details serve as a fallback on the client's invoice if your Mayar API Key is missing or fails to authenticate during processing.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <BankDetailsFields form={form} />
-          </CardContent>
-        </Card>
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Landmark className="w-5 h-5 text-amber-500" />
+                Manual Payment Instructions
+              </CardTitle>
+              <CardDescription>
+                These details serve as a fallback on the client's invoice if your Mayar API Key is missing or fails to authenticate during processing.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <BankDetailsFields form={form} />
+            </CardContent>
+          </Card>
 
-        <div className="flex justify-end pt-2">
-          <Button type="submit" disabled={isSaving} className="px-8 shadow-md">
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Preferences"
-            )}
-          </Button>
-        </div>
-      </form>
-    </Form>
+          <div className="flex justify-end pt-2">
+            <Button type="submit" disabled={isSaving} className="px-8 shadow-md">
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Preferences"
+              )}
+            </Button>
+          </div>
+        </form>
+      </Form>
     </div >
   );
 }
