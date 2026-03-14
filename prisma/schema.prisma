@@ -96,6 +96,7 @@ model Settings {
   companyName        String   @default("ProjectBill")
   companyAddress     String?
   companyEmail       String?
+  senderEmail        String?
   companyLogoUrl     String?
   companyWhatsApp    String?
   resendApiKey       String?

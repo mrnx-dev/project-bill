@@ -76,6 +76,7 @@ export default async function DashboardLayout({
             companyName: settings.companyName || "",
             companyAddress: settings.companyAddress || "",
             companyEmail: settings.companyEmail || "",
+            senderEmail: settings.senderEmail || "",
             companyLogoUrl: settings.companyLogoUrl || "",
             companyWhatsApp: settings.companyWhatsApp || "",
             bankName: settings.bankName || "",

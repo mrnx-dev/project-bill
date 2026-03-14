@@ -15,6 +15,7 @@ export type { ReminderType };
 
 export interface CompanySettings extends CompanyInfo {
   resendApiKey?: string;
+  senderEmail?: string | null;
 }
 
 export async function getCompanySettings(): Promise<CompanySettings> {
@@ -27,6 +28,7 @@ export async function getCompanySettings(): Promise<CompanySettings> {
       companyEmail: settings?.companyEmail || null,
       companyLogoUrl: settings?.companyLogoUrl || null,
       companyAddress: settings?.companyAddress || null,
+      senderEmail: settings?.senderEmail || null,
       resendApiKey: settings?.resendApiKey ? (decrypt(settings.resendApiKey) || undefined) : undefined,
     };
   } catch {
@@ -35,13 +37,17 @@ export async function getCompanySettings(): Promise<CompanySettings> {
       companyEmail: null,
       companyLogoUrl: null,
       companyAddress: null,
+      senderEmail: null,
       resendApiKey: undefined,
     };
   }
 }
 
-function getSenderFrom(companyName: string): string {
-  return `${companyName} <noreply@projectbill.mrndev.me>`;
+function getSenderFrom(companyName: string, senderEmail?: string | null): string {
+  if (senderEmail && senderEmail.trim() !== "") {
+    return `${companyName} <${senderEmail.trim()}>`;
+  }
+  return `${companyName} <noreply@projectbill.mrndev.me>`; // Custom domain email
 }
 
 // ── Invoice Email ─────────────────────────────────────────────
@@ -89,7 +95,7 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
       : `Invoice for ${params.projectTitle} - Action Required`;
 
     const data = await resend.emails.send({
-      from: getSenderFrom(settings.companyName),
+      from: getSenderFrom(settings.companyName, settings.senderEmail),
       to: [params.to],
       subject,
       html,
@@ -148,12 +154,17 @@ export async function sendRecurringInvoiceEmail(params: SendRecurringInvoiceEmai
       ? `Tagihan Rutin untuk ${params.projectTitle} - Diperlukan Tindakan`
       : `Recurring Invoice for ${params.projectTitle} - Action Required`;
 
-    const data = await resend.emails.send({
-      from: getSenderFrom(settings.companyName),
+    const { data, error } = await resend.emails.send({
+      from: getSenderFrom(settings.companyName, settings.senderEmail),
       to: [params.to],
       subject,
       html,
     });
+
+    if (error) {
+      console.error("[RESEND] API Error:", error);
+      return { success: false, error: error.message };
+    }
 
     return { success: true, data };
   } catch (error) {
@@ -223,12 +234,17 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
       })
     );
 
-    const data = await resend.emails.send({
-      from: getSenderFrom(settings.companyName),
+    const { data, error } = await resend.emails.send({
+      from: getSenderFrom(settings.companyName, settings.senderEmail),
       to: [params.to],
       subject,
       html,
     });
+
+    if (error) {
+      console.error("[RESEND] API Error:", error);
+      return { success: false, error: error.message };
+    }
 
     return { success: true, data };
   } catch (error) {
@@ -243,10 +259,11 @@ export interface SendPaymentSuccessEmailParams {
   to: string;
   clientName: string;
   projectTitle: string;
-  invoiceId: string;
+  invoiceNumber: string;
   amountStr: string;
   invoiceLink: string;
   sowPdfBuffer?: Buffer;
+  invoicePdfBuffer?: Buffer;
   lang?: Language;
 }
 
@@ -270,12 +287,18 @@ export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailPar
         content: params.sowPdfBuffer,
       });
     }
+    if (params.invoicePdfBuffer) {
+      attachments.push({
+        filename: `Invoice_${params.invoiceNumber.replace(/[^a-z0-9]/gi, '_')}.pdf`,
+        content: params.invoicePdfBuffer,
+      });
+    }
 
     const html = await render(
       PaymentSuccessEmail({
         clientName: params.clientName,
         projectName: params.projectTitle,
-        invoiceId: params.invoiceId,
+        invoiceNumber: params.invoiceNumber,
         amount: params.amountStr,
         invoiceLink: params.invoiceLink,
         hasSowAttachment: !!params.sowPdfBuffer,
@@ -288,13 +311,21 @@ export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailPar
       ? "Pembayaran Diterima - Terima kasih atas kerjasamanya!"
       : "Payment Received - Thank you for your business!";
 
-    const data = await resend.emails.send({
-      from: getSenderFrom(settings.companyName),
+    const from = getSenderFrom(settings.companyName, settings.senderEmail);
+    console.log(`[RESEND] Attempting to send payment success email from: ${from} to: ${params.to}`);
+
+    const { data, error } = await resend.emails.send({
+      from,
       to: [params.to],
       subject,
       html,
       attachments: attachments.length > 0 ? attachments : undefined,
     });
+
+    if (error) {
+      console.error("[RESEND] API Error:", error);
+      return { success: false, error: error.message };
+    }
 
     return { success: true, data };
   } catch (error) {

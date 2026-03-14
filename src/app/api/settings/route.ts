@@ -53,6 +53,7 @@ export async function PUT(req: Request) {
       companyName: string;
       companyAddress?: string | null;
       companyEmail?: string | null;
+      senderEmail?: string | null;
       companyLogoUrl?: string | null;
       companyWhatsApp?: string | null;
       resendApiKey?: string | null;
@@ -73,6 +74,7 @@ export async function PUT(req: Request) {
       companyName: parsedBody.companyName,
       companyAddress: parsedBody.companyAddress,
       companyEmail: parsedBody.companyEmail,
+      senderEmail: parsedBody.senderEmail,
       companyLogoUrl: parsedBody.companyLogoUrl,
       companyWhatsApp: parsedBody.companyWhatsApp,
       bankName: parsedBody.bankName,
@@ -87,9 +89,22 @@ export async function PUT(req: Request) {
       const newValue = parsedBody[field];
       const currentEncryptedValue = currentSettings?.[field] ?? null;
 
-      if (!newValue || isMaskedValue(newValue)) {
+      if (newValue === undefined || (typeof newValue === "string" && isMaskedValue(newValue))) {
         // User didn't change this field — keep existing value
         // Don't include in dataToUpdate, so Prisma won't touch it
+        continue;
+      }
+
+      if (newValue === null || newValue.trim() === "") {
+        dataToUpdate[field] = null;
+        const oldDecrypted = currentEncryptedValue ? decrypt(currentEncryptedValue) : null;
+        if (oldDecrypted) {
+          auditEntries.push({
+            field,
+            oldValue: maskSecret(oldDecrypted),
+            newValue: null,
+          });
+        }
         continue;
       }
 

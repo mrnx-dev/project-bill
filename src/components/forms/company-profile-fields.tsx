@@ -73,16 +73,41 @@ export function CompanyProfileFields({ form }: CompanyProfileFieldsProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel className="flex items-center gap-1">
-                <Mail className="w-3.5 h-3.5 text-slate-400" /> Email Address
+                <Mail className="w-3.5 h-3.5 text-slate-400" /> Support / Reply-to Email
               </FormLabel>
               <FormControl>
                 <Input
-                  placeholder="Enter your email address"
+                  placeholder="Enter your support email"
                   type="email"
                   className="bg-slate-50 dark:bg-slate-900 border-slate-200"
                   {...field}
                 />
               </FormControl>
+              <FormDescription className="text-[11px] leading-tight invisible">
+                High balancer
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="senderEmail"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-1">
+                <Mail className="w-3.5 h-3.5 text-slate-400" /> Sender Email (Delivery)
+              </FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="noreply@yourdomain.com"
+                  type="email"
+                  className="bg-slate-50 dark:bg-slate-900 border-slate-200"
+                  {...field}
+                />
+              </FormControl>
+              <FormDescription className="text-[11px] leading-tight">Must be a verified domain in Resend.</FormDescription>
               <FormMessage />
             </FormItem>
           )}

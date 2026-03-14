@@ -10,7 +10,7 @@ import type { CompanyInfo, Language } from "./EmailLayout";
 interface PaymentSuccessEmailProps {
     clientName: string;
     projectName: string;
-    invoiceId: string;
+    invoiceNumber: string;
     amount: string;
     invoiceLink: string;
     hasSowAttachment?: boolean;
@@ -21,7 +21,7 @@ interface PaymentSuccessEmailProps {
 export const PaymentSuccessEmail = ({
     clientName = "Client Name",
     projectName = "Website Development",
-    invoiceId = "INV-1234",
+    invoiceNumber = "INV-1234",
     amount = "Rp 1,000,000",
     invoiceLink = "https://projectbill.com/invoices/INV-1234",
     hasSowAttachment = false,
@@ -93,7 +93,7 @@ export const PaymentSuccessEmail = ({
                     <tbody>
                         <DetailRow label={lang === "id" ? "Tagihan Kepada" : "Billed To"} value={clientName} />
                         <DetailRow label={lang === "id" ? "Proyek" : "Project"} value={projectName} />
-                        <DetailRow label={lang === "id" ? "No. Invoice" : "Invoice No."} value={invoiceId} />
+                        <DetailRow label={lang === "id" ? "No. Invoice" : "Invoice No."} value={invoiceNumber} />
                     </tbody>
                 </table>
             </Section>
@@ -113,7 +113,7 @@ export const PaymentSuccessEmail = ({
                 )}
             </Text>
 
-            {hasSowAttachment && (
+            {hasSowAttachment ? (
                 <Text
                     style={{
                         fontSize: 14,
@@ -123,9 +123,24 @@ export const PaymentSuccessEmail = ({
                     }}
                 >
                     {lang === "id" ? (
-                        "Terlampir adalah dokumen digital Statement of Work (SOW) resmi yang memuat catatan jejak audit tanda tangan elektronik untuk arsip Anda."
+                        "Terlampir adalah dokumen Invoice dan Statement of Work (SOW) resmi untuk arsip Anda."
                     ) : (
-                        "Please find attached your official digital Statement of Work (SOW) document containing the electronic signature audit trail for your records."
+                        "Please find attached your Invoice and official Statement of Work (SOW) documents for your records."
+                    )}
+                </Text>
+            ) : (
+                <Text
+                    style={{
+                        fontSize: 14,
+                        color: "#374151",
+                        lineHeight: "22px",
+                        margin: "0 0 16px 0",
+                    }}
+                >
+                    {lang === "id" ? (
+                        "Terlampir adalah dokumen Invoice resmi untuk arsip Anda."
+                    ) : (
+                        "Please find attached your official Invoice document for your records."
                     )}
                 </Text>
             )}

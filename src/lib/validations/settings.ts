@@ -4,6 +4,7 @@ export const companyProfileSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
   companyAddress: z.string().optional(),
   companyEmail: z.email("Invalid email").optional().or(z.literal("")),
+  senderEmail: z.email("Invalid email").optional().or(z.literal("")),
   companyLogoUrl: z.url("Invalid URL").optional().or(z.literal("")),
   companyWhatsApp: z.string().optional(),
 });

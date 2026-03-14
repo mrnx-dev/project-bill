@@ -47,3 +47,43 @@ export async function generateSowPdfBuffer(invoiceId: string): Promise<Buffer> {
         await browser.close();
     }
 }
+
+export async function generateInvoicePdfBuffer(invoiceId: string): Promise<Buffer> {
+    const baseUrl = getBaseUrl();
+    const targetUrl = `${baseUrl}/invoices/${invoiceId}/print`;
+    console.log(`[PDF Generator] Target URL for Invoice: ${targetUrl}`);
+
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    try {
+        const page = await browser.newPage();
+
+        await page.setViewport({ width: 1200, height: 800 });
+
+        await page.setExtraHTTPHeaders({
+            'ngrok-skip-browser-warning': 'true',
+        });
+
+        await page.goto(targetUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: {
+                top: '0cm',
+                bottom: '0cm',
+                left: '0cm',
+                right: '0cm'
+            }
+        });
+
+        return Buffer.from(pdfBuffer);
+    } finally {
+        await browser.close();
+    }
+}

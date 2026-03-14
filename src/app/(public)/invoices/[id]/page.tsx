@@ -124,7 +124,7 @@ export default async function InvoiceViewPage(props: {
       {invoice.status !== "paid" && <RealtimeInvoicePoller invoiceId={invoice.id} />}
       {/* Toolbar outside the A4 paper */}
       <div className="w-full max-w-[210mm] flex justify-end print:hidden gap-2">
-        <PrintButton />
+        <PrintButton invoiceId={invoice.id} />
       </div>
 
       {/* A4 Container */}

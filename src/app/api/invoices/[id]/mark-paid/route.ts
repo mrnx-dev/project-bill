@@ -75,7 +75,7 @@ export async function POST(
       title: `Invoice Paid (Manual)`,
       message: `Manual payment received for invoice ${existingInvoice.invoiceNumber} (${client.name} - ${project.title}) amounting to ${amountStr}.`,
       type: "payment",
-      linkUrl: `/invoices/${existingInvoice.invoiceNumber}`, // or ID depending on your routes
+      linkUrl: `/invoices/${id}`,
     }).catch(console.error);
 
     return NextResponse.json({ success: true, invoice: updatedInvoice });

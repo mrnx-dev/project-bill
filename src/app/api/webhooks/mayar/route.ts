@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyMayarWebhook } from "@/lib/mayar";
-import { generateSowPdfBuffer } from "@/lib/pdf-generator";
+import { generateSowPdfBuffer, generateInvoicePdfBuffer } from "@/lib/pdf-generator";
 import { sendPaymentSuccessEmail } from "@/lib/email";
 import { RateLimiter } from "@/lib/rate-limit";
 import { createNotification } from "@/lib/notifications";
@@ -96,14 +96,15 @@ export async function POST(request: Request) {
           linkUrl: `/invoices/${updatedInvoice.id}`,
         });
 
-        // Generate SOW PDF and send Email in the background
+        // Generate PDF and send Email in the background
         (async () => {
           try {
             const project = updatedInvoice.project;
-            let pdfBuffer: Buffer | undefined;
+            let sowPdfBuffer: Buffer | undefined;
+            const invoicePdfBuffer = await generateInvoicePdfBuffer(updatedInvoice.id);
 
             if (project.termsAcceptedAt) {
-              pdfBuffer = await generateSowPdfBuffer(updatedInvoice.id);
+              sowPdfBuffer = await generateSowPdfBuffer(updatedInvoice.id);
             }
 
             const invoiceAmount = Number(updatedInvoice.amount);
@@ -127,10 +128,11 @@ export async function POST(request: Request) {
               to: project.client.email!,
               clientName: project.client.name,
               projectTitle: project.title,
-              invoiceId: updatedInvoice.id,
+              invoiceNumber: updatedInvoice.invoiceNumber,
               amountStr: formatCurrency,
               invoiceLink: invoiceDetailUrl,
-              sowPdfBuffer: pdfBuffer,
+              sowPdfBuffer,
+              invoicePdfBuffer,
               lang: project.language as "id" | "en",
             });
             console.log(`[Webhook] Payment success email sent for Invoice ${updatedInvoice.id}`);

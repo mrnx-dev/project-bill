@@ -40,7 +40,7 @@ const TRANSLATIONS: Record<string, Record<TranslationKey, string>> = {
 export default function SOWPrintPage() {
     const params = useParams();
     const router = useRouter();
-    const projectId = params.id as string;
+    const invoiceId = params.id as string;
 
     const [project, setProject] = useState<{ title: string; client: { name: string }; terms: string; termsAcceptedAt: string; termsAcceptedUserAgent: string; termsAcceptedSessionId: string; language?: string; } | null>(null);
     const [language, setLanguage] = useState<"en" | "id">("en");
@@ -49,7 +49,7 @@ export default function SOWPrintPage() {
     useEffect(() => {
         async function fetchProjectAndSettings() {
             try {
-                const projRes = await fetch(`/api/projects/${projectId}/public-sow`);
+                const projRes = await fetch(`/api/invoices/${invoiceId}/public-sow`);
 
                 if (!projRes.ok) throw new Error("Failed to fetch SOW");
 
@@ -63,13 +63,13 @@ export default function SOWPrintPage() {
                 }
             } catch (error) {
                 console.error(error);
-                router.push(`/invoices/${projectId}`);
+                router.push(`/invoices/${invoiceId}`);
             } finally {
                 setIsLoading(false);
             }
         }
         fetchProjectAndSettings();
-    }, [projectId, router]);
+    }, [invoiceId, router]);
 
     // Automatically trigger print dialog when loaded
     useEffect(() => {

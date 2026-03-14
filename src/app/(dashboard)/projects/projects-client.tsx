@@ -35,7 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Plus, FileText, Maximize2, NotepadTextDashed } from "lucide-react";
+import { Pencil, Trash2, Plus, FileText, Maximize2, NotepadTextDashed, Info } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { NumericFormat } from "react-number-format";
@@ -45,6 +45,12 @@ import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import { CostEstimator } from "@/components/cost-estimator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type Client = { id: string; name: string };
 
@@ -361,7 +367,7 @@ export function ProjectsClient({
   const filteredProjects = projects.filter(
     (project) => {
       const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            project.client.name.toLowerCase().includes(searchQuery.toLowerCase());
+        project.client.name.toLowerCase().includes(searchQuery.toLowerCase());
       if (statusFilter !== "all" && project.status !== statusFilter) return false;
       return matchesSearch;
     }
@@ -532,7 +538,19 @@ export function ProjectsClient({
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="language">Language</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="language">Language</Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>This language is used for generating invoices and statements of work (SOW) translations.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                     <Select value={language} onValueChange={setLanguage}>
                       <SelectTrigger className="truncate">
                         <SelectValue placeholder="Language" />
@@ -544,9 +562,9 @@ export function ProjectsClient({
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between mt-2 mb-1">
-                      <Label htmlFor="totalPrice">Total Price</Label>
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="totalPrice">Total Price</Label>
+                  </div>
                     <NumericFormat
                       id="totalPrice"
                       value={
@@ -576,7 +594,7 @@ export function ProjectsClient({
                       value={dpAmount}
                       onValueChange={(values) => setDpAmount(values.value)}
                       disabled={hasInvoices || isSowSigned}
-                      placeholder="300"
+                      placeholder="Enter DP Amount"
                       thousandSeparator="."
                       decimalSeparator=","
                       prefix={currency === "IDR" ? "Rp " : "$ "}
@@ -941,8 +959,8 @@ export function ProjectsClient({
                       {isSowLocked || isSowSigned ? "Contract Viewer" : "Contract Editor"}
                     </DialogTitle>
                     <DialogDescription className="text-xs">
-                      {isSowLocked || isSowSigned 
-                        ? "Viewing the signed terms of service or scope of work." 
+                      {isSowLocked || isSowSigned
+                        ? "Viewing the signed terms of service or scope of work."
                         : "Write your terms of service or scope of work using Markdown."}
                     </DialogDescription>
                   </div>

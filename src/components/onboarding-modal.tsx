@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Form } from "@/components/ui/form";
@@ -14,6 +13,7 @@ import { companyProfileSchema, bankDetailsSchema, integrationsSchema, CompanyPro
 import { CompanyProfileFields } from "@/components/forms/company-profile-fields";
 import { BankDetailsFields } from "@/components/forms/bank-details-fields";
 import { IntegrationsFields } from "@/components/forms/integrations-fields";
+import { NumericFormat } from "react-number-format";
 import {
   onboardingClientSchema,
   onboardingProjectSchema,
@@ -56,6 +56,7 @@ export type SettingsData = {
   companyName: string;
   companyAddress: string;
   companyEmail: string;
+  senderEmail: string;
   companyLogoUrl: string;
   companyWhatsApp: string;
   bankName: string;
@@ -105,6 +106,7 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
       companyName: existingSettings?.companyName || "",
       companyAddress: existingSettings?.companyAddress || "",
       companyEmail: existingSettings?.companyEmail || "",
+      senderEmail: existingSettings?.senderEmail || "",
       companyLogoUrl: existingSettings?.companyLogoUrl || "",
       companyWhatsApp: existingSettings?.companyWhatsApp || "",
     }
@@ -528,11 +530,14 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
                       <FormItem>
                         <FormLabel>Total Price (IDR) <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="10000000"
-                            className="bg-slate-50 dark:bg-slate-900 font-mono"
-                            {...field}
+                          <NumericFormat
+                            value={field.value}
+                            onValueChange={(values) => field.onChange(values.value)}
+                            placeholder="Enter Total Price"
+                            thousandSeparator="."
+                            decimalSeparator=","
+                            prefix="Rp "
+                            className="flex h-9 w-full rounded-md border border-input bg-slate-50 dark:bg-slate-900 font-mono px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                           />
                         </FormControl>
                         <FormMessage />

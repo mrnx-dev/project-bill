@@ -255,6 +255,12 @@ The full MVP through V1.5 features have been successfully implemented:
      - **Recurring Invoice Email Template:** The server action `send-invoice.ts` now dynamically detects if `invoice.type === "recurring"` and routes the email through the specialized `RecurringInvoiceEmail.tsx` template, featuring custom messaging for subscription billing.
      - **Knip Core Cleanup:** Resolved technical debt by configuring `knip.json` to properly ignore valid ShadcnUI exports and raw React Email templates, eliminating false-positive bloat. Removed completely unused packages (e.g., `jest-mock-extended`) to lighten `.node_modules` footprint.
 
+ 37. **Core Reliability & Visual Consistency Patches (Sprint 16 Patch 3):**
+     - **URL Generator Robustness:** Centralized all absolute URL generation across PDF rendering and Email links into a safe `getBaseUrl()` utility, robustly handling `APP_URL`, `VERCEL_URL`, and `localhost` fallbacks while sanitizing trailing slashes to prevent `ERR_INVALID_URL` crashes during automated background tasks.
+     - **Custom Email Identity:** Integrated the dynamic `companyName` and `companyEmail` from global settings directly into the Resend `from:` field, ensuring clients receive communications from a matching branded sender identity instead of a generic default.
+     - **Skeleton UI Standardization:** Synchronized loading state skeletons across the entire dashboard (`/`, `/clients`, `/invoices`, `/projects`, `/board`) to exactly match the rendered components' layouts, eliminating jarring layout shifts (Cumulative Layout Shift) during data fetching.
+     - **Notification Routing Fix:** Corrected the `linkUrl` for manual "Mark as Paid" notifications to use the immutable database UUID instead of the display invoice number, preventing 404 errors when admins click the notification bell alert.
+
 ## Upcoming: Sprint 17 (V2 Feature Expansion)
 The next development cycle will focus on expanding core functionality. Potential candidates:
 

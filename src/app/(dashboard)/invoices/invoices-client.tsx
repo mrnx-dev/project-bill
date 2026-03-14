@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { Send, Loader2, Trash2 } from "lucide-react";
 import { sendInvoiceEmail } from "@/app/actions/send-invoice";
+import { sendReceiptEmail } from "@/app/actions/send-receipt";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmailProviderModal } from "@/components/email-provider-modal";
@@ -124,10 +125,10 @@ export function InvoicesClient({
     }
   };
 
-  const handleSendEmail = async (id: string) => {
+  const handleSendEmail = async (id: string, isReceipt: boolean = false) => {
     setSendingId(id);
     try {
-      const res = await sendInvoiceEmail(id);
+      const res = isReceipt ? await sendReceiptEmail(id) : await sendInvoiceEmail(id);
       if (res.success) {
         if (res.manual) {
           toast.success("Manual Mode Enabled", {
@@ -146,7 +147,7 @@ export function InvoicesClient({
           }
         } else {
           toast.success("Email sent successfully!", {
-            description: "The client will receive the invoice in their inbox shortly.",
+            description: `The client will receive the ${isReceipt ? "receipt" : "invoice"} in their inbox shortly.`,
           });
         }
       } else {
@@ -268,15 +269,15 @@ export function InvoicesClient({
                     variant="secondary"
                     size="sm"
                     className="w-full px-1 text-xs"
-                    onClick={() => handleSendEmail(inv.id)}
-                    disabled={sendingId === inv.id || inv.status === "paid"}
+                    onClick={() => handleSendEmail(inv.id, inv.status === "paid")}
+                    disabled={sendingId === inv.id}
                   >
                     {sendingId === inv.id ? (
                       <Loader2 className="w-4 h-4 mr-1 animate-spin" />
                     ) : (
                       <Send className="w-4 h-4 mr-1" />
                     )}
-                    Send
+                    {inv.status === "paid" ? "Send Receipt" : "Send"}
                   </Button>
                   <Button variant="outline" size="sm" className="w-full px-1 text-xs" asChild>
                     <Link
@@ -378,11 +379,11 @@ export function InvoicesClient({
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => handleSendEmail(inv.id)}
-                        disabled={sendingId === inv.id || inv.status === "paid"}
+                        onClick={() => handleSendEmail(inv.id, inv.status === "paid")}
+                        disabled={sendingId === inv.id}
                         title={
                           inv.status === "paid"
-                            ? "Invoice already paid"
+                            ? "Send payment receipt"
                             : "Send invoice email"
                         }
                       >
@@ -391,7 +392,7 @@ export function InvoicesClient({
                         ) : (
                           <Send className="w-4 h-4 mr-2" />
                         )}
-                        Send
+                        {inv.status === "paid" ? "Send Receipt" : "Send"}
                       </Button>
                       <Button variant="outline" size="sm" asChild>
                         <Link
