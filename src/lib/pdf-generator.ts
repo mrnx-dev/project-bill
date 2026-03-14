@@ -1,9 +1,11 @@
 import puppeteer from 'puppeteer';
+import { getBaseUrl } from './utils';
 
 export async function generateSowPdfBuffer(invoiceId: string): Promise<Buffer> {
-    const baseUrl = process.env.APP_URL || "http://localhost:3000";
+    const baseUrl = getBaseUrl();
     // We use the exact print URL the user likes
     const targetUrl = `${baseUrl}/invoices/${invoiceId}/sow/print`;
+    console.log(`[PDF Generator] Target URL for SOW: ${targetUrl}`);
 
     const browser = await puppeteer.launch({
         headless: true,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createPaymentLink } from "@/lib/mayar";
+import { getBaseUrl } from "@/lib/utils";
 
 
 export async function POST(
@@ -44,10 +45,7 @@ export async function POST(
     const taxAmount = invoiceAmount * (taxRate / 100);
     const grandTotal = invoiceAmount + taxAmount;
 
-    let baseUrl = process.env.APP_URL || "http://localhost:3000";
-    if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-      baseUrl = `https://${baseUrl}`;
-    }
+    const baseUrl = getBaseUrl();
 
     let expiredAtDate: string | undefined;
     if (invoice.dueDate) {

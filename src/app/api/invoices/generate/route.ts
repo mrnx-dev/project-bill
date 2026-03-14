@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sendInvoiceEmail } from "@/app/actions/send-invoice";
 import { auth } from "@/auth";
 import { generateInvoiceNumber } from "@/lib/invoice-utils";
+import { getBaseUrl } from "@/lib/utils";
 
 export async function POST(request: Request) {
   try {
@@ -77,9 +78,7 @@ export async function POST(request: Request) {
       },
     });
 
-    const fallbackHost = request.headers.get("host") || "localhost:3000";
-    const fallbackProtocol = fallbackHost.includes("localhost") ? "http" : "https";
-    const baseUrl = process.env.APP_URL || `${fallbackProtocol}://${fallbackHost}`;
+    const baseUrl = getBaseUrl();
     const invoiceDetailUrl = `${baseUrl}/invoices/${newInvoice.id}`;
 
     // Soft-fail: Try communicating with Resend, but don't fail the whole block if it errors.

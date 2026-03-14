@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { sendInvoiceEmail as baseSendInvoiceEmail, sendRecurringInvoiceEmail } from "@/lib/email"
+import { getBaseUrl } from "@/lib/utils";
 
 export async function sendInvoiceEmail(
   invoiceId: string,
@@ -37,7 +38,7 @@ export async function sendInvoiceEmail(
     )
 
     const amountStr = formatCurrency.format(Number(invoice.amount));
-    const baseUrl = process.env.APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+    const baseUrl = getBaseUrl();
     const invoiceDetailUrl = `${baseUrl}/invoices/${invoice.id}`;
 
     // Fix potential issue where resend API keys fail silently

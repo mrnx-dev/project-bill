@@ -5,6 +5,7 @@ import { generateSowPdfBuffer } from "@/lib/pdf-generator";
 import { sendPaymentSuccessEmail } from "@/lib/email";
 import { RateLimiter } from "@/lib/rate-limit";
 import { createNotification } from "@/lib/notifications";
+import { getBaseUrl } from "@/lib/utils";
 
 // Allow 20 webhook requests per minute per IP to prevent spam/abuse
 const webhookRateLimiter = new RateLimiter({ limit: 20, windowMs: 60 * 1000 });
@@ -119,7 +120,7 @@ export async function POST(request: Request) {
               },
             ).format(grandTotal);
 
-            const baseUrl = process.env.APP_URL || "http://localhost:3000";
+            const baseUrl = getBaseUrl();
             const invoiceDetailUrl = `${baseUrl}/invoices/${updatedInvoice.id}`;
 
             await sendPaymentSuccessEmail({

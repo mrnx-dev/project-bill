@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendReminderEmail, ReminderType } from "@/lib/email";
+import { getBaseUrl } from "@/lib/utils";
 
 export async function GET(request: Request) {
   // 1. Validate CRON_SECRET (Default Deny if not set)
@@ -82,11 +83,7 @@ export async function GET(request: Request) {
       let lateFeeAmountStr: string | undefined;
 
       // Apply late fee if applicable
-      const baseUrl =
-        process.env.APP_URL ||
-        (process.env.VERCEL_URL
-          ? `https://${process.env.VERCEL_URL}`
-          : "http://localhost:3000");
+      const baseUrl = getBaseUrl();
       const invoiceLink = `${baseUrl}/invoices/${invoice.id}`;
 
       const invoiceAmountBase = Number(invoice.amount);
