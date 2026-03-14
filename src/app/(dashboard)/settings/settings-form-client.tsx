@@ -112,28 +112,14 @@ export function SettingsFormClient() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Building2 className="w-5 h-5 text-indigo-500" />
-                Company Identity
+                Company Profile & Contact Info
               </CardTitle>
               <CardDescription>
-                This information is used directly on your invoices and reports to establish your brand.
+                This information is used directly on your invoices and reports to establish your brand and help clients reach out to you.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <CompanyProfileFields form={form} />
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <MapPin className="w-5 h-5 text-emerald-500" />
-                Contact Information
-              </CardTitle>
-              <CardDescription>
-                These details help clients reach out to you if they have queries.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
             </CardContent>
           </Card>
 
