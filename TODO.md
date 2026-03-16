@@ -4,6 +4,33 @@
 
 ---
 
+## ✅ Completed
+
+### 🔐 Subscription & Licensing System (Tiered Gating)
+
+- [x] Desain strategi subscription 3-tier (Starter / Pro / Business)
+- [x] Tambah `DEPLOYMENT_MODE` env var (`self-hosted` vs `managed`)
+- [x] Buat model `Subscription` di Prisma schema
+- [x] Buat `src/lib/subscription.ts` — plan limits, gate checks, usage tracking
+- [x] Auto-create `Subscription` record untuk user baru
+- [x] Gate check di `POST /api/clients` (count limit)
+- [x] Gate check di `POST /api/projects` (count limit)
+- [x] Gate check di `POST /api/invoices` & `/api/invoices/generate` (monthly counter)
+- [x] Gate check di email sender `email.ts` (monthly counter)
+- [x] Gate check di `POST /api/recurring-invoices` (count limit)
+- [x] Gate check di `POST /api/sow-templates` (count limit)
+- [x] Buat endpoint cron `/api/cron/reset-usage` + `CRON_SECRET` auth
+- [x] Buat halaman `/settings/subscription` (progress bar usage)
+- [x] Buat komponen `UpgradeDialog` (muncul saat limit tercapai)
+- [x] Tambah watermark "Powered by ProjectBill" di invoice publik (free plan, managed cloud)
+- [x] Buat API `GET /api/subscription` (fetch info langganan)
+- [x] Buat API `PUT /api/subscription` (admin update plan manual)
+- [x] Unit test `subscription.ts` (8 test cases, semua pass)
+- [x] Fix dan update `mayar.test.ts` mock ke database settings
+- [x] Semua 20 unit test project pass ✅
+
+---
+
 ## 🏆 Tier 1 — High Impact, High Feasibility
 
 ### 1. 🌐 Client Portal (Multitenant Dashboard) — Sprint 17-18
