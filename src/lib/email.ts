@@ -61,9 +61,21 @@ export interface SendInvoiceEmailParams {
   amountStr: string;
   invoiceLink: string;
   lang?: Language;
+  userId?: string; // Add userId for subscription tracking
 }
 
 export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
+  // --- Subscription Gate Check ---
+  if (params.userId) {
+    const { checkLimit } = await import("@/lib/subscription");
+    const limitCheck = await checkLimit(params.userId, "emailsPerMonth");
+    if (!limitCheck.allowed) {
+      console.warn(`[SUBSCRIPTION] Email limit reached for user ${params.userId}`);
+      return { success: false, quotaExceeded: true };
+    }
+  }
+  // -------------------------------
+
   const settings = await getCompanySettings();
 
   if (!settings.resendApiKey) {
@@ -101,6 +113,13 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
       html,
     });
 
+    // --- Subscription Usage Increment ---
+    if (params.userId) {
+      const { incrementUsage } = await import("@/lib/subscription");
+      await incrementUsage(params.userId, "emailsSent");
+    }
+    // ------------------------------------
+
     return { success: true, data };
   } catch (error) {
     console.error("Failed to send email via Resend:", error);
@@ -120,9 +139,21 @@ export interface SendRecurringInvoiceEmailParams {
   invoiceLink: string;
   description?: string | null;
   lang?: Language;
+  userId?: string; // Add userId for subscription tracking
 }
 
 export async function sendRecurringInvoiceEmail(params: SendRecurringInvoiceEmailParams) {
+  // --- Subscription Gate Check ---
+  if (params.userId) {
+    const { checkLimit } = await import("@/lib/subscription");
+    const limitCheck = await checkLimit(params.userId, "emailsPerMonth");
+    if (!limitCheck.allowed) {
+      console.warn(`[SUBSCRIPTION] Email limit reached for user ${params.userId}`);
+      return { success: false, quotaExceeded: true };
+    }
+  }
+  // -------------------------------
+
   const settings = await getCompanySettings();
 
   if (!settings.resendApiKey) {
@@ -166,6 +197,13 @@ export async function sendRecurringInvoiceEmail(params: SendRecurringInvoiceEmai
       return { success: false, error: error.message };
     }
 
+    // --- Subscription Usage Increment ---
+    if (params.userId) {
+      const { incrementUsage } = await import("@/lib/subscription");
+      await incrementUsage(params.userId, "emailsSent");
+    }
+    // ------------------------------------
+
     return { success: true, data };
   } catch (error) {
     console.error("Failed to send recurring email via Resend:", error);
@@ -185,6 +223,7 @@ export interface SendReminderEmailParams {
   reminderType: ReminderType;
   lateFeeAmountStr?: string;
   lang?: Language;
+  userId?: string; // Add userId for subscription tracking
 }
 
 const REMINDER_SUBJECTS: Record<ReminderType, Record<Language, (title: string) => string>> = {
@@ -207,6 +246,17 @@ const REMINDER_SUBJECTS: Record<ReminderType, Record<Language, (title: string) =
 };
 
 export async function sendReminderEmail(params: SendReminderEmailParams) {
+  // --- Subscription Gate Check ---
+  if (params.userId) {
+    const { checkLimit } = await import("@/lib/subscription");
+    const limitCheck = await checkLimit(params.userId, "emailsPerMonth");
+    if (!limitCheck.allowed) {
+      console.warn(`[SUBSCRIPTION] Email limit reached for user ${params.userId}`);
+      return { success: false, quotaExceeded: true };
+    }
+  }
+  // -------------------------------
+
   const lang = params.lang || "id";
   const subject = REMINDER_SUBJECTS[params.reminderType][lang](params.projectTitle);
   const settings = await getCompanySettings();
@@ -245,6 +295,13 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
       console.error("[RESEND] API Error:", error);
       return { success: false, error: error.message };
     }
+
+    // --- Subscription Usage Increment ---
+    if (params.userId) {
+      const { incrementUsage } = await import("@/lib/subscription");
+      await incrementUsage(params.userId, "emailsSent");
+    }
+    // ------------------------------------
 
     return { success: true, data };
   } catch (error) {

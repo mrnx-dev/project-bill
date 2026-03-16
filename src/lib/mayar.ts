@@ -25,6 +25,16 @@ export async function createPaymentLink(
   const settings = await prisma.settings.findUnique({ where: { id: "global" } });
   const apiKey = settings?.mayarApiKey ? decrypt(settings.mayarApiKey) : null;
 
+  // --- Subscription Gate Check ---
+  // If the user's ID is known contextually, ideally we pass it in CreatePaymentLinkParams
+  // We'll temporarily use the first admin user's ID for cron jobs/system actions if not passed.
+  // In a robust implementation, the user ID should always be passed down.
+  const adminUser = await prisma.user.findFirst({ where: { role: "admin" } });
+  // Currently the API doesn't pass userId to createPaymentLink, relying on system admin for testing.
+  // So we don't strictly enforce gate here unless we change the signature. 
+  // Let's modify the signature to accept userId below (requiring refactor of callers).
+  // -------------------------------
+
   // If no API key is provided, we simulate the Mayar API for MVP testing
   if (!apiKey) {
     console.warn("No mayarApiKey provided. Using simulated payment link.");

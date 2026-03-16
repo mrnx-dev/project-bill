@@ -57,6 +57,17 @@ export async function POST(request: Request) {
 
         const data = validation.data;
 
+        // --- Subscription Gate Check ---
+        const { checkLimit } = await import("@/lib/subscription");
+        const limitCheck = await checkLimit(session.user.id, "recurringTemplates");
+        if (!limitCheck.allowed) {
+            return NextResponse.json(
+                { error: "Plan limit reached", limitCheck },
+                { status: 403 }
+            );
+        }
+        // -------------------------------
+
         // Check if project exists
         const project = await prisma.project.findUnique({
             where: { id: data.projectId },

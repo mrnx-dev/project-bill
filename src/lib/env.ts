@@ -7,6 +7,7 @@ const envSchema = z.object({
   APP_URL: z.string().optional(),
   CRON_SECRET: z.string().optional(),
   AUTH_TRUST_HOST: z.string().optional(),
+  DEPLOYMENT_MODE: z.enum(["self-hosted", "managed"]).default("self-hosted"),
 });
 
 // Validate `process.env` against our schema

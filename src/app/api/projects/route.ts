@@ -70,6 +70,17 @@ export async function POST(request: Request) {
 
     const data = validation.data;
 
+    // --- Subscription Gate Check ---
+    const { checkLimit } = await import("@/lib/subscription");
+    const limitCheck = await checkLimit(session.user.id, "activeProjects");
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        { error: "Plan limit reached", limitCheck },
+        { status: 403 }
+      );
+    }
+    // -------------------------------
+
     // If items exist, recalculate totalPrice from them
     let totalPrice = data.totalPrice;
     if (data.items && data.items.length > 0) {

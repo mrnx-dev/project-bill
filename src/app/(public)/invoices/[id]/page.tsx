@@ -119,6 +119,17 @@ export default async function InvoiceViewPage(props: {
 
   const hasMayar = !!settings.mayarApiKey;
 
+  // Watermark: show "Powered by ProjectBill" for starter plan on managed cloud
+  const { isManagedCloud } = await import("@/lib/subscription");
+  let showWatermark = false;
+  if (isManagedCloud()) {
+    const adminUser = await prisma.user.findFirst({
+      where: { role: "admin" },
+      include: { subscription: true },
+    });
+    showWatermark = !adminUser?.subscription || adminUser.subscription.plan === "starter";
+  }
+
   return (
     <div className="light-theme min-h-screen bg-neutral-100 py-10 print:py-0 print:bg-white flex justify-center flex-col items-center gap-6">
       {invoice.status !== "paid" && <RealtimeInvoicePoller invoiceId={invoice.id} />}
@@ -492,6 +503,20 @@ export default async function InvoiceViewPage(props: {
             <p>{t.thanks}</p>
             <p>ProjectBill © {new Date().getFullYear()}</p>
           </div>
+
+          {/* Subscription Watermark - shown for starter plan on managed cloud */}
+          {showWatermark && (
+            <div className="mt-4 text-center print:mt-8">
+              <a 
+                href="https://projectbill.app" 
+                target="_blank" 
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 transition-colors bg-slate-50 px-3 py-1.5 rounded-full border"
+              >
+                Powered by <strong>ProjectBill</strong>
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </div>

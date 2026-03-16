@@ -56,6 +56,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // --- Subscription Gate Check ---
+    const { checkLimit, incrementUsage } = await import("@/lib/subscription");
+    const limitCheck = await checkLimit(session.user.id, "invoicesPerMonth");
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        { error: "Plan limit reached", limitCheck },
+        { status: 403 }
+      );
+    }
+    // -------------------------------
+
     // Payment link generation is fully deferred to the "Pay Now" button
     // To ensure users always see the Invoice Detail first and payment links don't expire prematurely.
     const paymentLinkRes = null as { link?: string; id?: string } | null;
@@ -77,6 +88,10 @@ export async function POST(request: Request) {
         paymentId: paymentLinkRes ? (paymentLinkRes.id || null) : null,
       },
     });
+
+    // --- Subscription Usage Increment ---
+    await incrementUsage(session.user.id, "invoicesCreated");
+    // ------------------------------------
 
     const baseUrl = getBaseUrl();
     const invoiceDetailUrl = `${baseUrl}/invoices/${newInvoice.id}`;

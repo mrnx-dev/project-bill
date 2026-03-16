@@ -36,6 +36,17 @@ export async function POST(req: Request) {
             return new NextResponse("Name and content are required", { status: 400 });
         }
 
+        // --- Subscription Gate Check ---
+        const { checkLimit } = await import("@/lib/subscription");
+        const limitCheck = await checkLimit(session.user.id, "sowTemplates");
+        if (!limitCheck.allowed) {
+            return NextResponse.json(
+                { error: "Plan limit reached", limitCheck },
+                { status: 403 }
+            );
+        }
+        // -------------------------------
+
         const template = await prisma.sOWTemplate.create({
             data: {
                 name,

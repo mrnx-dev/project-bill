@@ -87,6 +87,7 @@ model User {
   name      String
   role                 String   @default("admin") // admin, staff
   onboardingCompleted  Boolean  @default(false)
+  subscription         Subscription?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }
@@ -167,4 +168,25 @@ model Notification {
 
   @@index([isRead])
   @@index([createdAt])
+}
+
+model Subscription {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id])
+  plan               String   @default("starter") // starter, pro, business
+  status             String   @default("active")  // active, cancelled, past_due
+  currentPeriodStart DateTime @default(now())
+  currentPeriodEnd   DateTime
+  
+  // Monthly usage counters (reset by cron on 1st of month)
+  emailsSent         Int      @default(0)
+  invoicesCreated    Int      @default(0)
+  paymentLinksUsed   Int      @default(0)
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
 }

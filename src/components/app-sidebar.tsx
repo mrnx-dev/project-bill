@@ -128,6 +128,12 @@ const navGroups: NavGroup[] = [
         url: "/settings/sow-template",
         icon: NotepadTextDashed,
       },
+      {
+        title: "Subscription",
+        url: "/settings/subscription",
+        // Using a similar generic icon since we don't have lucide's CreditCard imported yet
+        icon: FileText, 
+      },
     ],
   },
 ];
