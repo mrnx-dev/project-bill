@@ -137,13 +137,18 @@ describe("Subscription Utilities", () => {
       const result = await resetAllUsageCounters();
       
       expect(result.count).toBe(5);
-      expect(prisma.subscription.updateMany).toHaveBeenCalledWith({
+      expect(prisma.subscription.updateMany).toHaveBeenCalledWith(expect.objectContaining({
         data: expect.objectContaining({
           emailsSent: 0,
           invoicesCreated: 0,
           paymentLinksUsed: 0,
         }),
-      });
+        where: expect.objectContaining({
+          status: expect.objectContaining({
+            in: ["ACTIVE", "TRIALING"],
+          }),
+        }),
+      }));
     });
   });
 });

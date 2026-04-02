@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       return new NextResponse("Invalid plan", { status: 400 });
     }
 
-    const price = pricingPlan[billing as "MONTHLY" | "YEARLY"];
+    const price = pricingPlan[billing as "monthly" | "yearly"];
     if (price === 0) {
       return new NextResponse("Free plan selected", { status: 400 });
     }

@@ -76,7 +76,7 @@ export const PaymentSuccessEmail = ({
                 }}
             >
                 <div style={{ marginBottom: 16 }}>
-                    <StatusBadge type="PAID" lang={lang} />
+                    <StatusBadge type="paid" lang={lang} />
                 </div>
                 <Text
                     style={{

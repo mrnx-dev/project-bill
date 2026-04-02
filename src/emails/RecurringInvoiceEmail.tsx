@@ -65,7 +65,7 @@ export const RecurringInvoiceEmail = ({
             )}
 
             <InvoiceCard
-                badgeType="UNPAID"
+                badgeType="unpaid"
                 amount={amount}
                 clientName={clientName}
                 projectName={projectName}
