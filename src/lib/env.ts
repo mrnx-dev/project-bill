@@ -13,6 +13,11 @@ const envSchema = z.object({
   CASDOOR_CLIENT_ID: z.string().optional(),
   CASDOOR_CLIENT_SECRET: z.string().optional(),
   CASDOOR_ORG_NAME: z.string().optional(),
+  // AI Assistant
+  AI_PROVIDER: z.enum(["openrouter", "openai", "anthropic", "local"]).default("openrouter"),
+  AI_API_KEY: z.string().optional(),
+  AI_MODEL: z.string().default("anthropic/claude-sonnet-4-20250514"),
+  AI_BASE_URL: z.string().optional(),
 });
 
 // Validate `process.env` against our schema
