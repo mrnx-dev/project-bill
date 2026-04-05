@@ -39,30 +39,30 @@
 > Estimasi: **~13-18 jam (2-3 hari kerja)** | Kompleksitas: **Medium**
 
 #### Phase 1 — Setup & Konfigurasi
-- [ ] Setup Casdoor instance (Docker / cloud hosted)
-- [ ] Konfigurasi Casdoor: buat Application, Organization, dan Roles
-- [ ] Tambah env vars baru di `env.ts`: `CASDOOR_ENDPOINT`, `CASDOOR_CLIENT_ID`, `CASDOOR_CLIENT_SECRET`
-- [ ] Update `.env.example` dengan variabel Casdoor baru
+- [x] Setup Casdoor instance (Docker / cloud hosted)
+- [x] Konfigurasi Casdoor: buat Application, Organization, dan Roles
+- [x] Tambah env vars baru di `env.ts`: `CASDOOR_ENDPOINT`, `CASDOOR_CLIENT_ID`, `CASDOOR_CLIENT_SECRET`
+- [x] Update `.env.example` dengan variabel Casdoor baru
 
 #### Phase 2 — Auth Provider Conditional
-- [ ] Modifikasi `src/auth.ts` — tambah Casdoor sebagai OIDC provider
-- [ ] Implementasi conditional provider: Credentials (self-hosted) vs Casdoor OIDC (managed)
-- [ ] Update `src/auth.config.ts` — pastikan JWT callbacks handle kedua mode (Casdoor user vs local user)
-- [ ] Pindahkan `isSelfHosted()` / `isManagedCloud()` ke utility terpisah (dari `subscription.ts`)
+- [x] Modifikasi `src/auth.ts` — tambah Casdoor sebagai OIDC provider
+- [x] Implementasi conditional provider: Credentials (self-hosted) vs Casdoor OIDC (managed)
+- [x] Update `src/auth.config.ts` — pastikan JWT callbacks handle kedua mode (Casdoor user vs local user)
+- [x] Pindahkan `isSelfHosted()` / `isManagedCloud()` ke utility terpisah (dari `subscription.ts`)
 
 #### Phase 3 — Login Page & UX
-- [ ] Modifikasi `src/components/login-form.tsx` — conditional render:
+- [x] Modifikasi `src/components/login-form.tsx` — conditional render:
   - Self-hosted: form email/password (existing)
   - Managed: tombol "Login with Casdoor" (OIDC redirect)
-- [ ] Update `src/app/(auth)/login/page.tsx` — handle login mode detection
-- [ ] Update `src/app/(auth)/login/actions.ts` — support Casdoor sign-in action
-- [ ] Modifikasi setup page (`/setup`) — skip atau adjust untuk managed mode
+- [x] Update `src/app/(auth)/login/page.tsx` — handle login mode detection
+- [x] Update `src/app/(auth)/login/actions.ts` — support Casdoor sign-in action
+- [x] Modifikasi setup page (`/setup`) — skip atau adjust untuk managed mode
 
 #### Phase 4 — User Provisioning & Sync
-- [ ] Implementasi auto-create `User` record di DB saat pertama login via Casdoor (di NextAuth callback)
-- [ ] Mapping role Casdoor → role ProjectBill (`admin`, `staff`, dll)
-- [ ] Handle user profile sync (name, email) dari Casdoor ke local DB
-- [ ] Pastikan `Subscription` auto-create juga berjalan untuk user Casdoor baru
+- [x] Implementasi auto-create `User` record di DB saat pertama login via Casdoor (di NextAuth callback)
+- [x] Mapping role Casdoor → role ProjectBill (`admin`, `staff`, dll)
+- [x] Handle user profile sync (name, email) dari Casdoor ke local DB
+- [x] Pastikan `Subscription` auto-create juga berjalan untuk user Casdoor baru
 
 #### Phase 5 — Route Protection & Middleware
 - [ ] Buat/update middleware untuk consistent auth check di kedua mode
