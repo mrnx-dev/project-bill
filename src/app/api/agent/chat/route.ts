@@ -1,10 +1,27 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { agentChatStream } from "@/lib/ai/agent";
+import { RateLimiter } from "@/lib/rate-limit";
+
+// Rate limit: 20 AI chat requests per user per hour
+const aiChatLimiter = new RateLimiter({
+  limit: 20,
+  windowMs: 60 * 60 * 1000, // 1 hour
+});
 
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user) return new NextResponse("Unauthorized", { status: 401 });
+
+  // Rate limit check
+  const rateCheck = aiChatLimiter.check(session.user.id);
+  if (!rateCheck.success) {
+    const minutesLeft = Math.ceil((rateCheck.reset - Date.now()) / 60000);
+    return NextResponse.json(
+      { error: `Too many requests. Try again in ${minutesLeft} minute${minutesLeft !== 1 ? "s" : ""}.` },
+      { status: 429 },
+    );
+  }
 
   try {
     const body = await request.json();
@@ -41,7 +58,13 @@ export async function POST(request: Request) {
     );
 
     return new Response(stream.readable, {
-      headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" },
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+        "X-RateLimit-Remaining": String(rateCheck.remaining),
+        "X-RateLimit-Reset": String(rateCheck.reset),
+      },
     });
   } catch {
     return NextResponse.json({ error: "Failed to process chat" }, { status: 500 });
