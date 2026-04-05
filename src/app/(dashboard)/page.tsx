@@ -1,4 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import { getProactiveInsights } from "@/lib/ai/agent";
+import { auth } from "@/auth";
+import { AIInsightCard } from "@/components/ai/ai-insight-card";
 import { OverviewCharts } from "@/components/dashboard/overview-charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, FileText, Wallet, Clock } from "lucide-react";
@@ -7,6 +10,9 @@ import { formatEnum } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  const session = await auth();
+  const userId = session?.user?.id ?? "";
+
   const [projectsRaw, unpaidInvoices, totalClients, paidInvoicesIDR, unpaidInvoicesIDR] =
     await Promise.all([
       prisma.project.findMany({
@@ -65,6 +71,11 @@ export default async function DashboardPage() {
     statusCounts = statusCounts.filter((s) => s.value > 0);
   }
 
+  // Fetch proactive AI insights
+  const insights = userId
+    ? await getProactiveInsights(userId)
+    : [];
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -75,6 +86,14 @@ export default async function DashboardPage() {
           </p>
         </div>
       </div>
+
+      {insights.length > 0 && (
+        <div className="space-y-2">
+          {insights.map((insight) => (
+            <AIInsightCard key={insight.type} insight={insight as any} />
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
