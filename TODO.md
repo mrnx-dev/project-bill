@@ -31,6 +31,51 @@
 
 ---
 
+## 🤖 AI Financial Co-Pilot — Sprint 17
+
+> An AI-powered assistant that proactively analyzes business data, answers natural language queries, and provides actionable financial insights. The first of its kind in the Indonesian invoicing market.
+
+### Phase 1 — Infrastructure & Core (✅ Complete)
+- [x] Database schema — `AgentConversation`, `AgentMessage`, `AgentMemory`, `AgentConfig` models
+- [x] DTO types & interfaces (`src/lib/ai/types.ts`) — ChatMessage, BusinessContext, ProactiveInsight, etc.
+- [x] Context builder (`src/lib/ai/context-builder.ts`) — Gathers real-time business data (stats, invoices, deadlines, top clients)
+- [x] LLM provider abstraction (`src/lib/ai/provider.ts`) — Pluggable OpenRouter support, OpenAI/Anthropic/Local stubs
+- [x] AI tool definitions (`src/lib/ai/tools.ts`) — `query_invoices`, `query_projects`, `analyze_cashflow`, `get_client_details`
+- [x] System prompts (`src/lib/ai/prompts.ts`) — Bilingual (en/id) with structured business context + tool instructions
+- [x] Agent orchestrator (`src/lib/ai/agent.ts`) — Chat (blocking) + streaming SSE + proactive insights engine
+- [x] API route `/api/agent/chat` — SSE streaming endpoint with proper callback interface
+- [x] API route `/api/agent/history` — Fetch conversation list & message history
+- [x] API route `/api/agent/config` — GET/PUT agent settings (provider, model, temperature, locale, proactive mode)
+- [x] Environment variable validation — `AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL`, `AI_BASE_URL` in `env.ts`
+
+### Phase 2 — UI Components (✅ Complete)
+- [x] `ai-chat-panel.tsx` — Main chat panel with conversation tabs, streaming SSE parsing, quick-actions
+- [x] `ai-chat-input.tsx` — Textarea with Enter-to-send, disabled state during streaming
+- [x] `ai-message-bubble.tsx` — Markdown rendering (bold, italic, code, lists, headers), typing indicator
+- [x] `ai-insight-card.tsx` — Priority-colored cards for proactive insights (overdue, cashflow, reminders)
+- [x] `ai-floating-chat.tsx` — Fixed FAB (bottom-right), slide-over panel, responsive (mobile full-width / desktop 420px)
+- [x] `ai-toggle-button.tsx` — Sidebar toggle button with Bot icon
+- [x] Settings page `/settings/agent` — Provider select, model input, temperature slider, locale toggle, proactive mode
+- [x] Sidebar integration — "AI Assistant" menu item under Settings
+- [x] Layout integration — `<AIFloatingChat />` mounted in dashboard layout
+- [x] All strings translated to English
+
+### Phase 3 — Tool Execution & Testing (⏳ TODO)
+- [ ] Tool execution loop — AI calls tools, receives results, includes in response
+- [ ] Jest unit tests — `context-builder.test.ts`, `tools.test.ts`
+- [ ] Playwright E2E test — Open AI chat → send message → receive streaming response
+- [ ] Error handling — API key missing, rate limiting, LLM timeout fallback
+
+### Phase 4 — Production & Polish (⏳ TODO)
+- [ ] Dokploy deployment — Docker compose + env config
+- [ ] AI_API_KEY setup in production
+- [ ] Proactive insights on dashboard (show insight cards automatically)
+- [ ] Conversation persistence UI — "Continue previous conversation" on load
+- [ ] Markdown support in chat (react-markdown + rehype-sanitize)
+- [ ] Rate limiting on `/api/agent/chat` endpoint
+
+---
+
 ## 🏆 Tier 1 — High Impact, High Feasibility
 
 ### 1. 🔐 Casdoor OIDC Integration (Managed Auth) — Sprint 16
