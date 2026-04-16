@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { sendInvoiceEmail as baseSendInvoiceEmail, sendRecurringInvoiceEmail } from "@/lib/email"
 import { getBaseUrl } from "@/lib/utils";
 import { auth } from "@/auth";
+import { formatMoney } from "@/lib/currency";
 
 export async function sendInvoiceEmail(
   invoiceId: string,
@@ -44,16 +45,7 @@ export async function sendInvoiceEmail(
     const client = invoice.project.client
     const project = invoice.project
 
-    const formatCurrency = new Intl.NumberFormat(
-      project.currency === "IDR" ? "id-ID" : "en-US",
-      {
-        style: "currency",
-        currency: project.currency || "IDR",
-        minimumFractionDigits: 0,
-      }
-    )
-
-    const amountStr = formatCurrency.format(Number(invoice.amount));
+    const amountStr = formatMoney(Number(invoice.amount), project.currency || "IDR");
     const baseUrl = getBaseUrl();
     const invoiceDetailUrl = `${baseUrl}/invoices/${invoice.id}`;
 

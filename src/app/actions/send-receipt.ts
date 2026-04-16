@@ -5,6 +5,7 @@ import { sendPaymentSuccessEmail } from "@/lib/email"
 import { getBaseUrl } from "@/lib/utils";
 import { generateInvoicePdfBuffer, generateSowPdfBuffer } from "@/lib/pdf-generator";
 import { auth } from "@/auth";
+import { formatMoney } from "@/lib/currency";
 
 export async function sendReceiptEmail(invoiceId: string) {
   const session = await auth();
@@ -28,16 +29,7 @@ export async function sendReceiptEmail(invoiceId: string) {
     const { project } = invoice;
     const { client } = project;
 
-    const formatCurrency = new Intl.NumberFormat(
-      project.currency === "IDR" ? "id-ID" : "en-US",
-      {
-        style: "currency",
-        currency: project.currency || "IDR",
-        minimumFractionDigits: 0,
-      }
-    )
-
-    const amountStr = formatCurrency.format(Number(invoice.amount));
+    const amountStr = formatMoney(Number(invoice.amount), project.currency || "IDR");
     const baseUrl = getBaseUrl();
     const invoiceDetailUrl = `${baseUrl}/invoices/${invoice.id}`;
 

@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { formatEnum } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmailProviderModal } from "@/components/email-provider-modal";
+import { formatMoney } from "@/lib/currency";
 import {
   Select,
   SelectContent,
@@ -49,14 +50,6 @@ export function InvoicesClient({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [emailModalData, setEmailModalData] = useState<{ to: string; subject: string; body: string } | null>(null);
-
-  const formatCurrency = (amount: string | number, currencyStr: string) => {
-    return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
-      style: "currency",
-      currency: currencyStr,
-      minimumFractionDigits: 0,
-    }).format(Number(amount));
-  };
 
   const toggleStatus = async (id: string, currentStatus: string) => {
     // Only used for reverting to unpaid now
@@ -247,7 +240,7 @@ export function InvoicesClient({
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center text-muted-foreground">
                   <span className="text-sm">Amount</span>
-                  <span className="font-semibold text-foreground">{formatCurrency(Number(inv.amount), inv.project.currency || "IDR")}</span>
+                  <span className="font-semibold text-foreground">{formatMoney(Number(inv.amount), inv.project.currency || "IDR")}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/50">
@@ -337,7 +330,7 @@ export function InvoicesClient({
                     {formatEnum(inv.type)}
                   </TableCell>
                   <TableCell>
-                    {formatCurrency(Number(inv.amount), inv.project.currency || "IDR")}
+                    {formatMoney(Number(inv.amount), inv.project.currency || "IDR")}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1 items-start">

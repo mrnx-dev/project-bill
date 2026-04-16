@@ -53,8 +53,9 @@ import {
   FileText,
   CalendarDays,
 } from "lucide-react";
-import { exportToCSV, exportToXLSX, formatIDR } from "@/lib/export";
+import { exportToCSV, exportToXLSX } from "@/lib/export";
 import { formatEnum } from "@/lib/utils";
+import { formatMoney, formatAxisCurrency } from "@/lib/currency";
 import { toast } from "sonner";
 
 // ─── Types ──────────────────────────────────────────
@@ -119,16 +120,6 @@ const agingConfig = {
   "61-90": { label: "61-90 Days", color: "oklch(0.65 0.18 310)" },
   "90+": { label: "90+ Days", color: "oklch(0.6 0.2 0)" },
 } satisfies ChartConfig;
-
-function formatAxisIDR(value: number): string {
-  if (value >= 1_000_000_000)
-    return `${(value / 1_000_000_000).toFixed(value % 1_000_000_000 === 0 ? 0 : 1)}B`;
-  if (value >= 1_000_000)
-    return `${(value / 1_000_000).toFixed(value % 1_000_000 === 0 ? 0 : 1)}M`;
-  if (value >= 1_000)
-    return `${(value / 1_000).toFixed(value % 1_000 === 0 ? 0 : 1)}K`;
-  return value.toLocaleString("en-US");
-}
 
 // ─── Helpers ────────────────────────────────────────
 
@@ -364,7 +355,7 @@ export function ReportsClient({ invoices, clients }: ReportsClientProps) {
             { header: "Invoice #", key: "invoiceNumber", width: 15 },
             { header: "Client", key: "client", width: 25 },
             { header: "Project", key: "project", width: 25 },
-            { header: "Amount (IDR)", key: "amount", width: 18 },
+            { header: "Amount", key: "amount", width: 18 },
             { header: "Type", key: "type", width: 16 },
             { header: "Status", key: "status", width: 14 },
             { header: "Notes", key: "notes", width: 30 },
@@ -488,7 +479,7 @@ export function ReportsClient({ invoices, clients }: ReportsClientProps) {
               <div>
                 <p className="text-sm text-muted-foreground">Total Revenue</p>
                 <p className="text-2xl font-bold tabular-nums mt-1">
-                  {formatIDR(summaryData.totalRevenue)}
+                  {formatMoney(summaryData.totalRevenue, "IDR")}
                 </p>
               </div>
               <div className="bg-emerald-50 dark:bg-emerald-500/10 p-2.5 rounded-full">
@@ -520,7 +511,7 @@ export function ReportsClient({ invoices, clients }: ReportsClientProps) {
               <div>
                 <p className="text-sm text-muted-foreground">Outstanding</p>
                 <p className="text-2xl font-bold tabular-nums mt-1">
-                  {formatIDR(summaryData.totalOutstanding)}
+                  {formatMoney(summaryData.totalOutstanding, "IDR")}
                 </p>
               </div>
               <div className="bg-amber-50 dark:bg-amber-500/10 p-2.5 rounded-full">
@@ -540,7 +531,7 @@ export function ReportsClient({ invoices, clients }: ReportsClientProps) {
               <div>
                 <p className="text-sm text-muted-foreground">Average Invoice</p>
                 <p className="text-2xl font-bold tabular-nums mt-1">
-                  {formatIDR(summaryData.avgInvoice)}
+                  {formatMoney(summaryData.avgInvoice, "IDR")}
                 </p>
               </div>
               <div className="bg-blue-50 dark:bg-blue-500/10 p-2.5 rounded-full">
@@ -625,7 +616,7 @@ export function ReportsClient({ invoices, clients }: ReportsClientProps) {
                     axisLine={false}
                     tickMargin={8}
                     width={60}
-                    tickFormatter={formatAxisIDR}
+                    tickFormatter={(v) => formatAxisCurrency(v, "IDR")}
                     fontSize={12}
                   />
                   <ChartTooltip

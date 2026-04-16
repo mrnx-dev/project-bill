@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { createAuditLog } from "@/lib/audit-logger";
 import { createNotification } from "@/lib/notifications";
+import { formatMoney } from "@/lib/currency";
 
 export async function POST(
   request: Request,
@@ -39,15 +40,7 @@ export async function POST(
     const { project } = existingInvoice;
     const { client } = project;
 
-    const formatCurrency = new Intl.NumberFormat(
-      project.currency === "IDR" ? "id-ID" : "en-US",
-      {
-        style: "currency",
-        currency: project.currency || "IDR",
-        minimumFractionDigits: 0,
-      }
-    );
-    const amountStr = formatCurrency.format(Number(existingInvoice.amount));
+    const amountStr = formatMoney(Number(existingInvoice.amount), project.currency || "IDR");
 
     // Update the invoice
     const updatedInvoice = await prisma.invoice.update({

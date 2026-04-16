@@ -40,6 +40,7 @@ import { Pencil, Trash2, Plus, FileText, Maximize2, NotepadTextDashed, Info } fr
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatEnum } from "@/lib/utils";
+import { formatMoney, getCurrencySymbol, getCurrencyOptions } from "@/lib/currency";
 import { NumericFormat } from "react-number-format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import ReactMarkdown from "react-markdown";
@@ -227,14 +228,6 @@ export function ProjectsClient({
       setNewItemPrice("");
       setIsDialogOpen(true);
     }
-  };
-
-  const formatCurrency = (amount: string | number, currencyStr: string) => {
-    return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
-      style: "currency",
-      currency: currencyStr,
-      minimumFractionDigits: 0,
-    }).format(Number(amount));
   };
 
   const getInvoiceCalculation = (project: Project) => {
@@ -563,10 +556,11 @@ export function ProjectsClient({
                         <SelectValue placeholder="Currency" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="IDR">IDR</SelectItem>
-                        <SelectItem value="USD" disabled>
-                          USD (Pending feature)
-                        </SelectItem>
+                        {getCurrencyOptions().map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -616,7 +610,7 @@ export function ProjectsClient({
                       }
                       thousandSeparator="."
                       decimalSeparator=","
-                      prefix={currency === "IDR" ? "Rp " : "$ "}
+                      prefix={`${getCurrencySymbol(currency)} `}
                       className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                     />
                   </div>
@@ -630,7 +624,7 @@ export function ProjectsClient({
                       placeholder="Enter DP Amount"
                       thousandSeparator="."
                       decimalSeparator=","
-                      prefix={currency === "IDR" ? "Rp " : "$ "}
+                      prefix={`${getCurrencySymbol(currency)} `}
                       className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                     />
                   </div>
@@ -729,8 +723,8 @@ export function ProjectsClient({
                           </span>
                           <div className="flex items-center gap-3">
                             <span className="font-medium text-xs">
-                              {item.quantity && item.rate ? `${item.quantity} x ${formatCurrency(item.rate, currency)} = ` : ""}
-                              {formatCurrency(item.price, currency)}
+                              {item.quantity && item.rate ? `${item.quantity} x ${formatMoney(item.rate, currency)} = ` : ""}
+                              {formatMoney(item.price, currency)}
                             </span>
                             <button
                               type="button"
@@ -914,7 +908,7 @@ export function ProjectsClient({
                                     Down Payment
                                   </div>
                                   <Badge variant="outline">
-                                    {formatCurrency(
+                                    {formatMoney(
                                       invoiceProject.dpAmount,
                                       invoiceProject.currency,
                                     )}
@@ -941,7 +935,7 @@ export function ProjectsClient({
                                   Full Payment {calc.isDpPaid && "(Balance)"}
                                 </div>
                                 <Badge variant="outline">
-                                  {formatCurrency(
+                                  {formatMoney(
                                     calc.fullPaymentAmount,
                                     invoiceProject.currency,
                                   )}
@@ -1118,7 +1112,7 @@ export function ProjectsClient({
               <CardContent className="text-sm space-y-3">
                 <div className="flex justify-between items-center text-muted-foreground border-b border-border/50 pb-2">
                   <span>Price</span>
-                  <span className="font-medium text-foreground">{formatCurrency(project.totalPrice, project.currency)}</span>
+                  <span className="font-medium text-foreground">{formatMoney(project.totalPrice, project.currency)}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pb-2 border-b border-border/50">
@@ -1240,11 +1234,11 @@ export function ProjectsClient({
                       : "-"}
                   </TableCell>
                   <TableCell>
-                    {formatCurrency(project.totalPrice, project.currency)}
+                    {formatMoney(project.totalPrice, project.currency)}
                   </TableCell>
                   <TableCell>
                     {project.dpAmount && Number(project.dpAmount) > 0
-                      ? formatCurrency(project.dpAmount, project.currency)
+                      ? formatMoney(project.dpAmount, project.currency)
                       : "-"}
                   </TableCell>
                   <TableCell>

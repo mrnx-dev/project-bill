@@ -1,6 +1,7 @@
 "use client";
 
 import { formatEnum, isEnumLike } from "@/lib/utils";
+import { formatMoney } from "@/lib/currency";
 import { formatDistanceToNow, format, isToday, isYesterday } from "date-fns";
 import { enUS } from "date-fns/locale";
 import {
@@ -17,16 +18,6 @@ import {
   FolderKanban,
   FileCheck,
 } from "lucide-react";
-
-// Helper to format currency
-const formatCurrency = (amount: number, currencyCode: string = "IDR") => {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: currencyCode,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
 
 // Helper to pretty-print raw JSON values in the log
 function formatLogValue(val: string | null | undefined): string | null {
@@ -50,7 +41,7 @@ function formatLogValue(val: string | null | undefined): string | null {
         }
         
         if (currencyFields.includes(k) && v !== null && !isNaN(Number(v))) {
-          displayVal = formatCurrency(Number(v), defaultCurrency);
+          displayVal = formatMoney(Number(v), defaultCurrency);
         }
 
         // Clean output without literal keys for intuitive fields

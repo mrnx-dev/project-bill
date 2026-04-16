@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyMayarWebhook } from "@/lib/billing/mayar";
 import { generateSowPdfBuffer, generateInvoicePdfBuffer } from "@/lib/pdf-generator";
 import { sendPaymentSuccessEmail } from "@/lib/email";
+import { formatMoney } from "@/lib/currency";
 import { RateLimiter } from "@/lib/rate-limit";
 import { createNotification } from "@/lib/notifications";
 import { getBaseUrl } from "@/lib/utils";
@@ -112,14 +113,7 @@ export async function POST(request: Request) {
             const taxAmount = invoiceAmount * (taxRate / 100);
             const grandTotal = invoiceAmount + taxAmount;
 
-            const formatCurrency = new Intl.NumberFormat(
-              project.currency === "IDR" ? "id-ID" : "en-US",
-              {
-                style: "currency",
-                currency: project.currency || "IDR",
-                minimumFractionDigits: 0,
-              },
-            ).format(grandTotal);
+            const amountStr = formatMoney(grandTotal, project.currency || "IDR");
 
             const baseUrl = getBaseUrl();
             const invoiceDetailUrl = `${baseUrl}/invoices/${updatedInvoice.id}`;
@@ -129,7 +123,7 @@ export async function POST(request: Request) {
               clientName: project.client.name,
               projectTitle: project.title,
               invoiceNumber: updatedInvoice.invoiceNumber,
-              amountStr: formatCurrency,
+              amountStr,
               invoiceLink: invoiceDetailUrl,
               sowPdfBuffer,
               invoicePdfBuffer,

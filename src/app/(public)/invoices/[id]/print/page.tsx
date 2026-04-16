@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { id as localeId, enUS as localeEn } from "date-fns/locale";
 import { NotepadTextDashed } from "lucide-react";
 import { formatEnum } from "@/lib/utils";
+import { formatMoney } from "@/lib/currency";
 
 type TranslationKey = "invoice" | "invoiceNo" | "date" | "dueDate" | "paid" | "unpaid" | "billTo" | "projectDetails" | "description" | "type" | "amount" | "qty" | "rate" | "projectServices" | "dpText" | "fullPaymentText" | "itemLabel" | "deductionLabel" | "lessDpText" | "subtotal" | "tax" | "totalDue" | "thanks" | "scopeLockedTxt";
 
@@ -97,14 +98,6 @@ export default async function InvoicePrintPage(props: {
   const t = TRANSLATIONS[lang];
   const dateLocale = lang === "id" ? localeId : localeEn;
   const dateFormat = lang === "id" ? "d MMM yyyy" : "MMM d, yyyy";
-
-  const formatCurrency = (amount: string | number, currencyStr: string) => {
-    return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
-      style: "currency",
-      currency: currencyStr,
-      minimumFractionDigits: 0,
-    }).format(Number(amount));
-  };
 
   const hasQtyRate = invoice.project.items?.some(i => i.quantity !== null && i.rate !== null);
 
@@ -288,7 +281,7 @@ export default async function InvoicePrintPage(props: {
                   </Badge>
                 </td>
                 <td className="py-4 px-2 text-right font-medium text-slate-800">
-                  {formatCurrency(
+                  {formatMoney(
                     invoice.amount.toString(),
                     invoice.project.currency || "IDR",
                   )}
@@ -323,7 +316,7 @@ export default async function InvoicePrintPage(props: {
                   </Badge>
                 </td>
                 <td className="py-4 px-2 text-right font-medium text-slate-800">
-                  {formatCurrency(
+                  {formatMoney(
                     invoice.amount.toString(),
                     invoice.project.currency || "IDR",
                   )}
@@ -344,7 +337,7 @@ export default async function InvoicePrintPage(props: {
                           {item.quantity ? Number(item.quantity).toString() : "-"}
                         </td>
                         <td className="py-4 px-2 text-right text-slate-600">
-                          {item.rate ? formatCurrency(item.rate.toString(), invoice.project.currency || "IDR") : "-"}
+                          {item.rate ? formatMoney(item.rate.toString(), invoice.project.currency || "IDR") : "-"}
                         </td>
                       </>
                     )}
@@ -357,7 +350,7 @@ export default async function InvoicePrintPage(props: {
                       </Badge>
                     </td>
                     <td className="py-4 px-2 text-right font-medium text-slate-800">
-                      {formatCurrency(
+                      {formatMoney(
                         item.price.toString(),
                         invoice.project.currency || "IDR",
                       )}
@@ -390,7 +383,7 @@ export default async function InvoicePrintPage(props: {
                       </td>
                       <td className="py-4 px-2 text-right font-medium text-slate-800">
                         -
-                        {formatCurrency(
+                        {formatMoney(
                           invoice.project.dpAmount.toString(),
                           invoice.project.currency || "IDR",
                         )}
@@ -406,7 +399,7 @@ export default async function InvoicePrintPage(props: {
             <div className="flex justify-between py-2 text-sm text-slate-600">
               <span>{t.subtotal}</span>
               <span>
-                {formatCurrency(
+                {formatMoney(
                   invoiceAmount,
                   invoice.project.currency || "IDR",
                 )}
@@ -416,7 +409,7 @@ export default async function InvoicePrintPage(props: {
               <div className="flex justify-between py-2 text-sm text-slate-600 border-b border-slate-200">
                 <span>{taxName} ({taxRate}%)</span>
                 <span>
-                  {formatCurrency(
+                  {formatMoney(
                     taxAmount,
                     invoice.project.currency || "IDR"
                   )}
@@ -426,7 +419,7 @@ export default async function InvoicePrintPage(props: {
             <div className={`flex justify-between py-4 text-xl font-bold text-slate-900 ${taxRate === 0 ? 'border-t border-slate-200' : ''}`}>
               <span>{t.totalDue}</span>
               <span>
-                {formatCurrency(
+                {formatMoney(
                   grandTotal,
                   invoice.project.currency || "IDR",
                 )}

@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { NumericFormat } from "react-number-format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { AlertCircle } from "lucide-react";
+import { formatMoney } from "@/lib/currency";
 
 type ProjectItem = {
   id: string;
@@ -54,14 +55,6 @@ export function ProjectDetailsDialog({
 
   const [isSaving, setIsSaving] = useState(false);
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
-
-  const formatCurrency = (amount: string | number) => {
-    return new Intl.NumberFormat(currency === "IDR" ? "id-ID" : "en-US", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 0,
-    }).format(Number(amount));
-  };
 
   // Auto-calculate price if rating & qty are used instead of fixed price
   const computedPrice = useMemo(() => {
@@ -188,22 +181,22 @@ export function ProjectDetailsDialog({
                   <div className="flex justify-between items-center text-muted-foreground text-xs md:text-sm mt-1 md:mt-0">
                     <div className="flex flex-wrap gap-x-4 md:hidden">
                       {item.quantity && <span>Qty: {item.quantity}</span>}
-                      {item.rate && <span>Rate: {formatCurrency(item.rate)}</span>}
+                      {item.rate && <span>Rate: {formatMoney(item.rate, currency)}</span>}
                     </div>
 
                     <div className="hidden md:flex gap-3 items-center">
                       <span className="w-[60px] text-right shrink-0">
                         {item.quantity ? item.quantity : "-"}
                       </span>
-                      <span className="w-[100px] text-right truncate shrink-0" title={item.rate ? formatCurrency(item.rate) : "-"}>
-                        {item.rate ? formatCurrency(item.rate) : "-"}
+                      <span className="w-[100px] text-right truncate shrink-0" title={item.rate ? formatMoney(item.rate, currency) : "-"}>
+                        {item.rate ? formatMoney(item.rate, currency) : "-"}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2 md:w-[110px] md:justify-end text-foreground shrink-0">
                       <span className="md:hidden text-muted-foreground">Amount:</span>
                       <span className="font-semibold md:font-medium text-right text-emerald-600 dark:text-emerald-400 md:text-foreground">
-                        {formatCurrency(item.price)}
+                        {formatMoney(item.price, currency)}
                       </span>
                       {!hasInvoices && (
                         <button

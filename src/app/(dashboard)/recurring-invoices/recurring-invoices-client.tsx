@@ -40,6 +40,7 @@ import { Plus, Power, Pencil, Trash2, CalendarClock } from "lucide-react";
 import { NumericFormat } from "react-number-format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
+import { formatMoney } from "@/lib/currency";
 
 interface Client {
     id: string;
@@ -95,14 +96,6 @@ export function RecurringInvoicesClient({
     const [endDate, setEndDate] = useState("");
     const [description, setDescription] = useState("");
     const [isActive, setIsActive] = useState(true);
-
-    const formatCurrency = (amount: string | number, currencyStr: string) => {
-        return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
-            style: "currency",
-            currency: currencyStr,
-            minimumFractionDigits: 0,
-        }).format(Number(amount));
-    };
 
     const resetForm = () => {
         setId(null);
@@ -469,7 +462,7 @@ export function RecurringInvoicesClient({
                                         <CardContent className="space-y-3 pt-3">
                                             <div className="flex justify-between items-center text-muted-foreground">
                                                 <span className="text-sm">Amount</span>
-                                                <span className="font-semibold text-foreground">{formatCurrency(ri.amount, ri.project.currency)}</span>
+                                                <span className="font-semibold text-foreground">{formatMoney(ri.amount, ri.project.currency)}</span>
                                             </div>
                                             <div className="flex justify-between items-center text-muted-foreground">
                                                 <span className="text-sm">Next Run</span>
@@ -539,7 +532,7 @@ export function RecurringInvoicesClient({
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    {formatCurrency(ri.amount, ri.project.currency)}
+                                                    {formatMoney(ri.amount, ri.project.currency)}
                                                 </TableCell>
                                                 <TableCell>
                                                     {format(new Date(ri.nextRunAt), "MMM d, yyyy")}

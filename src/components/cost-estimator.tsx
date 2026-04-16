@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Calculator, Plus, Trash2, CheckCircle2 } from "lucide-react";
 import { NumericFormat } from "react-number-format";
+import { formatMoney, getCurrencySymbol } from "@/lib/currency";
 import {
     Dialog,
     DialogContent,
@@ -37,14 +38,6 @@ export function CostEstimator({
     const [ratePerHour, setRatePerHour] = useState("150000");
     const [riskBuffer, setRiskBuffer] = useState([1.5]); // 1.5x by default
     const [totalEstimated, setTotalEstimated] = useState(0);
-
-    const formatCurrency = (amount: number, currencyStr: string) => {
-        return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
-            style: "currency",
-            currency: currencyStr,
-            minimumFractionDigits: 0,
-        }).format(amount);
-    };
 
     useEffect(() => {
         const totalHours = tasks.reduce((sum, task) => sum + (task.hours || 0), 0);
@@ -134,7 +127,7 @@ export function CostEstimator({
                                 allowNegative={false}
                                 thousandSeparator="."
                                 decimalSeparator=","
-                                prefix={currency === "IDR" ? "Rp " : "$ "}
+                                prefix={`${getCurrencySymbol(currency)} `}
                                 customInput={Input}
                                 className="h-8 text-xs sm:text-sm"
                             />
@@ -161,7 +154,7 @@ export function CostEstimator({
                             <div>
                                 <div className="text-xs text-muted-foreground mb-1">Recommended Total Price</div>
                                 <div className="text-xl sm:text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                                    {formatCurrency(totalEstimated, currency)}
+                                    {formatMoney(totalEstimated, currency)}
                                 </div>
                             </div>
                             <Button

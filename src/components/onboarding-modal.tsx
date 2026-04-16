@@ -528,7 +528,7 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
                     name="projectPrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Total Price (IDR) <span className="text-destructive">*</span></FormLabel>
+                        <FormLabel>Total Price <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
                           <NumericFormat
                             value={field.value}

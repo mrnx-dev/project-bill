@@ -24,26 +24,55 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { formatAxisCurrency, formatMoney } from "@/lib/currency";
 
 type ChartData = {
-  revenueData: { name: string; total: number }[];
+  revenueData: { name: string; total: number; currency: string }[];
   statusData: { name: string; value: number }[];
 };
 
-// 🎯 Color consistency: Paid = emerald, Pending = amber (matches cards above)
-const revenueConfig = {
-  total: {
-    label: "Revenue",
-  },
-  "Paid IDR": {
-    label: "Paid",
-    color: "oklch(0.6 0.118 184.704)",
-  },
-  "Pending IDR": {
-    label: "Pending",
-    color: "oklch(0.828 0.189 84.429)",
-  },
-} satisfies ChartConfig;
+/**
+ * Build dynamic chart config from revenue data.
+ * Each bar name (e.g. "Paid IDR", "Pending USD") gets its own color.
+ */
+function buildRevenueConfig(revenueData: ChartData["revenueData"]): ChartConfig {
+  const config: ChartConfig = {
+    total: { label: "Revenue" },
+  };
+
+  // Color palette: paid = emerald, pending = amber, cycle for multiple currencies
+  const paidColors = [
+    "oklch(0.6 0.118 184.704)",   // emerald
+    "oklch(0.55 0.14 250)",        // blue
+    "oklch(0.55 0.15 300)",        // purple
+  ];
+  const pendingColors = [
+    "oklch(0.828 0.189 84.429)",   // amber
+    "oklch(0.75 0.15 60)",         // orange
+    "oklch(0.75 0.12 340)",        // pink
+  ];
+
+  let paidIdx = 0;
+  let pendingIdx = 0;
+
+  for (const item of revenueData) {
+    if (item.name.startsWith("Paid")) {
+      config[item.name] = {
+        label: item.name,
+        color: paidColors[paidIdx % paidColors.length],
+      };
+      paidIdx++;
+    } else if (item.name.startsWith("Pending")) {
+      config[item.name] = {
+        label: item.name,
+        color: pendingColors[pendingIdx % pendingColors.length],
+      };
+      pendingIdx++;
+    }
+  }
+
+  return config as ChartConfig;
+}
 
 const STATUS_COLORS: Record<string, string> = {
   "TO DO": "var(--chart-1)",
@@ -74,33 +103,15 @@ const statusConfig = {
   },
 } satisfies ChartConfig;
 
-/**
- * Format angka IDR agar ringkas:
- * >= 1 Miliar  => "1,2 M"
- * >= 1 Juta    => "10 Jt"
- * >= 1 Ribu    => "100 Rb"
- * di bawahnya  => angka biasa
- */
-function formatAxisIDR(value: number): string {
-  if (value >= 1_000_000_000) {
-    const v = value / 1_000_000_000;
-    return `${v % 1 === 0 ? v : v.toFixed(1)} M`;
-  }
-  if (value >= 1_000_000) {
-    const v = value / 1_000_000;
-    return `${v % 1 === 0 ? v : v.toFixed(1)} Jt`;
-  }
-  if (value >= 1_000) {
-    const v = value / 1_000;
-    return `${v % 1 === 0 ? v : v.toFixed(1)} Rb`;
-  }
-  return value.toLocaleString("id-ID");
-}
-
 export function OverviewCharts({ data }: { data: ChartData }) {
   const totalProjects = data.statusData
     .filter((s) => s.name !== "No Projects")
     .reduce((sum, s) => sum + s.value, 0);
+
+  const revenueConfig = buildRevenueConfig(data.revenueData);
+
+  // Determine primary currency for Y-axis formatting (first item's currency)
+  const primaryCurrency = data.revenueData[0]?.currency || "IDR";
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -109,7 +120,7 @@ export function OverviewCharts({ data }: { data: ChartData }) {
         <CardHeader>
           <CardTitle>Revenue Overview</CardTitle>
           <CardDescription>
-            Total revenue filtered by currency basis.
+            Total revenue by currency — paid and pending.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1 pb-6">
@@ -129,6 +140,7 @@ export function OverviewCharts({ data }: { data: ChartData }) {
                 tickMargin={10}
                 axisLine={false}
                 tickFormatter={(value) => {
+                  // "Paid IDR" → "Paid", "Pending USD" → "Pending USD"
                   const cfg = revenueConfig[value as keyof typeof revenueConfig];
                   return (cfg && "label" in cfg ? cfg.label : value) as string;
                 }}
@@ -138,16 +150,20 @@ export function OverviewCharts({ data }: { data: ChartData }) {
                 axisLine={false}
                 tickMargin={8}
                 width={60}
-                tickFormatter={formatAxisIDR}
+                tickFormatter={(v) => formatAxisCurrency(v, primaryCurrency)}
               />
               <ChartTooltip
                 cursor={{ fill: "hsl(var(--muted) / 0.4)" }}
                 content={
                   <ChartTooltipContent
                     hideLabel
-                    formatter={(value: number | string) => {
+                    formatter={(value: number | string, _name: string, entry: any) => {
                       const num = Number(value);
-                      return `Rp ${num.toLocaleString("id-ID")}`;
+                      // Extract currency from the bar name: "Paid IDR" → "IDR"
+                      const barName: string = entry?.payload?.name || "";
+                      const parts = barName.split(" ");
+                      const currency = parts.length > 1 ? parts[parts.length - 1] : primaryCurrency;
+                      return formatMoney(num, currency);
                     }}
                   />
                 }

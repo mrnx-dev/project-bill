@@ -1,6 +1,7 @@
 "use client";
 
 import ExcelJS from "exceljs";
+import { formatMoney } from "@/lib/currency";
 
 /**
  * Export an array of objects to CSV and trigger download
@@ -118,11 +119,8 @@ function triggerDownload(blob: Blob, filename: string) {
 
 /**
  * Format number as Indonesian Rupiah
+ * @deprecated Use formatMoney(amount, "IDR") from @/lib/currency instead
  */
 export function formatIDR(amount: number): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-  }).format(amount);
+  return formatMoney(amount, "IDR");
 }

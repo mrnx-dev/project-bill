@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { EmailProviderModal } from "@/components/email-provider-modal";
+import { formatMoney } from "@/lib/currency";
 
 type Client = { id: string; name: string };
 type ProjectItem = { id: string; description: string; price: string };
@@ -89,14 +90,6 @@ export function DashboardClient({
 
   // Email Modal State
   const [emailModalData, setEmailModalData] = useState<{ to: string; subject: string; body: string } | null>(null);
-
-  const formatCurrency = (amount: string | number, currencyStr: string) => {
-    return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
-      style: "currency",
-      currency: currencyStr,
-      minimumFractionDigits: 0,
-    }).format(Number(amount));
-  };
 
   const isFullyPaidDone = (project: Project) => {
     if (project.status !== "DONE") return false;
@@ -354,7 +347,7 @@ export function DashboardClient({
                             </CardHeader>
                             <CardContent className="p-3 pt-0 pb-2">
                               <div className="text-xs font-medium">
-                                {formatCurrency(project.totalPrice, project.currency || "IDR")}
+                                {formatMoney(project.totalPrice, project.currency || "IDR")}
                               </div>
                             </CardContent>
                             <CardFooter className="p-3 pt-0 flex flex-col gap-2">
@@ -526,7 +519,7 @@ export function DashboardClient({
                         </CardHeader>
                         <CardContent className="p-4 pt-0 pb-3">
                           <div className="text-sm font-medium shrink-0">
-                            {formatCurrency(
+                            {formatMoney(
                               project.totalPrice,
                               project.currency || "IDR",
                             )}
@@ -649,7 +642,7 @@ export function DashboardClient({
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Project</span>
                   <span className="font-semibold">
-                    {formatCurrency(
+                    {formatMoney(
                       completionProject.totalPrice,
                       completionProject.currency || "IDR",
                     )}
@@ -660,7 +653,7 @@ export function DashboardClient({
                     <span>Down Payment Billed</span>
                     <span>
                       -
-                      {formatCurrency(
+                      {formatMoney(
                         completionProject.dpAmount,
                         completionProject.currency || "IDR",
                       )}
