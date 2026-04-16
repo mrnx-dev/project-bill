@@ -11,7 +11,7 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    if (session.user.role !== "admin") return new NextResponse("Forbidden", { status: 403 });
+    if (session.user.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
     // We enforce a single config row with id = "global"
     let settings = await prisma.settings.findUnique({
       where: { id: "global" },
@@ -46,7 +46,7 @@ export async function PUT(req: Request) {
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    if (session.user.role !== "admin") return new NextResponse("Forbidden", { status: 403 });
+    if (session.user.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
     const body = await req.json();
 
     const parsedBody = body as {
@@ -131,17 +131,41 @@ export async function PUT(req: Request) {
       } as any,
     });
 
-    // Write audit log entries
+    // Write audit log entries for sensitive field changes
+    const userId = session.user?.id || session.user?.email || "unknown";
+
     if (auditEntries.length > 0) {
-      const userId = session.user?.id || session.user?.email || "unknown";
-      await prisma.auditLog.createMany({
-        data: auditEntries.map((entry) => ({
+      const { createAuditLog } = await import("@/lib/audit-logger");
+      for (const entry of auditEntries) {
+        await createAuditLog({
           userId,
           action: "settings.update",
+          entityType: "SETTINGS",
+          entityId: "global",
           field: entry.field,
-          oldValue: entry.oldValue,
-          newValue: entry.newValue,
-        })),
+          oldValue: entry.oldValue ?? undefined,
+          newValue: entry.newValue ?? undefined,
+        });
+      }
+    }
+
+    // Also log a general settings update for non-sensitive field changes
+    const nonSensitiveChanged = currentSettings && (
+      currentSettings.companyName !== parsedBody.companyName ||
+      currentSettings.companyAddress !== (parsedBody.companyAddress ?? null) ||
+      currentSettings.companyEmail !== (parsedBody.companyEmail ?? null) ||
+      currentSettings.bankName !== (parsedBody.bankName ?? null)
+    );
+
+    if (nonSensitiveChanged) {
+      const { createAuditLog } = await import("@/lib/audit-logger");
+      await createAuditLog({
+        userId,
+        action: "settings.update",
+        entityType: "SETTINGS",
+        entityId: "global",
+        oldValue: currentSettings.companyName,
+        newValue: parsedBody.companyName,
       });
     }
 

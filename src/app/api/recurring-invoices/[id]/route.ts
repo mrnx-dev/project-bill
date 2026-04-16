@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { recurringInvoiceSchema } from "@/lib/validations";
+import { createAuditLog } from "@/lib/audit-logger";
 
 export async function PUT(
     request: Request,
@@ -48,7 +49,7 @@ export async function PUT(
         // For simplicity, we just keep nextRunAt as is unless the user is forcing a reset.
         // A better approach is to update nextRunAt if the dayOfMonth changed.
         let nextRunAt = existing.nextRunAt;
-        if (existing.dayOfMonth !== data.dayOfMonth && data.frequency === "monthly") {
+        if (existing.dayOfMonth !== data.dayOfMonth && data.frequency === "MONTHLY") {
             nextRunAt = new Date(existing.nextRunAt);
             nextRunAt.setDate(data.dayOfMonth);
             const today = new Date();
@@ -71,6 +72,15 @@ export async function PUT(
                 isActive: data.isActive,
                 nextRunAt: nextRunAt,
             },
+        });
+
+        await createAuditLog({
+            userId: session.user.id,
+            action: "recurring_invoice.update",
+            entityType: "RECURRING_INVOICE",
+            entityId: id,
+            oldValue: existing.title,
+            newValue: data.title,
         });
 
         return NextResponse.json(updated);
@@ -110,6 +120,14 @@ export async function DELETE(
             data: {
                 isActive: false,
             },
+        });
+
+        await createAuditLog({
+            userId: session.user.id,
+            action: "recurring_invoice.deactivate",
+            entityType: "RECURRING_INVOICE",
+            entityId: id,
+            oldValue: existing.title,
         });
 
         return NextResponse.json({ success: true });

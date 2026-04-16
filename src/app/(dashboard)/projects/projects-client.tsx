@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { UpgradeDialog } from "@/components/subscription/upgrade-dialog";
 import {
   Card,
   CardContent,
@@ -38,6 +39,8 @@ import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2, Plus, FileText, Maximize2, NotepadTextDashed, Info } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { formatEnum } from "@/lib/utils";
+import { formatMoney, getCurrencySymbol, getCurrencyOptions } from "@/lib/currency";
 import { NumericFormat } from "react-number-format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import ReactMarkdown from "react-markdown";
@@ -98,6 +101,8 @@ export function ProjectsClient({
 
   // Project Form State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
+  const [currentLimit, setCurrentLimit] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -145,9 +150,10 @@ export function ProjectsClient({
   // Invoice Form State
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
   const [invoiceProject, setInvoiceProject] = useState<Project | null>(null);
-  const [invoiceType, setInvoiceType] = useState<"dp" | "full_payment">(
-    "full_payment",
+  const [invoiceType, setInvoiceType] = useState<"DP" | "FULL_PAYMENT">(
+    "FULL_PAYMENT",
   );
+  const [invoiceNotes, setInvoiceNotes] = useState("");
 
   const [sowTemplates, setSowTemplates] = useState<{ id: string, name: string, content: string }[]>([]);
 
@@ -158,7 +164,7 @@ export function ProjectsClient({
       .catch(err => console.error("Failed to load templates:", err));
   }, []);
 
-  const handleOpenDialog = (project?: Project) => {
+  const handleOpenDialog = async (project?: Project) => {
     if (project) {
       setEditingId(project.id);
       setTitle(project.title);
@@ -176,11 +182,31 @@ export function ProjectsClient({
       setTaxName(project.taxName || "");
       setTaxRate(project.taxRate ? String(project.taxRate) : "");
       setItems(project.items || []);
-      const paid = project.invoices?.some((i) => i.status === "paid") || false;
+      const paid = project.invoices?.some((i) => i.status === "PAID") || false;
       setIsSowLocked(paid);
       setIsSowSigned(!!project.termsAcceptedAt);
       setHasInvoices((project.invoices && project.invoices.length > 0) ? true : false);
+      setNewItemDesc("");
+      setNewItemQty("");
+      setNewItemRate("");
+      setNewItemPrice("");
+      setIsDialogOpen(true);
     } else {
+      // Check limit before opening create dialog
+      try {
+        const res = await fetch("/api/subscription/check?resource=activeProjects");
+        if (res.ok) {
+          const check = await res.json();
+          if (!check.allowed) {
+            setCurrentLimit(check.limit);
+            setIsUpgradeDialogOpen(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check subscription limit:", error);
+      }
+
       setEditingId(null);
       setTitle("");
       setClientId("");
@@ -196,29 +222,21 @@ export function ProjectsClient({
       setIsSowLocked(false);
       setIsSowSigned(false);
       setHasInvoices(false);
+      setNewItemDesc("");
+      setNewItemQty("");
+      setNewItemRate("");
+      setNewItemPrice("");
+      setIsDialogOpen(true);
     }
-    setNewItemDesc("");
-    setNewItemQty("");
-    setNewItemRate("");
-    setNewItemPrice("");
-    setIsDialogOpen(true);
-  };
-
-  const formatCurrency = (amount: string | number, currencyStr: string) => {
-    return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
-      style: "currency",
-      currency: currencyStr,
-      minimumFractionDigits: 0,
-    }).format(Number(amount));
   };
 
   const getInvoiceCalculation = (project: Project) => {
-    const hasDpInvoice = project.invoices?.some((inv) => inv.type === "dp");
+    const hasDpInvoice = project.invoices?.some((inv) => inv.type === "DP");
     const hasFullInvoice = project.invoices?.some(
-      (inv) => inv.type === "full_payment",
+      (inv) => inv.type === "FULL_PAYMENT",
     );
     const isDpPaid = project.invoices?.some(
-      (inv) => inv.type === "dp" && inv.status === "paid",
+      (inv) => inv.type === "DP" && inv.status === "PAID",
     );
 
     let fullPaymentAmount = Number(project.totalPrice);
@@ -233,16 +251,23 @@ export function ProjectsClient({
     setInvoiceProject(project);
     const calc = getInvoiceCalculation(project);
 
+    let defaultType: "DP" | "FULL_PAYMENT";
     if (
       !calc.hasDpInvoice &&
       project.dpAmount &&
       Number(project.dpAmount) > 0
     ) {
-      setInvoiceType("dp");
+      defaultType = "DP";
     } else {
-      setInvoiceType("full_payment");
+      defaultType = "FULL_PAYMENT";
     }
 
+    setInvoiceType(defaultType);
+    setInvoiceNotes(
+      defaultType === "DP"
+        ? `Down Payment for ${project.title}`
+        : `Full Payment for ${project.title}`
+    );
     setIsInvoiceDialogOpen(true);
   };
 
@@ -317,7 +342,7 @@ export function ProjectsClient({
     try {
       const calc = getInvoiceCalculation(invoiceProject);
       const amount =
-        invoiceType === "dp"
+        invoiceType === "DP"
           ? invoiceProject.dpAmount
           : String(calc.fullPaymentAmount);
 
@@ -328,6 +353,7 @@ export function ProjectsClient({
           projectId: invoiceProject.id,
           type: invoiceType,
           amount,
+          notes: invoiceNotes || null,
         }),
       });
 
@@ -391,7 +417,7 @@ export function ProjectsClient({
               <SelectItem value="all">All Statuses</SelectItem>
               {uniqueStatuses.map((status) => (
                 <SelectItem key={status} value={status}>
-                  {status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                  {formatEnum(status)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -530,10 +556,11 @@ export function ProjectsClient({
                         <SelectValue placeholder="Currency" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="IDR">IDR</SelectItem>
-                        <SelectItem value="USD" disabled>
-                          USD (Pending feature)
-                        </SelectItem>
+                        {getCurrencyOptions().map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -583,7 +610,7 @@ export function ProjectsClient({
                       }
                       thousandSeparator="."
                       decimalSeparator=","
-                      prefix={currency === "IDR" ? "Rp " : "$ "}
+                      prefix={`${getCurrencySymbol(currency)} `}
                       className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                     />
                   </div>
@@ -597,7 +624,7 @@ export function ProjectsClient({
                       placeholder="Enter DP Amount"
                       thousandSeparator="."
                       decimalSeparator=","
-                      prefix={currency === "IDR" ? "Rp " : "$ "}
+                      prefix={`${getCurrencySymbol(currency)} `}
                       className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                     />
                   </div>
@@ -696,8 +723,8 @@ export function ProjectsClient({
                           </span>
                           <div className="flex items-center gap-3">
                             <span className="font-medium text-xs">
-                              {item.quantity && item.rate ? `${item.quantity} x ${formatCurrency(item.rate, currency)} = ` : ""}
-                              {formatCurrency(item.price, currency)}
+                              {item.quantity && item.rate ? `${item.quantity} x ${formatMoney(item.rate, currency)} = ` : ""}
+                              {formatMoney(item.price, currency)}
                             </span>
                             <button
                               type="button"
@@ -868,9 +895,12 @@ export function ProjectsClient({
                                 <input
                                   type="radio"
                                   name="invoiceType"
-                                  value="dp"
-                                  checked={invoiceType === "dp"}
-                                  onChange={() => setInvoiceType("dp")}
+                                  value="DP"
+                                  checked={invoiceType === "DP"}
+                                  onChange={() => {
+                                    setInvoiceType("DP");
+                                    setInvoiceNotes(`Down Payment for ${invoiceProject.title}`);
+                                  }}
                                   className="w-4 h-4"
                                 />
                                 <div className="flex-1">
@@ -878,7 +908,7 @@ export function ProjectsClient({
                                     Down Payment
                                   </div>
                                   <Badge variant="outline">
-                                    {formatCurrency(
+                                    {formatMoney(
                                       invoiceProject.dpAmount,
                                       invoiceProject.currency,
                                     )}
@@ -892,9 +922,12 @@ export function ProjectsClient({
                               <input
                                 type="radio"
                                 name="invoiceType"
-                                value="full_payment"
-                                checked={invoiceType === "full_payment"}
-                                onChange={() => setInvoiceType("full_payment")}
+                                value="FULL_PAYMENT"
+                                checked={invoiceType === "FULL_PAYMENT"}
+                                onChange={() => {
+                                  setInvoiceType("FULL_PAYMENT");
+                                  setInvoiceNotes(`Full Payment for ${invoiceProject.title}`);
+                                }}
                                 className="w-4 h-4"
                               />
                               <div className="flex-1">
@@ -902,7 +935,7 @@ export function ProjectsClient({
                                   Full Payment {calc.isDpPaid && "(Balance)"}
                                 </div>
                                 <Badge variant="outline">
-                                  {formatCurrency(
+                                  {formatMoney(
                                     calc.fullPaymentAmount,
                                     invoiceProject.currency,
                                   )}
@@ -910,6 +943,21 @@ export function ProjectsClient({
                               </div>
                             </label>
                           )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="invoiceNotes">Notes (Optional)</Label>
+                          <Textarea
+                            id="invoiceNotes"
+                            value={invoiceNotes}
+                            onChange={(e) => setInvoiceNotes(e.target.value)}
+                            placeholder="Add notes for this invoice..."
+                            rows={2}
+                            className="text-sm resize-none"
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            This note will appear on the invoice sent to the client.
+                          </p>
                         </div>
                       </div>
                     );
@@ -1055,7 +1103,7 @@ export function ProjectsClient({
                   <div className="flex justify-between items-start">
                     <span className="truncate pr-4 font-bold">{project.title}</span>
                     <Badge variant="secondary" className="capitalize shrink-0 text-[10px] px-2 py-0">
-                      {project.status.replace("_", " ")}
+                      {formatEnum(project.status)}
                     </Badge>
                   </div>
                   <span className="text-sm font-normal text-muted-foreground truncate">{project.client.name}</span>
@@ -1064,7 +1112,7 @@ export function ProjectsClient({
               <CardContent className="text-sm space-y-3">
                 <div className="flex justify-between items-center text-muted-foreground border-b border-border/50 pb-2">
                   <span>Price</span>
-                  <span className="font-medium text-foreground">{formatCurrency(project.totalPrice, project.currency)}</span>
+                  <span className="font-medium text-foreground">{formatMoney(project.totalPrice, project.currency)}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pb-2 border-b border-border/50">
@@ -1186,11 +1234,11 @@ export function ProjectsClient({
                       : "-"}
                   </TableCell>
                   <TableCell>
-                    {formatCurrency(project.totalPrice, project.currency)}
+                    {formatMoney(project.totalPrice, project.currency)}
                   </TableCell>
                   <TableCell>
                     {project.dpAmount && Number(project.dpAmount) > 0
-                      ? formatCurrency(project.dpAmount, project.currency)
+                      ? formatMoney(project.dpAmount, project.currency)
                       : "-"}
                   </TableCell>
                   <TableCell>
@@ -1215,7 +1263,7 @@ export function ProjectsClient({
                     )}
                   </TableCell>
                   <TableCell className="capitalize">
-                    {project.status.replace("_", " ")}
+                    {formatEnum(project.status)}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
@@ -1303,6 +1351,14 @@ export function ProjectsClient({
           }
           setItemRemoveConfirm(null);
         }}
+      />
+
+      {/* Upgrade Dialog */}
+      <UpgradeDialog
+        isOpen={isUpgradeDialogOpen}
+        onOpenChange={setIsUpgradeDialogOpen}
+        resourceName="Active Projects"
+        limit={currentLimit}
       />
     </div >
   );

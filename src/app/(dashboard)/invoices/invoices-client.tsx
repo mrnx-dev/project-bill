@@ -23,8 +23,10 @@ import { Send, Loader2, Trash2 } from "lucide-react";
 import { sendInvoiceEmail } from "@/app/actions/send-invoice";
 import { sendReceiptEmail } from "@/app/actions/send-receipt";
 import { toast } from "sonner";
+import { formatEnum } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmailProviderModal } from "@/components/email-provider-modal";
+import { formatMoney } from "@/lib/currency";
 import {
   Select,
   SelectContent,
@@ -49,17 +51,9 @@ export function InvoicesClient({
   const [isDeleting, setIsDeleting] = useState(false);
   const [emailModalData, setEmailModalData] = useState<{ to: string; subject: string; body: string } | null>(null);
 
-  const formatCurrency = (amount: string | number, currencyStr: string) => {
-    return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
-      style: "currency",
-      currency: currencyStr,
-      minimumFractionDigits: 0,
-    }).format(Number(amount));
-  };
-
   const toggleStatus = async (id: string, currentStatus: string) => {
     // Only used for reverting to unpaid now
-    const newStatus = "unpaid";
+    const newStatus = "UNPAID";
 
     // Optimistic update
     setInvoices(
@@ -85,7 +79,7 @@ export function InvoicesClient({
     // Optimistic update
     setInvoices(
       invoices.map((inv) =>
-        inv.id === id ? { ...inv, status: "paid" } : inv,
+        inv.id === id ? { ...inv, status: "PAID" } : inv,
       ),
     );
 
@@ -177,10 +171,10 @@ export function InvoicesClient({
       const matchesSearch = inv.project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         inv.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
         inv.project.client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        inv.type.replace("_", " ").toLowerCase().includes(searchQuery.toLowerCase());
+        formatEnum(inv.type).toLowerCase().includes(searchQuery.toLowerCase());
 
-      if (statusFilter === "paid") return matchesSearch && inv.status === "paid";
-      if (statusFilter === "unpaid") return matchesSearch && inv.status === "unpaid";
+      if (statusFilter === "PAID") return matchesSearch && inv.status === "PAID";
+      if (statusFilter === "UNPAID") return matchesSearch && inv.status === "UNPAID";
       return matchesSearch;
     }
   );
@@ -200,8 +194,8 @@ export function InvoicesClient({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
-            <SelectItem value="unpaid">Awaiting Payment</SelectItem>
+            <SelectItem value="PAID">Paid</SelectItem>
+            <SelectItem value="UNPAID">Awaiting Payment</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -222,7 +216,7 @@ export function InvoicesClient({
                     <span className="text-sm font-normal text-muted-foreground truncate">{inv.project.client.name}</span>
                   </div>
                   <div className="shrink-0 flex flex-col gap-1 items-end">
-                    {inv.status === "paid" ? (
+                    {inv.status === "PAID" ? (
                       <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-900 border text-[10px] py-0 px-2 uppercase tracking-widest font-bold">
                         Paid
                       </Badge>
@@ -234,19 +228,19 @@ export function InvoicesClient({
                         Awaiting Payment
                       </Badge>
                     )}
-                    {inv.emailStatus === 'failed' && (
+                    {inv.emailStatus === 'FAILED' && (
                         <Badge variant="outline" className="text-red-500 border-red-500 bg-red-50 dark:bg-red-950 text-[10px] py-0 px-2 uppercase tracking-tight">
                           Email Failed
                         </Badge>
                     )}
-                    <span className="text-xs text-muted-foreground capitalize">{inv.type.replace("_", " ")}</span>
+                    <span className="text-xs text-muted-foreground capitalize">{formatEnum(inv.type)}</span>
                   </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center text-muted-foreground">
                   <span className="text-sm">Amount</span>
-                  <span className="font-semibold text-foreground">{formatCurrency(Number(inv.amount), inv.project.currency || "IDR")}</span>
+                  <span className="font-semibold text-foreground">{formatMoney(Number(inv.amount), inv.project.currency || "IDR")}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/50">
@@ -254,22 +248,22 @@ export function InvoicesClient({
                     variant="outline"
                     size="sm"
                     className="w-full px-1 text-xs"
-                    disabled={inv.status === "paid" && !!inv.paymentId}
+                    disabled={inv.status === "PAID" && !!inv.paymentId}
                     onClick={() => {
-                      if (inv.status === "paid") {
+                      if (inv.status === "PAID") {
                         setToggleConfirmId({ id: inv.id, currentStatus: inv.status });
                       } else {
                         setMarkPaidConfirmId(inv.id);
                       }
                     }}
                   >
-                    {inv.status === "paid" ? "Mark Unpaid" : "Mark Paid (Manual)"}
+                    {inv.status === "PAID" ? "Mark Unpaid" : "Mark Paid (Manual)"}
                   </Button>
                   <Button
                     variant="secondary"
                     size="sm"
                     className="w-full px-1 text-xs"
-                    onClick={() => handleSendEmail(inv.id, inv.status === "paid")}
+                    onClick={() => handleSendEmail(inv.id, inv.status === "PAID")}
                     disabled={sendingId === inv.id}
                   >
                     {sendingId === inv.id ? (
@@ -277,7 +271,7 @@ export function InvoicesClient({
                     ) : (
                       <Send className="w-4 h-4 mr-1" />
                     )}
-                    {inv.status === "paid" ? "Send Receipt" : "Send"}
+                    {inv.status === "PAID" ? "Send Receipt" : "Send"}
                   </Button>
                   <Button variant="outline" size="sm" className="w-full px-1 text-xs" asChild>
                     <Link
@@ -293,7 +287,7 @@ export function InvoicesClient({
                     size="sm"
                     className="w-full px-1 text-xs"
                     onClick={() => setDeleteConfirmId(inv.id)}
-                    disabled={inv.status === "paid"}
+                    disabled={inv.status === "PAID"}
                   >
                     <Trash2 className="w-4 h-4 mr-1" />
                     Delete
@@ -333,14 +327,14 @@ export function InvoicesClient({
                   </TableCell>
                   <TableCell>{inv.project.client.name}</TableCell>
                   <TableCell className="capitalize">
-                    {inv.type.replace("_", " ")}
+                    {formatEnum(inv.type)}
                   </TableCell>
                   <TableCell>
-                    {formatCurrency(Number(inv.amount), inv.project.currency || "IDR")}
+                    {formatMoney(Number(inv.amount), inv.project.currency || "IDR")}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1 items-start">
-                    {inv.status === "paid" ? (
+                    {inv.status === "PAID" ? (
                       <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800 dark:hover:bg-emerald-900 border text-xs py-1 px-3 uppercase tracking-widest font-bold">
                         Paid
                       </Badge>
@@ -352,7 +346,7 @@ export function InvoicesClient({
                         Awaiting Payment
                       </Badge>
                     )}
-                    {inv.emailStatus === 'failed' && (
+                    {inv.emailStatus === 'FAILED' && (
                         <Badge variant="outline" className="text-red-500 border-red-500 bg-red-50 dark:bg-red-950 text-[10px] py-0 px-2 uppercase tracking-tight flex items-center gap-1">
                           Email Failed
                         </Badge>
@@ -364,25 +358,25 @@ export function InvoicesClient({
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={inv.status === "paid" && !!inv.paymentId}
-                        title={inv.status === "paid" && !!inv.paymentId ? "Invoice already paid via Mayar" : ""}
+                        disabled={inv.status === "PAID" && !!inv.paymentId}
+                        title={inv.status === "PAID" && !!inv.paymentId ? "Invoice already paid via Mayar" : ""}
                         onClick={() => {
-                          if (inv.status === "paid") {
+                          if (inv.status === "PAID") {
                             setToggleConfirmId({ id: inv.id, currentStatus: inv.status });
                           } else {
                             setMarkPaidConfirmId(inv.id);
                           }
                         }}
                       >
-                        {inv.status === "paid" ? "Mark Unpaid" : "Mark Paid (Manual)"}
+                        {inv.status === "PAID" ? "Mark Unpaid" : "Mark Paid (Manual)"}
                       </Button>
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => handleSendEmail(inv.id, inv.status === "paid")}
+                        onClick={() => handleSendEmail(inv.id, inv.status === "PAID")}
                         disabled={sendingId === inv.id}
                         title={
-                          inv.status === "paid"
+                          inv.status === "PAID"
                             ? "Send payment receipt"
                             : "Send invoice email"
                         }
@@ -392,7 +386,7 @@ export function InvoicesClient({
                         ) : (
                           <Send className="w-4 h-4 mr-2" />
                         )}
-                        {inv.status === "paid" ? "Send Receipt" : "Send"}
+                        {inv.status === "PAID" ? "Send Receipt" : "Send"}
                       </Button>
                       <Button variant="outline" size="sm" asChild>
                         <Link
@@ -408,7 +402,7 @@ export function InvoicesClient({
                         size="icon"
                         className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
                         onClick={() => setDeleteConfirmId(inv.id)}
-                        disabled={inv.status === "paid"}
+                        disabled={inv.status === "PAID"}
                         title="Delete invoice"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -430,7 +424,7 @@ export function InvoicesClient({
         confirmLabel="Confirm"
         onConfirm={() => {
           if (toggleConfirmId) {
-            toggleStatus(toggleConfirmId.id, "paid"); // actually reverted to unpaid via the function
+            toggleStatus(toggleConfirmId.id, "PAID"); // actually reverted to unpaid via the function
             setToggleConfirmId(null);
           }
         }}

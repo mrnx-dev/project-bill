@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { CURRENCY_CODES } from "@/lib/currency";
 
 export const projectSchema = z.object({
   clientId: z.string().min(1, "Client is required"),
   title: z.string().min(3, "Title must be at least 3 characters"),
   totalPrice: z.coerce.number().nonnegative("Total price must be non-negative"),
   dpAmount: z.union([z.coerce.number().nonnegative(), z.null()]).optional(),
-  currency: z.enum(["IDR", "USD"]).default("IDR"),
+  currency: z.enum(CURRENCY_CODES).default("IDR"),
   language: z.enum(["id", "en"]).default("id"),
   deadline: z.string().nullable().optional(),
   terms: z.string().nullable().optional(),
@@ -33,9 +34,10 @@ export const projectSchema = z.object({
 
 export const invoiceSchema = z.object({
   projectId: z.string().min(1, "Project ID is required"),
-  type: z.enum(["dp", "full_payment"]),
+  type: z.enum(["DP", "FULL_PAYMENT"]),
   amount: z.coerce.number().positive("Amount must be a positive number"),
   dueDate: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
 });
 
 
@@ -43,7 +45,7 @@ export const recurringInvoiceSchema = z.object({
   projectId: z.string().min(1, "Project ID is required"),
   title: z.string().min(3, "Title must be at least 3 characters"),
   amount: z.coerce.number().positive("Amount must be positive"),
-  frequency: z.enum(["monthly", "weekly", "yearly"]).default("monthly"),
+  frequency: z.enum(["MONTHLY", "WEEKLY", "YEARLY"]).default("MONTHLY"),
   dayOfMonth: z.coerce.number().min(1).max(28).default(1),
   startDate: z.string(),
   endDate: z.string().nullable().optional(),

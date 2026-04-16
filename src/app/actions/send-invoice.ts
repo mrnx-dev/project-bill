@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { sendInvoiceEmail as baseSendInvoiceEmail, sendRecurringInvoiceEmail } from "@/lib/email"
 import { getBaseUrl } from "@/lib/utils";
 import { auth } from "@/auth";
+import { formatMoney } from "@/lib/currency";
 
 export async function sendInvoiceEmail(
   invoiceId: string,
@@ -11,8 +12,21 @@ export async function sendInvoiceEmail(
   customNotes?: string | null
 ) {
   const session = await auth();
-  if (!session) throw new Error("Unauthorized");
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const { checkLimit, incrementUsage } = await import("@/lib/billing/subscription");
+
   try {
+    // --- Subscription Gate Check ---
+    const limitCheck = await checkLimit(session.user.id, "emailsPerMonth");
+    if (!limitCheck.allowed) {
+      return { 
+        success: false, 
+        error: "Monthly email limit reached. Please upgrade your plan.",
+        limitCheck 
+      };
+    }
+    // -------------------------------
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
       include: {
@@ -31,16 +45,7 @@ export async function sendInvoiceEmail(
     const client = invoice.project.client
     const project = invoice.project
 
-    const formatCurrency = new Intl.NumberFormat(
-      project.currency === "IDR" ? "id-ID" : "en-US",
-      {
-        style: "currency",
-        currency: project.currency || "IDR",
-        minimumFractionDigits: 0,
-      }
-    )
-
-    const amountStr = formatCurrency.format(Number(invoice.amount));
+    const amountStr = formatMoney(Number(invoice.amount), project.currency || "IDR");
     const baseUrl = getBaseUrl();
     const invoiceDetailUrl = `${baseUrl}/invoices/${invoice.id}`;
 
@@ -48,7 +53,7 @@ export async function sendInvoiceEmail(
     try {
         let result;
 
-        if (invoice.type === "recurring") {
+        if (invoice.type === "RECURRING") {
           result = await sendRecurringInvoiceEmail({
             to: client.email!,
             clientName: client.name,
@@ -76,8 +81,11 @@ export async function sendInvoiceEmail(
         if (result.success && !result.mocked) {
           await prisma.invoice.update({
              where: { id: invoiceId },
-             data: { emailStatus: 'sent' }
+             data: { emailStatus: 'SENT' }
           });
+          // --- Subscription Usage Increment ---
+          await incrementUsage(session.user.id, "emailsSent");
+          // ------------------------------------
         }
 
         if (!result.success && result.error) {
@@ -89,7 +97,7 @@ export async function sendInvoiceEmail(
            let subject = "";
            let body = "";
 
-           if (invoice.type === "recurring") {
+           if (invoice.type === "RECURRING") {
                subject = project.language === "en"
                    ? `Recurring Invoice [${invoice.invoiceNumber}] for ${project.title} - Action Required`
                    : `Tagihan Rutin [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
@@ -122,7 +130,7 @@ export async function sendInvoiceEmail(
         // Set status to failed
         await prisma.invoice.update({
           where: { id: invoiceId },
-          data: { emailStatus: 'failed' }
+          data: { emailStatus: 'FAILED' }
         });
         return { success: false, error: emailError?.message || "Failed to send email" }
     }

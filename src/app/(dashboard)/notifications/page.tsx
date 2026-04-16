@@ -13,7 +13,7 @@ export default async function NotificationsPage() {
   }
 
   // Admin lock
-  if (session.user.role !== "admin") {
+  if (session.user.role !== "ADMIN") {
      return (
         <div className="flex flex-col items-center justify-center p-8 gap-4 mt-12">
             <h2 className="text-2xl font-bold tracking-tight text-red-500">Access Denied</h2>

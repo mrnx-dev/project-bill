@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { dispatchEvent } from "./event-emitter";
 
 export type NotificationType = "payment" | "sow_signed" | "system";
 
@@ -24,6 +25,13 @@ export async function createNotification({
         linkUrl,
       },
     });
+
+    // Notify any active SSE listeners that a new notification occurred
+    await dispatchEvent("system_events", {
+      type: "notification_created",
+      data: notification,
+    });
+
     return notification;
   } catch (error) {
     console.error("[NOTIFICATIONS] Error creating notification:", error);

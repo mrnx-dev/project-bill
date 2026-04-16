@@ -129,6 +129,9 @@ SENTRY_DSN=""                                 # Sentry/GlitchTip error tracking 
 POSTGRES_USER="projectbill_user"
 POSTGRES_PASSWORD="projectbill_password"
 POSTGRES_DB="projectbill_db"
+
+# Server-Sent Events (SSE) / Real-time Pub-Sub (Optional)
+REDIS_URL="redis://localhost:6379"            # Required ONLY if deploying to Serverless (e.g. Vercel) for multi-instance realtime updates
 ```
 
 > **Note:** API keys for Resend (email) and Mayar (payments) are configured in-app via the Settings page after setup.
@@ -190,6 +193,7 @@ Navigate to [http://localhost:3000/setup](http://localhost:3000/setup) to create
 | `ENCRYPTION_KEY` | ✅ | 64-char hex key for API key encryption (AES-256-GCM) |
 | `APP_URL` | ❌ | Public base URL (default: `http://localhost:3000`) |
 | `CRON_SECRET` | ❌ | Bearer token for cron endpoint authorization |
+| `REDIS_URL` | ❌ | Redis connection string for Server-Sent Events (SSE) pub/sub. Required only for Managed/Vercel serverless deployments to sync realtime updates. |
 | `SENTRY_DSN` | ❌ | Error tracking DSN (Sentry or GlitchTip) |
 | `AUTH_TRUST_HOST` | ❌ | Set to `true` when behind a reverse proxy |
 

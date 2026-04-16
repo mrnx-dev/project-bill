@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { createAuditLog } from "@/lib/audit-logger";
 
 export async function PATCH(
   request: Request,
@@ -14,9 +15,20 @@ export async function PATCH(
     const json = await request.json();
     const { name, email, phone } = json;
 
+    const existing = await prisma.client.findUnique({ where: { id } });
+
     const client = await prisma.client.update({
       where: { id },
       data: { name, email, phone },
+    });
+
+    await createAuditLog({
+      userId: session.user.id,
+      action: "client.update",
+      entityType: "CLIENT",
+      entityId: id,
+      oldValue: existing?.name || undefined,
+      newValue: name || undefined,
     });
 
     return NextResponse.json(client);
@@ -54,7 +66,7 @@ export async function DELETE(
     }
 
     const hasPaidInvoices = clientWithInvoices.projects.some((project) =>
-      project.invoices.some((invoice) => invoice.status === "paid"),
+      project.invoices.some((invoice) => invoice.status === "PAID"),
     );
 
     if (hasPaidInvoices) {
@@ -69,6 +81,14 @@ export async function DELETE(
         where: { id },
       });
     }
+
+    await createAuditLog({
+      userId: session.user.id,
+      action: hasPaidInvoices ? "client.archive" : "client.delete",
+      entityType: "CLIENT",
+      entityId: id,
+      oldValue: clientWithInvoices.name,
+    });
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

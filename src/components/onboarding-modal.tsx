@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Form } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -528,7 +528,7 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
                     name="projectPrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Total Price (IDR) <span className="text-destructive">*</span></FormLabel>
+                        <FormLabel>Total Price <span className="text-destructive">*</span></FormLabel>
                         <FormControl>
                           <NumericFormat
                             value={field.value}
@@ -686,7 +686,7 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
         {/* Header / Stepper section (Fixed at top) */}
         <div className="bg-muted/30 px-4 py-3 sm:px-6 sm:py-3 border-b shrink-0 space-y-2.5">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg sm:text-xl font-bold tracking-tight">Setup Assistant</h2>
+            <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight">Setup Assistant</DialogTitle>
             <span className="text-xs sm:text-sm font-medium text-muted-foreground">
               Step {currentStep + 1} of {STEPS.length}
             </span>

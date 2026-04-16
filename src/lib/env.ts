@@ -7,6 +7,17 @@ const envSchema = z.object({
   APP_URL: z.string().optional(),
   CRON_SECRET: z.string().optional(),
   AUTH_TRUST_HOST: z.string().optional(),
+  DEPLOYMENT_MODE: z.enum(["self-hosted", "managed"]).default("self-hosted"),
+  // New Casdoor variables
+  CASDOOR_ENDPOINT: z.string().optional(),
+  CASDOOR_CLIENT_ID: z.string().optional(),
+  CASDOOR_CLIENT_SECRET: z.string().optional(),
+  CASDOOR_ORG_NAME: z.string().optional(),
+  // AI Assistant
+  AI_PROVIDER: z.enum(["openrouter", "openai", "anthropic", "local"]).default("openrouter"),
+  AI_API_KEY: z.string().optional(),
+  AI_MODEL: z.string().default("anthropic/claude-sonnet-4-20250514"),
+  AI_BASE_URL: z.string().optional(),
 });
 
 // Validate `process.env` against our schema

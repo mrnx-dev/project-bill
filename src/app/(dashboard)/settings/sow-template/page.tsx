@@ -7,6 +7,9 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 
+import { useRouter } from "next/navigation";
+import { UpgradeDialog } from "@/components/subscription/upgrade-dialog";
+
 interface SOWTemplate {
     id: string;
     name: string;
@@ -14,11 +17,14 @@ interface SOWTemplate {
     updatedAt: string;
 }
 
+
 export default function SOWTemplateListPage() {
     const [templates, setTemplates] = useState<SOWTemplate[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-    // Remove unused router
+    const [isUpgradeLimitOpen, setIsUpgradeLimitOpen] = useState(false);
+    const [currentLimit, setCurrentLimit] = useState<number>(0);
+    const router = useRouter();
 
     useEffect(() => {
         fetchTemplates();
@@ -37,6 +43,25 @@ export default function SOWTemplateListPage() {
             setIsLoading(false);
         }
     }
+
+    const handleCreateClick = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        try {
+            const res = await fetch("/api/subscription/check?resource=sowTemplates");
+            if (res.ok) {
+                const check = await res.json();
+                if (!check.allowed) {
+                    setCurrentLimit(check.limit || 0);
+                    setIsUpgradeLimitOpen(true);
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error("Failed to check subscription limit:", error);
+        }
+        
+        router.push("/settings/sow-template/new");
+    };
 
     async function handleDeleteConfirmed() {
         if (!deleteConfirmId) return;
@@ -79,11 +104,9 @@ export default function SOWTemplateListPage() {
                     </p>
                 </div>
                 <div className="relative z-10 flex-shrink-0 w-full md:w-auto">
-                    <Button asChild className="w-full md:w-auto shadow-md hover:shadow-lg transition-all bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6">
-                        <Link href="/settings/sow-template/new">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Create Template
-                        </Link>
+                    <Button onClick={handleCreateClick} className="w-full md:w-auto shadow-md hover:shadow-lg transition-all bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create Template
                     </Button>
                 </div>
 
@@ -100,11 +123,9 @@ export default function SOWTemplateListPage() {
                     <p className="text-slate-500 dark:text-zinc-400 text-sm max-w-[280px] text-center mb-6">
                         Start building your library of reusable contracts to streamline your onboarding workflow.
                     </p>
-                    <Button asChild variant="outline" className="rounded-full shadow-sm hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-zinc-800 dark:hover:text-indigo-300 transition-colors border-indigo-200 dark:border-zinc-700">
-                        <Link href="/settings/sow-template/new">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Draft First Template
-                        </Link>
+                    <Button onClick={handleCreateClick} variant="outline" className="rounded-full shadow-sm hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-zinc-800 dark:hover:text-indigo-300 transition-colors border-indigo-200 dark:border-zinc-700">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Draft First Template
                     </Button>
                 </div>
             ) : (
@@ -148,6 +169,13 @@ export default function SOWTemplateListPage() {
                 title="Delete Template?"
                 description="Are you sure you want to delete this template? This cannot be undone."
                 onConfirm={handleDeleteConfirmed}
+            />
+
+            <UpgradeDialog 
+                isOpen={isUpgradeLimitOpen} 
+                onOpenChange={setIsUpgradeLimitOpen}
+                resourceName="Agreement Templates"
+                limit={currentLimit}
             />
         </div>
     );

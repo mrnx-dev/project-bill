@@ -15,7 +15,7 @@ export default async function InvoicesPage() {
       },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.invoice.count({ where: { status: "unpaid" } }),
+    prisma.invoice.count({ where: { status: "UNPAID" } }),
   ]);
 
   // Serialize records

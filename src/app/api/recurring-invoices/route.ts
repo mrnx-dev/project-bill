@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { recurringInvoiceSchema } from "@/lib/validations";
+import { createAuditLog } from "@/lib/audit-logger";
 
 export async function GET(request: Request) {
     try {
@@ -57,6 +58,17 @@ export async function POST(request: Request) {
 
         const data = validation.data;
 
+        // --- Subscription Gate Check ---
+        const { checkLimit } = await import("@/lib/billing/subscription");
+        const limitCheck = await checkLimit(session.user.id, "recurringTemplates");
+        if (!limitCheck.allowed) {
+            return NextResponse.json(
+                { error: "Plan limit reached", limitCheck },
+                { status: 403 }
+            );
+        }
+        // -------------------------------
+
         // Check if project exists
         const project = await prisma.project.findUnique({
             where: { id: data.projectId },
@@ -77,15 +89,15 @@ export async function POST(request: Request) {
         if (start < today) {
             // if start date is in the past, calculate the next run based on frequency
             nextRunAt = new Date(today);
-            if (data.frequency === "monthly") {
+            if (data.frequency === "MONTHLY") {
                 nextRunAt.setDate(data.dayOfMonth);
                 if (nextRunAt <= today) {
                     nextRunAt.setMonth(nextRunAt.getMonth() + 1);
                 }
-            } else if (data.frequency === "weekly") {
+            } else if (data.frequency === "WEEKLY") {
                 const daysUntilNext = (7 - today.getDay() + start.getDay()) % 7;
                 nextRunAt.setDate(today.getDate() + (daysUntilNext === 0 ? 7 : daysUntilNext));
-            } else if (data.frequency === "yearly") {
+            } else if (data.frequency === "YEARLY") {
                 nextRunAt.setMonth(start.getMonth(), start.getDate());
                 if (nextRunAt <= today) {
                     nextRunAt.setFullYear(nextRunAt.getFullYear() + 1);
@@ -107,6 +119,14 @@ export async function POST(request: Request) {
                 nextRunAt: nextRunAt,
             },
             include: { project: true },
+        });
+
+        await createAuditLog({
+            userId: session.user.id,
+            action: "recurring_invoice.create",
+            entityType: "RECURRING_INVOICE",
+            entityId: recurringInvoice.id,
+            newValue: data.title,
         });
 
         return NextResponse.json(recurringInvoice, { status: 201 });

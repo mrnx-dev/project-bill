@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { UpgradeDialog } from "@/components/subscription/upgrade-dialog";
 import {
   Card,
   CardContent,
@@ -57,6 +58,8 @@ export function ClientsClient({
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>(initialClients);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
+  const [currentLimit, setCurrentLimit] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -68,19 +71,35 @@ export function ClientsClient({
   const [phone, setPhone] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const handleOpenDialog = (client?: Client) => {
+  const handleOpenDialog = async (client?: Client) => {
     if (client) {
       setEditingId(client.id);
       setName(client.name);
       setEmail(client.email || "");
       setPhone(client.phone || "");
+      setIsDialogOpen(true);
     } else {
+      // Check limit before opening create dialog
+      try {
+        const res = await fetch("/api/subscription/check?resource=clients");
+        if (res.ok) {
+          const check = await res.json();
+          if (!check.allowed) {
+            setCurrentLimit(check.limit);
+            setIsUpgradeDialogOpen(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check subscription limit:", error);
+      }
+
       setEditingId(null);
       setName("");
       setEmail("");
       setPhone("");
+      setIsDialogOpen(true);
     }
-    setIsDialogOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -151,7 +170,7 @@ export function ClientsClient({
       const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (client.email && client.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (client.phone && client.phone.includes(searchQuery));
-      if (statusFilter === "active" && client.isArchived) return false;
+      if (statusFilter === "ACTIVE" && client.isArchived) return false;
       if (statusFilter === "archived" && !client.isArchived) return false;
       return matchesSearch;
     }
@@ -173,7 +192,7 @@ export function ClientsClient({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Clients</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="ACTIVE">Active</SelectItem>
               <SelectItem value="archived">Archived</SelectItem>
             </SelectContent>
           </Select>
@@ -394,6 +413,14 @@ export function ClientsClient({
             setDeleteConfirmId(null);
           }
         }}
+      />
+
+      {/* Upgrade Dialog */}
+      <UpgradeDialog
+        isOpen={isUpgradeDialogOpen}
+        onOpenChange={setIsUpgradeDialogOpen}
+        resourceName="Clients"
+        limit={currentLimit}
       />
     </div>
   );

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { createPaymentLink } from "@/lib/mayar";
+import { createPaymentLink } from "@/lib/billing/mayar";
 import { getBaseUrl } from "@/lib/utils";
+import { isMayarSupported } from "@/lib/currency";
 
 
 export async function POST(
@@ -26,16 +27,16 @@ export async function POST(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    if (invoice.status === "paid") {
+    if (invoice.status === "PAID") {
       return NextResponse.json(
         { error: "Invoice is already paid" },
         { status: 400 },
       );
     }
 
-    if (invoice.project.currency !== "IDR") {
+    if (!isMayarSupported(invoice.project.currency)) {
       return NextResponse.json(
-        { error: "Mayar currently only supports IDR" },
+        { error: "Online payment is not available for this currency. Please use manual bank transfer." },
         { status: 400 },
       );
     }

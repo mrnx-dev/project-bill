@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { UpgradeDialog } from "@/components/subscription/upgrade-dialog";
 import {
     Card,
     CardContent,
@@ -39,6 +40,7 @@ import { Plus, Power, Pencil, Trash2, CalendarClock } from "lucide-react";
 import { NumericFormat } from "react-number-format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
+import { formatMoney } from "@/lib/currency";
 
 interface Client {
     id: string;
@@ -58,7 +60,7 @@ interface RecurringInvoice {
     projectId: string;
     title: string;
     amount: string;
-    frequency: "monthly" | "weekly" | "yearly";
+    frequency: "MONTHLY" | "WEEKLY" | "YEARLY";
     dayOfMonth: number;
     startDate: string;
     endDate: string | null;
@@ -77,6 +79,8 @@ export function RecurringInvoicesClient({
 }) {
     const [recurringInvoices, setRecurringInvoices] = useState<RecurringInvoice[]>(initialRecurringInvoices);
     const [open, setOpen] = useState(false);
+    const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
+    const [currentLimit, setCurrentLimit] = useState<number>(0);
     const [loading, setLoading] = useState(false);
     const [deleteId, setDeleteId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
@@ -86,27 +90,19 @@ export function RecurringInvoicesClient({
     const [projectId, setProjectId] = useState("");
     const [title, setTitle] = useState("");
     const [amount, setAmount] = useState("");
-    const [frequency, setFrequency] = useState<"monthly" | "weekly" | "yearly">("monthly");
+    const [frequency, setFrequency] = useState<"MONTHLY" | "WEEKLY" | "YEARLY">("MONTHLY");
     const [dayOfMonth, setDayOfMonth] = useState<number>(1);
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [description, setDescription] = useState("");
     const [isActive, setIsActive] = useState(true);
 
-    const formatCurrency = (amount: string | number, currencyStr: string) => {
-        return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
-            style: "currency",
-            currency: currencyStr,
-            minimumFractionDigits: 0,
-        }).format(Number(amount));
-    };
-
     const resetForm = () => {
         setId(null);
         setProjectId("");
         setTitle("");
         setAmount("");
-        setFrequency("monthly");
+        setFrequency("MONTHLY");
         setDayOfMonth(1);
         setStartDate(format(new Date(), "yyyy-MM-dd"));
         setEndDate("");
@@ -114,7 +110,7 @@ export function RecurringInvoicesClient({
         setIsActive(true);
     };
 
-    const handleOpenDialog = (ri?: RecurringInvoice) => {
+    const handleOpenDialog = async (ri?: RecurringInvoice) => {
         if (ri) {
             setId(ri.id);
             setProjectId(ri.projectId);
@@ -126,10 +122,26 @@ export function RecurringInvoicesClient({
             setEndDate(ri.endDate ? format(new Date(ri.endDate), "yyyy-MM-dd") : "");
             setDescription(ri.description || "");
             setIsActive(ri.isActive);
+            setOpen(true);
         } else {
+            // Check limit before opening create dialog
+            try {
+                const res = await fetch("/api/subscription/check?resource=recurringTemplates");
+                if (res.ok) {
+                    const check = await res.json();
+                    if (!check.allowed) {
+                        setCurrentLimit(check.limit);
+                        setIsUpgradeDialogOpen(true);
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to check subscription limit:", error);
+            }
+            
             resetForm();
+            setOpen(true);
         }
-        setOpen(true);
     };
 
     const handleToggleActive = async (ri: RecurringInvoice) => {
@@ -236,7 +248,7 @@ export function RecurringInvoicesClient({
                               ri.project.client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                               ri.project.title.toLowerCase().includes(searchQuery.toLowerCase());
         
-        if (statusFilter === "active") return matchesSearch && ri.isActive;
+        if (statusFilter === "ACTIVE") return matchesSearch && ri.isActive;
         if (statusFilter === "paused") return matchesSearch && !ri.isActive;
         return matchesSearch;
     });
@@ -319,14 +331,14 @@ export function RecurringInvoicesClient({
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="monthly">Monthly</SelectItem>
-                                                <SelectItem value="weekly">Weekly</SelectItem>
-                                                <SelectItem value="yearly">Yearly</SelectItem>
+                                                <SelectItem value="MONTHLY">Monthly</SelectItem>
+                                                <SelectItem value="WEEKLY">Weekly</SelectItem>
+                                                <SelectItem value="YEARLY">Yearly</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
 
-                                    {frequency === "monthly" && (
+                                    {frequency === "MONTHLY" && (
                                         <div className="space-y-2">
                                             <Label>Day of Month (1-28)</Label>
                                             <Input
@@ -405,7 +417,7 @@ export function RecurringInvoicesClient({
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Statuses</SelectItem>
-                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="ACTIVE">Active</SelectItem>
                                 <SelectItem value="paused">Paused</SelectItem>
                             </SelectContent>
                         </Select>
@@ -442,7 +454,7 @@ export function RecurringInvoicesClient({
                                                     </Badge>
                                                     <span className="text-xs text-muted-foreground capitalize">
                                                         {ri.frequency}
-                                                        {ri.frequency === "monthly" && ` Day ${ri.dayOfMonth}`}
+                                                        {ri.frequency === "MONTHLY" && ` Day ${ri.dayOfMonth}`}
                                                     </span>
                                                 </div>
                                             </CardTitle>
@@ -450,7 +462,7 @@ export function RecurringInvoicesClient({
                                         <CardContent className="space-y-3 pt-3">
                                             <div className="flex justify-between items-center text-muted-foreground">
                                                 <span className="text-sm">Amount</span>
-                                                <span className="font-semibold text-foreground">{formatCurrency(ri.amount, ri.project.currency)}</span>
+                                                <span className="font-semibold text-foreground">{formatMoney(ri.amount, ri.project.currency)}</span>
                                             </div>
                                             <div className="flex justify-between items-center text-muted-foreground">
                                                 <span className="text-sm">Next Run</span>
@@ -516,11 +528,11 @@ export function RecurringInvoicesClient({
                                                 <TableCell>
                                                     <div className="capitalize font-medium">{ri.frequency}</div>
                                                     <div className="text-xs text-muted-foreground">
-                                                        {ri.frequency === "monthly" && `Day ${ri.dayOfMonth}`}
+                                                        {ri.frequency === "MONTHLY" && `Day ${ri.dayOfMonth}`}
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    {formatCurrency(ri.amount, ri.project.currency)}
+                                                    {formatMoney(ri.amount, ri.project.currency)}
                                                 </TableCell>
                                                 <TableCell>
                                                     {format(new Date(ri.nextRunAt), "MMM d, yyyy")}
@@ -582,6 +594,13 @@ export function RecurringInvoicesClient({
                     />
                 </CardContent>
             </Card>
+
+            <UpgradeDialog
+                isOpen={isUpgradeDialogOpen}
+                onOpenChange={setIsUpgradeDialogOpen}
+                resourceName="Recurring Invoices"
+                limit={currentLimit}
+            />
         </>
     );
 }

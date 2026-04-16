@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 export async function countUnpaidInvoices() {
     try {
         const count = await prisma.invoice.count({
-            where: { status: "unpaid" },
+            where: { status: "UNPAID" },
         });
         return count;
     } catch (error) {

@@ -36,6 +36,7 @@ export async function PATCH(
          await createAuditLog({
             userId: session.user.id,
             action: "UPDATE_INVOICE",
+            title: `${invoice.invoiceNumber} (${invoice.project.title})`,
             entityType: "INVOICE",
             entityId: invoice.id,
             newValue: JSON.stringify(updateData),
@@ -66,7 +67,7 @@ export async function DELETE(
     const id = resolvedParams.id;
     const invoice = await prisma.invoice.findUnique({
       where: { id },
-      select: { projectId: true },
+      select: { projectId: true, invoiceNumber: true, project: { select: { title: true } } },
     });
 
     if (!invoice) {
@@ -107,6 +108,7 @@ export async function DELETE(
          await createAuditLog({
             userId: session.user.id,
             action: "DELETE_INVOICE",
+            title: `${invoice.invoiceNumber} (${invoice.project.title})`,
             entityType: "INVOICE",
             entityId: id,
          });

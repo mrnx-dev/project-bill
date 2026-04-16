@@ -1,22 +1,27 @@
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: projectbill_app
-    restart: always
-    ports:
-      - "3000:3000"
-    environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-projectbill_user}:${POSTGRES_PASSWORD:-projectbill_password}@db:5432/${POSTGRES_DB:-projectbill_db}
-      - AUTH_SECRET=${AUTH_SECRET}
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
-      - CRON_SECRET=${CRON_SECRET}
-      - APP_URL=${APP_URL:-http://localhost:3000}
-      - AUTH_TRUST_HOST=true
-    depends_on:
-      db:
-        condition: service_healthy
+  # app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: projectbill_app
+  #   restart: always
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - DATABASE_URL=postgresql://${POSTGRES_USER:-projectbill_user}:${POSTGRES_PASSWORD:-projectbill_password}@db:5432/${POSTGRES_DB:-projectbill_db}
+  #     - AUTH_SECRET=${AUTH_SECRET}
+  #     - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+  #     - CRON_SECRET=${CRON_SECRET}
+  #     - APP_URL=${APP_URL:-http://localhost:3000}
+  #     - AUTH_TRUST_HOST=${AUTH_TRUST_HOST}
+  #     # AI Co-Pilot (optional — add your OpenRouter key)
+  #     - AI_PROVIDER=${AI_PROVIDER:-openrouter}
+  #     - AI_API_KEY=${AI_API_KEY}
+  #     - AI_MODEL=${AI_MODEL:-anthropic/claude-sonnet-4-20250514}
+  #     - AI_BASE_URL=${AI_BASE_URL:-https://openrouter.ai/api/v1}
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
 
   db:
     image: postgres:18
@@ -26,11 +31,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-projectbill_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-projectbill_password}
       POSTGRES_DB: ${POSTGRES_DB:-projectbill_db}
-    # Optional: expose 5432 if you want to connect via external GUI
-    # ports:
-    #   - "5432:5432"
+    # Exposing via 5433 to avoid conflict with xyla_db
+    ports:
+      - "5433:5432"
     volumes:
-      - projectbill_pgdata:/var/lib/postgresql/data
+      - projectbill_pgdata_v18:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-projectbill_user} -d ${POSTGRES_DB:-projectbill_db}"]
       interval: 10s
@@ -61,4 +66,4 @@ services:
   #     - ./backups:/backups
 
 volumes:
-  projectbill_pgdata:
+  projectbill_pgdata_v18:

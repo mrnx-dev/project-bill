@@ -17,7 +17,7 @@ export default async function RecurringInvoicesPage() {
     const recurringInvoices = recurringInvoicesRaw.map((inv) => ({
         ...inv,
         amount: inv.amount.toString(),
-        frequency: inv.frequency as "monthly" | "weekly" | "yearly",
+        frequency: inv.frequency as "MONTHLY" | "WEEKLY" | "YEARLY",
         createdAt: inv.createdAt.toISOString(),
         updatedAt: inv.updatedAt.toISOString(),
         startDate: inv.startDate.toISOString(),

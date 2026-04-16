@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { EmailProviderModal } from "@/components/email-provider-modal";
+import { formatMoney } from "@/lib/currency";
 
 type Client = { id: string; name: string };
 type ProjectItem = { id: string; description: string; price: string };
@@ -60,10 +61,10 @@ type Project = {
 };
 
 const COLUMNS = [
-  { id: "to_do", title: "To Do" },
-  { id: "in_progress", title: "In Progress" },
-  { id: "review", title: "Review" },
-  { id: "done", title: "Done" },
+  { id: "TO_DO", title: "To Do" },
+  { id: "IN_PROGRESS", title: "In Progress" },
+  { id: "REVIEW", title: "Review" },
+  { id: "DONE", title: "Done" },
 ];
 
 export function DashboardClient({
@@ -90,28 +91,20 @@ export function DashboardClient({
   // Email Modal State
   const [emailModalData, setEmailModalData] = useState<{ to: string; subject: string; body: string } | null>(null);
 
-  const formatCurrency = (amount: string | number, currencyStr: string) => {
-    return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
-      style: "currency",
-      currency: currencyStr,
-      minimumFractionDigits: 0,
-    }).format(Number(amount));
-  };
-
   const isFullyPaidDone = (project: Project) => {
-    if (project.status !== "done") return false;
+    if (project.status !== "DONE") return false;
     const fullInv = project.invoices?.find(
-      (i) => i.type === "full_payment",
+      (i) => i.type === "FULL_PAYMENT",
     );
-    return fullInv?.status === "paid";
+    return fullInv?.status === "PAID";
   };
 
   const handleStatusChange = async (projectId: string, newStatus: string) => {
     const project = projects.find((p) => p.id === projectId);
     if (!project) return;
 
-    // Intercept: if moving to "done", show completion dialog
-    if (newStatus === "done" && project.status !== "done") {
+    // Intercept: if moving to "DONE", show completion dialog
+    if (newStatus === "DONE" && project.status !== "DONE") {
       setCompletionProject(project);
       setIsCompletionDialogOpen(true);
       return;
@@ -144,7 +137,7 @@ export function DashboardClient({
 
     // Update Local State Optimistically
     setProjects((prev) =>
-      prev.map((p) => (p.id === projectId ? { ...p, status: "done" } : p)),
+      prev.map((p) => (p.id === projectId ? { ...p, status: "DONE" } : p)),
     );
     setIsCompletionDialogOpen(false);
 
@@ -152,7 +145,7 @@ export function DashboardClient({
       const res = await fetch(`/api/projects/${projectId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "done" }),
+        body: JSON.stringify({ status: "DONE" }),
       });
 
       if (!res.ok) throw new Error("Failed to update status");
@@ -234,10 +227,10 @@ export function DashboardClient({
 
   // Calculate invoice status for completion dialog
   const completionHasFullInvoice = completionProject?.invoices?.some(
-    (i) => i.type === "full_payment",
+    (i) => i.type === "FULL_PAYMENT",
   );
   const completionHasDpInvoice = completionProject?.invoices?.some(
-    (i) => i.type === "dp",
+    (i) => i.type === "DP",
   );
   const completionCanGenerateInvoice = !completionHasFullInvoice;
 
@@ -258,18 +251,18 @@ export function DashboardClient({
 
       {/* Mobile View: Accordion */}
       <div className="md:hidden block space-y-4 shadow-sm border rounded-xl overflow-hidden bg-background">
-        <Accordion type="single" collapsible defaultValue="in_progress" className="w-full">
+        <Accordion type="single" collapsible defaultValue="IN_PROGRESS" className="w-full">
           {COLUMNS.map((column) => {
             let columnProjects = projects.filter((p) => p.status === column.id);
 
             // If archive toggle is OFF, hide fully-paid done projects
-            if (column.id === "done" && !showArchived) {
+            if (column.id === "DONE" && !showArchived) {
               columnProjects = columnProjects.filter((p) => !isFullyPaidDone(p));
             }
 
             const archivedCount =
-              column.id === "done"
-                ? projects.filter((p) => p.status === "done" && isFullyPaidDone(p)).length
+              column.id === "DONE"
+                ? projects.filter((p) => p.status === "DONE" && isFullyPaidDone(p)).length
                 : 0;
 
             return (
@@ -280,7 +273,7 @@ export function DashboardClient({
                       {column.title}
                     </span>
                     <div className="flex items-center gap-1.5">
-                      {column.id === "done" && archivedCount > 0 && !showArchived && (
+                      {column.id === "DONE" && archivedCount > 0 && !showArchived && (
                         <Badge variant="outline" className="text-[10px] text-muted-foreground border-dashed">
                           +{archivedCount} archived
                         </Badge>
@@ -297,7 +290,7 @@ export function DashboardClient({
                       </div>
                     ) : (
                       columnProjects.map((project) => {
-                        const isDone = project.status === "done";
+                        const isDone = project.status === "DONE";
                         const isPaidDone = isFullyPaidDone(project);
 
                         return (
@@ -354,7 +347,7 @@ export function DashboardClient({
                             </CardHeader>
                             <CardContent className="p-3 pt-0 pb-2">
                               <div className="text-xs font-medium">
-                                {formatCurrency(project.totalPrice, project.currency || "IDR")}
+                                {formatMoney(project.totalPrice, project.currency || "IDR")}
                               </div>
                             </CardContent>
                             <CardFooter className="p-3 pt-0 flex flex-col gap-2">
@@ -374,19 +367,19 @@ export function DashboardClient({
                                 </SelectContent>
                               </Select>
 
-                              {project.status === "done" && (
+                              {project.status === "DONE" && (
                                 <div className="w-full mt-1">
-                                  {project.invoices && project.invoices.find((i) => i.type === "full_payment") ? (
+                                  {project.invoices && project.invoices.find((i) => i.type === "FULL_PAYMENT") ? (
                                     <Button
                                       variant="default"
                                       size="sm"
                                       className="w-full h-7 text-[11px] font-semibold bg-green-600 hover:bg-green-700 text-white"
                                       onClick={() => {
-                                        const inv = project.invoices!.find((i) => i.type === "full_payment");
+                                        const inv = project.invoices!.find((i) => i.type === "FULL_PAYMENT");
                                         if (inv?.id) window.open(`/invoices/${inv.id}`, "_blank");
                                       }}
                                     >
-                                      {project.invoices?.find((i) => i.type === "full_payment")?.status === "paid"
+                                      {project.invoices?.find((i) => i.type === "FULL_PAYMENT")?.status === "PAID"
                                         ? "View Receipt"
                                         : "View Invoice"}
                                     </Button>
@@ -422,14 +415,14 @@ export function DashboardClient({
           let columnProjects = projects.filter((p) => p.status === column.id);
 
           // If archive toggle is OFF, hide fully-paid done projects
-          if (column.id === "done" && !showArchived) {
+          if (column.id === "DONE" && !showArchived) {
             columnProjects = columnProjects.filter((p) => !isFullyPaidDone(p));
           }
 
           const archivedCount =
-            column.id === "done"
+            column.id === "DONE"
               ? projects.filter(
-                (p) => p.status === "done" && isFullyPaidDone(p),
+                (p) => p.status === "DONE" && isFullyPaidDone(p),
               ).length
               : 0;
 
@@ -443,7 +436,7 @@ export function DashboardClient({
                   {column.title}
                 </h3>
                 <div className="flex items-center gap-1.5">
-                  {column.id === "done" &&
+                  {column.id === "DONE" &&
                     archivedCount > 0 &&
                     !showArchived && (
                       <Badge
@@ -464,7 +457,7 @@ export function DashboardClient({
                   </div>
                 ) : (
                   columnProjects.map((project) => {
-                    const isDone = project.status === "done";
+                    const isDone = project.status === "DONE";
                     const isPaidDone = isFullyPaidDone(project);
 
                     return (
@@ -526,7 +519,7 @@ export function DashboardClient({
                         </CardHeader>
                         <CardContent className="p-4 pt-0 pb-3">
                           <div className="text-sm font-medium shrink-0">
-                            {formatCurrency(
+                            {formatMoney(
                               project.totalPrice,
                               project.currency || "IDR",
                             )}
@@ -555,11 +548,11 @@ export function DashboardClient({
                             </SelectContent>
                           </Select>
 
-                          {project.status === "done" && (
+                          {project.status === "DONE" && (
                             <div className="w-full mt-2">
                               {project.invoices &&
                                 project.invoices.find(
-                                  (i) => i.type === "full_payment",
+                                  (i) => i.type === "FULL_PAYMENT",
                                 ) ? (
                                 <Button
                                   variant="default"
@@ -567,7 +560,7 @@ export function DashboardClient({
                                   className="w-full text-xs font-semibold bg-green-600 hover:bg-green-700 text-white"
                                   onClick={() => {
                                     const inv = project.invoices!.find(
-                                      (i) => i.type === "full_payment",
+                                      (i) => i.type === "FULL_PAYMENT",
                                     );
                                     if (inv?.id) {
                                       window.open(`/invoices/${inv.id}`, "_blank");
@@ -575,8 +568,8 @@ export function DashboardClient({
                                   }}
                                 >
                                   {project.invoices?.find(
-                                    (i) => i.type === "full_payment",
-                                  )?.status === "paid"
+                                    (i) => i.type === "FULL_PAYMENT",
+                                  )?.status === "PAID"
                                     ? "View Receipt"
                                     : "View Invoice"}
                                 </Button>
@@ -649,7 +642,7 @@ export function DashboardClient({
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Project</span>
                   <span className="font-semibold">
-                    {formatCurrency(
+                    {formatMoney(
                       completionProject.totalPrice,
                       completionProject.currency || "IDR",
                     )}
@@ -660,7 +653,7 @@ export function DashboardClient({
                     <span>Down Payment Billed</span>
                     <span>
                       -
-                      {formatCurrency(
+                      {formatMoney(
                         completionProject.dpAmount,
                         completionProject.currency || "IDR",
                       )}

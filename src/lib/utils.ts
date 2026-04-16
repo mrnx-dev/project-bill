@@ -23,3 +23,20 @@ export function getBaseUrl() {
   // 3. Remove trailing slash for consistency
   return url.replace(/\/$/, "");
 }
+
+/**
+ * Formats a screaming snake case or uppercase string to human-readable format.
+ * Example: 'FULL_PAYMENT' -> 'Full Payment'
+ */
+export function formatEnum(str: string): string {
+  if (!str) return str;
+  return str.replace(/_/g, " ").replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
+}
+
+/**
+ * Checks if a string looks like a system enum (ALL CAPS with optional underscores).
+ */
+export function isEnumLike(str: string): boolean {
+  if (!str) return false;
+  return /^[A-Z0-9_]+$/.test(str);
+}

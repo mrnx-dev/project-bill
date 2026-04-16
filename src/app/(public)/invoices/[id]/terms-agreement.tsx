@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 type TranslationKey = "validContract" | "signedOn" | "printSave" | "digitalAgreementRequired" | "reviewSignDescription" | "reviewSignBtn" | "sowTermsTitle" | "sowTermsDescription" | "scrollToBottom" | "acknowledgeText" | "termsConditions" | "statementOfWork" | "cancel" | "signAgreement" | "signing";
 
@@ -123,7 +124,7 @@ export function TermsAgreement({
       setIsOpen(false);
     } catch (error: unknown) {
       console.error(error);
-      alert(error instanceof Error ? error.message : "Failed to accept terms");
+      toast.error(error instanceof Error ? error.message : "Failed to accept terms");
     } finally {
       setIsLoading(false);
     }

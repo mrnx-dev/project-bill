@@ -9,6 +9,9 @@ import { TermsAgreement } from "./terms-agreement";
 import { RealtimeInvoicePoller } from "@/components/realtime-invoice-poller";
 import { format } from "date-fns";
 import { id as localeId, enUS as localeEn } from "date-fns/locale";
+import { NotepadTextDashed } from "lucide-react";
+import { formatEnum } from "@/lib/utils";
+import { formatMoney } from "@/lib/currency";
 
 type TranslationKey = "invoice" | "invoiceNo" | "date" | "dueDate" | "paid" | "unpaid" | "billTo" | "projectDetails" | "description" | "type" | "amount" | "qty" | "rate" | "projectServices" | "dpText" | "fullPaymentText" | "itemLabel" | "deductionLabel" | "lessDpText" | "subtotal" | "tax" | "totalDue" | "thanks" | "scopeLockedTxt";
 
@@ -101,14 +104,6 @@ export default async function InvoiceViewPage(props: {
   const dateLocale = lang === "id" ? localeId : localeEn;
   const dateFormat = lang === "id" ? "d MMM yyyy" : "MMM d, yyyy";
 
-  const formatCurrency = (amount: string | number, currencyStr: string) => {
-    return new Intl.NumberFormat(currencyStr === "IDR" ? "id-ID" : "en-US", {
-      style: "currency",
-      currency: currencyStr,
-      minimumFractionDigits: 0,
-    }).format(Number(amount));
-  };
-
   const hasQtyRate = invoice.project.items?.some(i => i.quantity !== null && i.rate !== null);
 
   const invoiceAmount = Number(invoice.amount);
@@ -119,9 +114,20 @@ export default async function InvoiceViewPage(props: {
 
   const hasMayar = !!settings.mayarApiKey;
 
+  // Watermark: show "Powered by ProjectBill" for starter plan on managed cloud
+  const { isManagedCloud } = await import("@/lib/billing/subscription");
+  let showWatermark = false;
+  if (isManagedCloud()) {
+    const adminUser = await prisma.user.findFirst({
+      where: { role: "ADMIN" },
+      include: { subscription: true },
+    });
+    showWatermark = !adminUser?.subscription || adminUser.subscription.plan === "starter";
+  }
+
   return (
     <div className="light-theme min-h-screen bg-neutral-100 py-10 print:py-0 print:bg-white flex justify-center flex-col items-center gap-6">
-      {invoice.status !== "paid" && <RealtimeInvoicePoller invoiceId={invoice.id} />}
+      {invoice.status !== "PAID" && <RealtimeInvoicePoller invoiceId={invoice.id} />}
       {/* Toolbar outside the A4 paper */}
       <div className="w-full max-w-[210mm] flex justify-end print:hidden gap-2">
         <PrintButton invoiceId={invoice.id} />
@@ -130,7 +136,7 @@ export default async function InvoiceViewPage(props: {
       {/* A4 Container */}
       <div className="w-full max-w-[210mm] min-h-[297mm] bg-white shadow-xl print:shadow-none p-12 text-slate-900 relative flex flex-col">
         {/* Watermark Section - Show only when paid */}
-        {invoice.status === "paid" && (
+        {invoice.status === "PAID" && (
           <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none overflow-hidden print:overflow-visible">
             <div
               className="transform -rotate-45 text-[8rem] sm:text-[10rem] font-black uppercase tracking-widest opacity-[0.03] print:opacity-[0.06] select-none text-emerald-600"
@@ -198,7 +204,7 @@ export default async function InvoiceViewPage(props: {
 
         {/* Status Badge (Absolute Positioned for style) */}
         <div className="absolute top-12 right-[50%] translate-x-[50%] print:hidden z-10">
-          {invoice.status === "paid" ? (
+          {invoice.status === "PAID" ? (
             <Badge variant="outline" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border-emerald-300 border text-xs py-1 px-3 uppercase tracking-widest font-bold">
               {t.paid}
             </Badge>
@@ -269,7 +275,7 @@ export default async function InvoiceViewPage(props: {
               </tr>
             </thead>
             <tbody>
-              {invoice.type === "recurring" ? (
+              {invoice.type === "RECURRING" ? (
                 <tr className="border-b border-slate-200">
                   <td className="py-4 px-2">
                     <p className="font-medium text-slate-800">
@@ -294,13 +300,13 @@ export default async function InvoiceViewPage(props: {
                     </Badge>
                   </td>
                   <td className="py-4 px-2 text-right font-medium text-slate-800">
-                    {formatCurrency(
+                    {formatMoney(
                       invoice.amount.toString(),
                       invoice.project.currency || "IDR",
                     )}
                   </td>
                 </tr>
-              ) : invoice.type === "dp" ||
+              ) : invoice.type === "DP" ||
                 !invoice.project.items ||
                 invoice.project.items.length === 0 ? (
                 <tr className="border-b border-slate-200">
@@ -309,7 +315,7 @@ export default async function InvoiceViewPage(props: {
                       {t.projectServices}
                     </p>
                     <p className="text-xs text-slate-500 mt-1">
-                      {invoice.type === "dp"
+                      {invoice.type === "DP"
                         ? t.dpText
                         : t.fullPaymentText}
                     </p>
@@ -325,11 +331,11 @@ export default async function InvoiceViewPage(props: {
                       variant="outline"
                       className="font-mono text-slate-600 bg-slate-50"
                     >
-                      {invoice.type.replace("_", " ").toUpperCase()}
+                      {formatEnum(invoice.type).toUpperCase()}
                     </Badge>
                   </td>
                   <td className="py-4 px-2 text-right font-medium text-slate-800">
-                    {formatCurrency(
+                    {formatMoney(
                       invoice.amount.toString(),
                       invoice.project.currency || "IDR",
                     )}
@@ -350,7 +356,7 @@ export default async function InvoiceViewPage(props: {
                             {item.quantity ? Number(item.quantity).toString() : "-"}
                           </td>
                           <td className="py-4 px-2 text-right text-slate-600">
-                            {item.rate ? formatCurrency(item.rate.toString(), invoice.project.currency || "IDR") : "-"}
+                            {item.rate ? formatMoney(item.rate.toString(), invoice.project.currency || "IDR") : "-"}
                           </td>
                         </>
                       )}
@@ -363,7 +369,7 @@ export default async function InvoiceViewPage(props: {
                         </Badge>
                       </td>
                       <td className="py-4 px-2 text-right font-medium text-slate-800">
-                        {formatCurrency(
+                        {formatMoney(
                           item.price.toString(),
                           invoice.project.currency || "IDR",
                         )}
@@ -396,7 +402,7 @@ export default async function InvoiceViewPage(props: {
                         </td>
                         <td className="py-4 px-2 text-right font-medium text-slate-800">
                           -
-                          {formatCurrency(
+                          {formatMoney(
                             invoice.project.dpAmount.toString(),
                             invoice.project.currency || "IDR",
                           )}
@@ -414,7 +420,7 @@ export default async function InvoiceViewPage(props: {
               <div className="flex justify-between py-2 text-sm text-slate-600">
                 <span>{t.subtotal}</span>
                 <span>
-                  {formatCurrency(
+                  {formatMoney(
                     invoiceAmount,
                     invoice.project.currency || "IDR",
                   )}
@@ -424,17 +430,17 @@ export default async function InvoiceViewPage(props: {
                 <div className="flex justify-between py-2 text-sm text-slate-600 border-b border-slate-200">
                   <span>{taxName} ({taxRate}%)</span>
                   <span>
-                    {formatCurrency(
+                    {formatMoney(
                       taxAmount,
                       invoice.project.currency || "IDR"
                     )}
                   </span>
                 </div>
               )}
-              <div className={`flex justify-between py-4 text-xl font-bold text-slate-900 border-b-4 border-slate-800 ${taxRate === 0 ? 'border-t border-slate-200' : ''}`}>
+              <div className={`flex justify-between py-4 text-xl font-bold text-slate-900 ${taxRate === 0 ? 'border-t border-slate-200' : ''}`}>
                 <span>{t.totalDue}</span>
                 <span>
-                  {formatCurrency(
+                  {formatMoney(
                     grandTotal,
                     invoice.project.currency || "IDR",
                   )}
@@ -442,13 +448,37 @@ export default async function InvoiceViewPage(props: {
               </div>
             </div>
           </div>
+
+          {/* Full-width separator */}
+          <hr className="border-t border-slate-200 mt-0" />
+
+          {/* Notes Section for DP and Full Payment */}
+          {invoice.notes && invoice.type !== "RECURRING" && (
+            <div className="mt-6 relative z-10 max-w-md">
+              <h4 className="font-semibold text-slate-500 text-xs uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <NotepadTextDashed className="h-3.5 w-3.5" />
+                {lang === "id" ? "Catatan" : "Notes"}
+              </h4>
+              <p className="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed">
+                {invoice.notes}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Footer Section */}
         <div className="mt-auto pt-16 relative z-10 bg-white print:bg-transparent">
-          {invoice.status !== "paid" &&
-            invoice.project.currency === "IDR" &&
-            (invoice.project.terms ? (
+          {invoice.status !== "PAID" &&
+            (invoice.project.currency !== "IDR" ? (
+              /* Non-IDR: Mayar not supported — always show manual payment */
+              <ManualPaymentInstructions
+                bankName={settings.bankName}
+                bankAccountName={settings.bankAccountName}
+                bankAccountNumber={settings.bankAccountNumber}
+                invoiceNumber={invoice.invoiceNumber}
+                lang={lang as "id" | "en"}
+              />
+            ) : invoice.project.terms ? (
               <TermsAgreement
                 projectId={invoice.project.id}
                 terms={invoice.project.terms}
@@ -468,7 +498,7 @@ export default async function InvoiceViewPage(props: {
                 ) : (
                   <PayButton
                     invoiceId={invoice.id}
-                    amountStr={formatCurrency(grandTotal, "IDR")}
+                    amountStr={formatMoney(grandTotal, invoice.project.currency || "IDR")}
                     lang={lang as "id" | "en"}
                   />
                 )}
@@ -484,7 +514,7 @@ export default async function InvoiceViewPage(props: {
             ) : (
               <PayButton
                 invoiceId={invoice.id}
-                amountStr={formatCurrency(grandTotal, "IDR")}
+                amountStr={formatMoney(grandTotal, invoice.project.currency || "IDR")}
                 lang={lang as "id" | "en"}
               />
             ))}
@@ -492,6 +522,20 @@ export default async function InvoiceViewPage(props: {
             <p>{t.thanks}</p>
             <p>ProjectBill © {new Date().getFullYear()}</p>
           </div>
+
+          {/* Subscription Watermark - shown for starter plan on managed cloud */}
+          {showWatermark && (
+            <div className="mt-4 text-center print:mt-8">
+              <a
+                href="https://projectbill.app"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 transition-colors bg-slate-50 px-3 py-1.5 rounded-full border"
+              >
+                Powered by <strong>ProjectBill</strong>
+              </a>
+            </div>
+          )}
         </div>
       </div>
     </div>

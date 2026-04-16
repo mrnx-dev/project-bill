@@ -18,6 +18,9 @@ import {
   GalleryVerticalEnd,
   Pencil,
   CalendarClock,
+  History,
+  BarChart3,
+  Bot,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useTheme } from "next-themes";
@@ -113,6 +116,16 @@ const navGroups: NavGroup[] = [
         url: "/recurring-invoices",
         icon: CalendarClock,
       },
+      {
+        title: "Reports",
+        url: "/reports",
+        icon: BarChart3,
+      },
+      {
+        title: "Activity",
+        url: "/activity",
+        icon: History,
+      },
     ],
   },
   {
@@ -127,6 +140,17 @@ const navGroups: NavGroup[] = [
         title: "SOW Templates",
         url: "/settings/sow-template",
         icon: NotepadTextDashed,
+      },
+      {
+        title: "Subscription",
+        url: "/settings/subscription",
+        // Using a similar generic icon since we don't have lucide's CreditCard imported yet
+        icon: FileText, 
+      },
+      {
+        title: "AI Assistant",
+        url: "/settings/agent",
+        icon: Bot,
       },
     ],
   },

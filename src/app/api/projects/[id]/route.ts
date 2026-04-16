@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
+import { createAuditLog } from "@/lib/audit-logger";
 
 export async function PATCH(
   request: Request,
@@ -112,11 +113,33 @@ export async function PATCH(
         );
       }
     }
+    
+    // Phase 4.3: Subscription Limit Check for Reactivation
+    // If the project was "DONE" and is now being moved to an active state, check limit.
+    if (existing.status === "DONE" && status !== undefined && status !== "DONE") {
+        const { checkLimit } = await import("@/lib/billing/subscription");
+        const limitCheck = await checkLimit(session.user.id, "activeProjects");
+        if (!limitCheck.allowed) {
+            return NextResponse.json(
+                { error: "Cannot reactivate project. Active projects limit reached.", limitCheck },
+                { status: 403 }
+            );
+        }
+    }
 
     const project = await prisma.project.update({
       where: { id },
       data: updateData,
       include: { client: true, invoices: true },
+    });
+
+    await createAuditLog({
+      userId: session.user.id,
+      action: "project.update",
+      entityType: "PROJECT",
+      entityId: id,
+      oldValue: existing.title,
+      newValue: title || existing.title,
     });
 
     return NextResponse.json(project);
@@ -150,7 +173,7 @@ export async function DELETE(
     }
 
     const hasUnpaidInvoices = project.invoices.some(
-      (inv) => inv.status === "unpaid",
+      (inv) => inv.status === "UNPAID",
     );
     if (hasUnpaidInvoices) {
       return NextResponse.json(
@@ -172,6 +195,14 @@ export async function DELETE(
         where: { id },
       }),
     ]);
+
+    await createAuditLog({
+      userId: session.user.id,
+      action: "project.delete",
+      entityType: "PROJECT",
+      entityId: id,
+      oldValue: project.title,
+    });
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

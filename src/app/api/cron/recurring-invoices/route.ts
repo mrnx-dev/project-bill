@@ -70,16 +70,16 @@ export async function GET(request: Request) {
                 // Calculate nextRunAt first
                 let nextRunAt = new Date(template.nextRunAt);
                 while (nextRunAt <= today) {
-                    if (template.frequency === "monthly") {
+                    if (template.frequency === "MONTHLY") {
                         nextRunAt.setMonth(nextRunAt.getMonth() + 1);
                         const expectedDay = template.dayOfMonth;
                         nextRunAt.setDate(expectedDay);
                         if (nextRunAt.getDate() !== expectedDay) {
                             nextRunAt.setDate(0);
                         }
-                    } else if (template.frequency === "weekly") {
+                    } else if (template.frequency === "WEEKLY") {
                         nextRunAt.setDate(nextRunAt.getDate() + 7);
-                    } else if (template.frequency === "yearly") {
+                    } else if (template.frequency === "YEARLY") {
                         nextRunAt.setFullYear(nextRunAt.getFullYear() + 1);
                     }
                 }
@@ -107,10 +107,10 @@ export async function GET(request: Request) {
                         data: {
                             invoiceNumber,
                             projectId: template.projectId,
-                            type: "recurring",
+                            type: "RECURRING",
                             notes: template.description || template.title,
                             amount: template.amount,
-                            status: "unpaid",
+                            status: "UNPAID",
                             dueDate,
                         },
                     });

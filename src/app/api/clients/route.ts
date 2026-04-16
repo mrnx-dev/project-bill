@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
+import { createAuditLog } from "@/lib/audit-logger";
 
 export async function GET(request: Request) {
   try {
@@ -54,8 +55,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
+    // --- Subscription Gate Check ---
+    const { checkLimit } = await import("@/lib/billing/subscription");
+    const limitCheck = await checkLimit(session.user.id, "clients");
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        { error: "Plan limit reached", limitCheck },
+        { status: 403 }
+      );
+    }
+    // -------------------------------
+
     const client = await prisma.client.create({
       data: { name, email, phone },
+    });
+
+    await createAuditLog({
+      userId: session.user.id,
+      action: "client.create",
+      entityType: "CLIENT",
+      entityId: client.id,
+      newValue: name,
     });
 
     return NextResponse.json(client, { status: 201 });

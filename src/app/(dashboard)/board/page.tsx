@@ -11,7 +11,7 @@ export default async function BoardPage() {
       include: { client: true, invoices: true, items: true },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.invoice.count({ where: { status: "unpaid" } }),
+    prisma.invoice.count({ where: { status: "UNPAID" } }),
   ]);
 
   // Serialize records

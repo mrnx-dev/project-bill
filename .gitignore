@@ -53,6 +53,7 @@ next-env.d.ts
 
 /src/generated/prisma
 .agent/
+/docs/superpowers
 
 # database backups
 /backups

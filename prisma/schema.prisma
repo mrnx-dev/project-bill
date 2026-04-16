@@ -12,23 +12,20 @@ model Client {
   email      String?
   phone      String?
   isArchived Boolean   @default(false)
-  projects   Project[]
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+  projects   Project[]
 }
 
 model Project {
-  id                     String        @id @default(uuid())
+  id                     String             @id @default(uuid())
   clientId               String
-  client                 Client        @relation(fields: [clientId], references: [id])
   title                  String
-  status                 String        @default("to_do") // to_do, in_progress, review, done
-  totalPrice             Decimal       @db.Decimal(19, 4)
-  dpAmount               Decimal?      @db.Decimal(19, 4)
-  currency               String        @default("IDR") // IDR or USD
-  language               String        @default("id") // "id" or "en"
-  items                  ProjectItem[]
-  invoices               Invoice[]
+  status                 String             @default("to_do")
+  totalPrice             Decimal            @db.Decimal(19, 4)
+  dpAmount               Decimal?           @db.Decimal(19, 4)
+  currency               String             @default("IDR")
+  language               String             @default("id")
   deadline               DateTime?
   terms                  String?
   termsAcceptedAt        DateTime?
@@ -36,9 +33,12 @@ model Project {
   termsAcceptedSessionId String?
   termsVersionId         Int?
   taxName                String?
-  taxRate                Decimal?      @db.Decimal(19, 4)
-  createdAt              DateTime      @default(now())
-  updatedAt              DateTime      @updatedAt
+  taxRate                Decimal?           @db.Decimal(19, 4)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  invoices               Invoice[]
+  client                 Client             @relation(fields: [clientId], references: [id])
+  items                  ProjectItem[]
   recurringInvoices      RecurringInvoice[]
 
   @@index([status])
@@ -48,25 +48,24 @@ model Project {
 model ProjectItem {
   id          String   @id @default(uuid())
   projectId   String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   description String
   price       Decimal  @db.Decimal(19, 4)
   quantity    Decimal? @db.Decimal(19, 4)
   rate        Decimal? @db.Decimal(19, 4)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model Invoice {
   id             String    @id @default(uuid())
-  invoiceNumber  String    @unique @default(uuid()) // E.g., INV-2026-0001
+  invoiceNumber  String    @unique @default(uuid())
   projectId      String
-  project        Project   @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  type           String // dp, full_payment, recurring
-  notes          String?   @db.Text
+  type           String
+  notes          String?
   amount         Decimal   @db.Decimal(19, 4)
-  status         String    @default("unpaid") // unpaid, paid
-  emailStatus    String    @default("pending") // pending, sent, failed
+  status         String    @default("unpaid")
+  emailStatus    String    @default("pending")
   dueDate        DateTime?
   paymentLink    String?
   paymentId      String?
@@ -75,24 +74,26 @@ model Invoice {
   lateFeeApplied Boolean   @default(false)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+  project        Project   @relation(fields: [projectId], references: [id])
 
   @@index([status])
   @@index([projectId])
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String
-  role                 String   @default("admin") // admin, staff
-  onboardingCompleted  Boolean  @default(false)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                  String        @id @default(uuid())
+  email               String        @unique
+  password            String
+  name                String
+  role                String        @default("admin")
+  onboardingCompleted Boolean       @default(false)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  subscription        Subscription?
 }
 
 model Settings {
-  id                 String   @id @default("global") // Enforce single row
+  id                 String   @id @default("global")
   companyName        String   @default("ProjectBill")
   companyAddress     String?
   companyEmail       String?
@@ -102,19 +103,16 @@ model Settings {
   resendApiKey       String?
   mayarApiKey        String?
   mayarWebhookSecret String?
-  
-  // Bank Details for Manual Payment Fallback
-  bankName          String? 
-  bankAccountName   String?
-  bankAccountNumber String?
-
+  bankName           String?
+  bankAccountName    String?
+  bankAccountNumber  String?
   updatedAt          DateTime @updatedAt
 }
 
 model SOWTemplate {
   id        String   @id @default(uuid())
   name      String
-  content   String   @db.Text
+  content   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -122,12 +120,13 @@ model SOWTemplate {
 model AuditLog {
   id         String   @id @default(uuid())
   userId     String
-  action     String   // e.g., "settings.update", "invoice.create"
-  entityType String?  // e.g., "Invoice", "Project", "Settings"
-  entityId   String?  // e.g., invoice UUID
-  field      String?  // e.g., "mayarApiKey"
-  oldValue   String?  // masked value
-  newValue   String?  // masked value
+  action     String
+  title      String?  // New field to capture context strings logically without polluting the action name
+  entityType String?
+  entityId   String?
+  field      String?
+  oldValue   String?
+  newValue   String?
   createdAt  DateTime @default(now())
 
   @@index([userId])
@@ -136,20 +135,20 @@ model AuditLog {
 }
 
 model RecurringInvoice {
-  id            String    @id @default(uuid())
-  projectId     String
-  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  title         String    // Title or name of the retainer
-  amount        Decimal   @db.Decimal(19, 4)
-  frequency     String    @default("monthly") // monthly, weekly, yearly
-  dayOfMonth    Int       @default(1)
-  startDate     DateTime
-  endDate       DateTime?
-  nextRunAt     DateTime
-  isActive      Boolean   @default(true)
-  description   String?   @db.Text
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String    @id @default(uuid())
+  projectId   String
+  title       String
+  amount      Decimal   @db.Decimal(19, 4)
+  frequency   String    @default("monthly")
+  dayOfMonth  Int       @default(1)
+  startDate   DateTime
+  endDate     DateTime?
+  nextRunAt   DateTime
+  isActive    Boolean   @default(true)
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([isActive, nextRunAt])
   @@index([projectId])
@@ -159,7 +158,7 @@ model Notification {
   id        String   @id @default(uuid())
   title     String
   message   String
-  type      String   // payment, sow_signed, system
+  type      String
   isRead    Boolean  @default(false)
   linkUrl   String?
   createdAt DateTime @default(now())
@@ -167,4 +166,80 @@ model Notification {
 
   @@index([isRead])
   @@index([createdAt])
+}
+
+model Subscription {
+  id                 String    @id @default(uuid())
+  userId             String    @unique
+  plan               String    @default("starter")
+  status             String    @default("active")
+  mayarCustomerId    String?
+  mayarPaymentId     String?
+  trialStartedAt     DateTime?
+  trialEndsAt        DateTime?
+  cancelAtPeriodEnd  Boolean   @default(false)
+  cancelledAt        DateTime?
+  currentPeriodStart DateTime  @default(now())
+  currentPeriodEnd   DateTime
+  emailsSent         Int       @default(0)
+  invoicesCreated    Int       @default(0)
+  paymentLinksUsed   Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  user               User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+model AgentConversation {
+  id        String   @id @default(uuid())
+  title     String   @default("New Conversation")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  messages  AgentMessage[]
+
+  @@index([userId, createdAt])
+  @@index([userId])
+}
+
+model AgentMessage {
+  id             String   @id @default(uuid())
+  conversationId String
+  role           String   // "user" | "assistant" | "system" | "tool"
+  content        String   @db.Text
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  conversation   AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([role])
+}
+
+model AgentMemory {
+  id        String   @id @default(uuid())
+  userId    String
+  key       String   // "client_preferences", "project_patterns", "pricing_insights"
+  value     Json
+  context   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
+model AgentConfig {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  provider       String   @default("openrouter")
+  model          String   @default("anthropic/claude-sonnet-4-20250514")
+  temperature    Float    @default(0.7)
+  proactiveMode  Boolean  @default(true)
+  locale         String   @default("id")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId])
 }

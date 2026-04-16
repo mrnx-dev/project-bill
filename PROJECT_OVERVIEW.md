@@ -231,7 +231,8 @@ The full MVP through V1.5 features have been successfully implemented:
     - **Server Utility:** Centralized `createNotification()` in `src/lib/notifications.ts` for consistent server-side notification creation.
     - **REST API:** `/api/notifications` — `GET` (paginated with `?page` & `?limit`, includes `unreadCount`) and `PATCH` (mark single or all as read). Role-based `admin` authorization enforced.
     - **Event Triggers:** Auto-creates notifications on `payment.success` webhook (links to invoice) and SOW acceptance (links to `/projects` list).
-    - **Notification Bell:** `src/components/notifications/notification-bell.tsx` mounted in the dashboard header. Uses `swr` polling every 15 seconds with optimistic UI for mark-as-read. Displays unread badge counter (capped at `99+`).
+    - **Real-Time SSE Engine:** `/api/events` Server-Sent Events route pushes `notification_created` and `activity_logged` events. Uses a local memory `EventEmitter` by default, with support for an optional Redis pub-sub broker (via `REDIS_URL`) to synchronize events across serverless environments.
+    - **Notification Bell:** `src/components/notifications/notification-bell.tsx` mounted in the dashboard header. Listens to SSE for instant unread badge updates without intensive interval polling.
     - **Real-Time Toasts:** Integrated `sonner` in `layout.tsx` with `position="top-right"` to alert users of new notifications instantly.
     - **Full History Page:** Dedicated `/notifications` route with server-side pre-fetching and client-side SWR pagination (`Previous` / `Next` controls). Type-specific icons and badges (Payment = emerald, Document = blue). Individual "Mark as read" and "View Details" actions per notification.
     - **Global Onboarding Setup Assistant:** Built a mobile-first, multi-step Setup Assistant modal (`<OnboardingModal />`) that intercepts new users on the dashboard if `onboardingCompleted` is false.
@@ -260,6 +261,11 @@ The full MVP through V1.5 features have been successfully implemented:
      - **Custom Email Identity:** Integrated the dynamic `companyName` and `companyEmail` from global settings directly into the Resend `from:` field, ensuring clients receive communications from a matching branded sender identity instead of a generic default.
      - **Skeleton UI Standardization:** Synchronized loading state skeletons across the entire dashboard (`/`, `/clients`, `/invoices`, `/projects`, `/board`) to exactly match the rendered components' layouts, eliminating jarring layout shifts (Cumulative Layout Shift) during data fetching.
      - **Notification Routing Fix:** Corrected the `linkUrl` for manual "Mark as Paid" notifications to use the immutable database UUID instead of the display invoice number, preventing 404 errors when admins click the notification bell alert.
+ 38. **Invoice Custom Notes Feature (Sprint 16 Patch 4):**
+     - **Database & Validation:** Added an optional `notes` field (String) to the `Invoice` model and updated `invoiceSchema` to support personalized remarks on individual invoices.
+     - **Hybrid Input Flow:** Admins can insert custom notes when generating invoices from the project board or creating them manually. Features intelligent auto-fill generation rules based on invoice type with full manual override capabilities.
+     - **Public Invoice UI:** Rendered a professional "Notes" section gracefully at the bottom of the public invoice view (`/invoices/[id]`) and its associated print layout. Uses a flat, modern design with appropriate typography mapping to user locales.
+     - **Shared Utilities:** Abstracted `formatEnum` and `isEnumLike` into `src/lib/utils.ts` for cleaner, centralized data mapping throughout the system.
 
 ## Upcoming: Sprint 17 (V2 Feature Expansion)
 The next development cycle will focus on expanding core functionality. Potential candidates:
@@ -299,3 +305,4 @@ The next development cycle will focus on expanding core functionality. Potential
 - **Notification System:** Use `createNotification()` from `src/lib/notifications.ts` to trigger notifications from any server-side code. Supported types: `payment`, `sow_signed`, `system`. The `/api/notifications` route supports `?page` and `?limit` query params for pagination.
 - **i18n Locale Detection:** Browser locale detection lives in `src/lib/i18n.ts` (`getBrowserLocale()`). Always use the `useState` + `useEffect` pattern in client components to avoid Next.js hydration mismatches. Currently supports `id` and `en` locales.
 - **NextAuth SessionProvider:** The global `<Providers>` wrapper in `src/components/providers.tsx` provides NextAuth `SessionProvider` context. Any client component using `useSession()` must be rendered within this provider (already handled in root `layout.tsx`).
+- **Real-Time SSE:** `/api/events` provides Server-Sent Events. In Node.js server (self-hosted), it defaults to memory `EventEmitter`. If deployed to serverless (Vercel), it requires setting `REDIS_URL` utilizing an Upstash Redis pub/sub broker to share events across Lambdas.

@@ -53,11 +53,9 @@ export function NotificationBell() {
   const knownNotificationIds = useRef<Set<string>>(new Set());
   const isInitialLoad = useRef(true);
 
-  // Poll every 15 seconds
   const { data, error, isLoading, mutate } = useSWR<NotificationsResponse>(
     "/api/notifications?limit=10",
-    fetcher,
-    { refreshInterval: 15000 }
+    fetcher
   );
 
   useEffect(() => {
@@ -89,7 +87,28 @@ export function NotificationBell() {
       setUnreadCount(data.unreadCount);
       isInitialLoad.current = false;
     }
-  }, [data]);
+  }, [data, mutate, router]);
+
+  // Listen to Server-Sent Events (SSE) for Real-Time Updates
+  useEffect(() => {
+    const eventSource = new EventSource("/api/events");
+
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type === "notification_created") {
+          // Re-fetch notifications since a new one arrived
+          mutate();
+        }
+      } catch (e) {
+        // Ignored unparseable JSON or heartbeat
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [mutate]);
 
   const markAsRead = async (id?: string) => {
     try {

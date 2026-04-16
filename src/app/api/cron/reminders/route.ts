@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     // 2. Fetch all unpaid invoices with a due date and payment link
     const invoices = await prisma.invoice.findMany({
       where: {
-        status: "unpaid",
+        status: "UNPAID",
         dueDate: { not: null },
         paymentLink: { not: null },
       },

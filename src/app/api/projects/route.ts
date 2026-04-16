@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
+import { createAuditLog } from "@/lib/audit-logger";
 
 export async function GET(request: Request) {
   try {
@@ -70,6 +71,17 @@ export async function POST(request: Request) {
 
     const data = validation.data;
 
+    // --- Subscription Gate Check ---
+    const { checkLimit } = await import("@/lib/billing/subscription");
+    const limitCheck = await checkLimit(session.user.id, "activeProjects");
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        { error: "Plan limit reached", limitCheck },
+        { status: 403 }
+      );
+    }
+    // -------------------------------
+
     // If items exist, recalculate totalPrice from them
     let totalPrice = data.totalPrice;
     if (data.items && data.items.length > 0) {
@@ -84,7 +96,7 @@ export async function POST(request: Request) {
       currency: data.currency,
       language: data.language,
       deadline: data.deadline ? new Date(data.deadline) : null,
-      status: "to_do",
+      status: "TO_DO",
     };
 
     projectData.terms = data.terms ?? null;
@@ -105,6 +117,14 @@ export async function POST(request: Request) {
     const project = await prisma.project.create({
       data: projectData,
       include: { client: true, invoices: true, items: true },
+    });
+
+    await createAuditLog({
+      userId: session.user.id,
+      action: "project.create",
+      entityType: "PROJECT",
+      entityId: project.id,
+      newValue: data.title,
     });
 
     return NextResponse.json(project, { status: 201 });

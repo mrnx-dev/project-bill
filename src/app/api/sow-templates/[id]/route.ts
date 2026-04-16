@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { createAuditLog } from "@/lib/audit-logger";
 
 export async function GET(
     req: Request,
@@ -44,6 +45,8 @@ export async function PUT(
         const body = await req.json();
         const { name, content } = body;
 
+        const existing = await prisma.sOWTemplate.findUnique({ where: { id } });
+
         const template = await prisma.sOWTemplate.update({
             where: {
                 id: id,
@@ -52,6 +55,15 @@ export async function PUT(
                 name,
                 content,
             },
+        });
+
+        await createAuditLog({
+            userId: session.user.id,
+            action: "sow_template.update",
+            entityType: "SOW_TEMPLATE",
+            entityId: id,
+            oldValue: existing?.name || undefined,
+            newValue: name,
         });
 
         return NextResponse.json(template);
@@ -76,6 +88,14 @@ export async function DELETE(
             where: {
                 id: id,
             },
+        });
+
+        await createAuditLog({
+            userId: session.user.id,
+            action: "sow_template.delete",
+            entityType: "SOW_TEMPLATE",
+            entityId: id,
+            oldValue: template.name,
         });
 
         return NextResponse.json(template);

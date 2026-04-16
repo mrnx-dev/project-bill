@@ -60,8 +60,7 @@ export const InvoiceEmail = ({
         badgeType="unpaid"
         amount={amount}
         clientName={clientName}
-        projectName={projectName}
-        lang={lang}
+        projectName={projectName}        lang={lang}
         extraRows={
           <>
             <DetailRow label="No. Invoice" value={invoiceId} />

@@ -21,10 +21,15 @@ export const authConfig = {
     signIn: "/login",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, profile, account }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+      }
+      // Handle Casdoor profile role mapping if available
+      if (profile && account?.provider === "casdoor") {
+        const casdoorProfile = profile as any;
+        token.role = casdoorProfile.role === "admin" ? "admin" : "staff";
       }
       return token;
     },
