@@ -6,9 +6,9 @@
 
 ## 🎯 Current Sprint — Priority Order
 
-1. 🤖 AI — Playwright E2E test + Dokploy deployment config
-2. 🔐 Casdoor — Phase 5 (middleware) + Phase 6 (testing)
-3. 💳 Partial Payments & Milestone Billing
+1. ✅ 🤖 AI — Playwright E2E test + Dokploy deployment config — **DONE**
+2. ✅ 🔐 Casdoor — Phase 5 (middleware) + Phase 6 (testing) — **DONE**
+3. 💳 Partial Payments & Milestone Billing — **NEXT**
 4. 🌐 Client Portal (Multitenant Dashboard)
 5. 🔗 Stripe Integration
 
