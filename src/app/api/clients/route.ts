@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const pageParam = searchParams.get("page");
 
     const args: Prisma.ClientFindManyArgs = {
-      where: { isArchived: false, organizationId: orgId },
+      where: { isArchived: false },
       orderBy: { createdAt: "desc" },
     };
 
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
       args.take = limit;
 
       const total = await prisma.client.count({
-        where: { isArchived: false, organizationId: orgId },
+        where: { isArchived: false },
       });
       const clients = await prisma.client.findMany(args);
 

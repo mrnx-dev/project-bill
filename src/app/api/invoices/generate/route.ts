@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     }
 
     const project = await prisma.project.findUnique({
-      where: { id: projectId, organizationId: orgId },
+      where: { id: projectId },
       include: { client: true, invoices: true, items: true },
     });
 

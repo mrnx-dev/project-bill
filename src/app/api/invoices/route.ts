@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const pageParam = searchParams.get("page");
 
     const args: Prisma.InvoiceFindManyArgs = {
-      where: { organizationId: orgId },
+      where: {},
       include: { project: { include: { client: true } } },
       orderBy: { createdAt: "desc" },
     };
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       args.skip = (page - 1) * limit;
       args.take = limit;
 
-      const total = await prisma.invoice.count({ where: { organizationId: orgId } });
+      const total = await prisma.invoice.count({ where: {} });
       const invoices = await prisma.invoice.findMany(args);
 
       return NextResponse.json({

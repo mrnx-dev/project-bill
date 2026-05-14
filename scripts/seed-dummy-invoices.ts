@@ -13,12 +13,20 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
     console.log("Menyiapkan data dummy untuk testing due date cron...");
 
+    // Dapatkan org pertama atau buat dummy org
+    let org = await prisma.organization.findFirst();
+    if (!org) {
+        org = await prisma.organization.create({
+            data: { name: "Dummy Org", slug: `dummy-${Date.now()}` },
+        });
+    }
+
     // 1. Buat Dummy Client
     const client = await prisma.client.create({
         data: {
             name: "Dummy Client (Cron Test)",
-            // GANTI EMAIL INI dengan email Anda sendiri jika ingin menerima tes email dari Resend
             email: "dummy-cron-test@example.com",
+            organizationId: org.id,
         },
     });
 
@@ -29,6 +37,7 @@ async function main() {
             title: "Proyek Tes Cron Reminders",
             totalPrice: 10000000,
             currency: "IDR",
+            organizationId: org.id,
         },
     });
 
@@ -66,7 +75,8 @@ async function main() {
                 amount: tc.amount,
                 status: "unpaid",
                 dueDate: tc.dueDate,
-                paymentLink: `https://example.com/pay/${Math.floor(Math.random() * 100000)}`, // Syarat agar bisa ditagih
+                organizationId: org.id,
+                paymentLink: `https://example.com/pay/${Math.floor(Math.random() * 100000)}`,
             },
         });
         console.log(`✅ Invoice untuk skenario ${tc.desc} berhasil dibuat (Tanggal: ${tc.dueDate.toISOString().split('T')[0]})`);

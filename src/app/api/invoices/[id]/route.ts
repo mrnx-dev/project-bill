@@ -17,7 +17,7 @@ export async function PATCH(
     const orgId = session.user.activeOrganizationId!;
 
     const invoice = await prisma.invoice.findFirst({
-      where: { id, organizationId: orgId },
+      where: { id },
       include: { project: { include: { client: true } } },
     });
 
@@ -30,7 +30,7 @@ export async function PATCH(
     if (cancelAtPeriodEnd !== undefined) updateData.cancelAtPeriodEnd = cancelAtPeriodEnd;
 
     const updated = await prisma.invoice.update({
-      where: { id, organizationId: orgId },
+      where: { id },
       data: updateData,
       include: { project: { include: { client: true } } },
     });
@@ -54,14 +54,14 @@ export async function DELETE(
     const orgId = session.user.activeOrganizationId!;
 
     const invoice = await prisma.invoice.findFirst({
-      where: { id, organizationId: orgId },
+      where: { id },
     });
 
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    await prisma.invoice.delete({ where: { id, organizationId: orgId } });
+    await prisma.invoice.delete({ where: { id } });
 
     await createAuditLog({
       userId: session.user.id,

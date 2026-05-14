@@ -42,11 +42,11 @@ export default async function DashboardLayout({
   });
 
   const settings = await prisma.settings.findFirst({
-    where: { organizationId: session.user.activeOrganizationId },
+    where: {},
   });
 
   const clients = await prisma.client.findMany({
-    where: { organizationId: session.user.activeOrganizationId },
+    where: {},
     orderBy: { createdAt: "desc" },
     select: { id: true, name: true },
   });

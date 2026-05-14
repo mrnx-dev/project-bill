@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const pageParam = searchParams.get("page");
 
     const args: Prisma.ProjectFindManyArgs = {
-      where: { organizationId: orgId },
+      where: {},
       include: { client: true, invoices: true, items: true },
       orderBy: { createdAt: "desc" },
     };
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
       args.skip = (page - 1) * limit;
       args.take = limit;
 
-      const total = await prisma.project.count({ where: { organizationId: orgId } });
+      const total = await prisma.project.count({ where: {} });
       const projects = await prisma.project.findMany(args);
 
       return NextResponse.json({

@@ -44,7 +44,7 @@ export async function PATCH(
     if (taxRate !== undefined) updateData.taxRate = taxRate !== null ? parseFloat(taxRate) : null;
 
     const existing = await prisma.project.findFirst({
-      where: { id, organizationId: orgId },
+      where: { id },
       include: { invoices: true },
     });
 
@@ -114,7 +114,7 @@ export async function PATCH(
     }
 
     const project = await prisma.project.update({
-      where: { id, organizationId: orgId },
+      where: { id },
       data: updateData,
       include: { client: true, invoices: true },
     });
@@ -151,7 +151,7 @@ export async function DELETE(
     const orgId = session.user.activeOrganizationId!;
 
     const project = await prisma.project.findFirst({
-      where: { id, organizationId: orgId },
+      where: { id },
       include: { invoices: true },
     });
 
@@ -170,8 +170,8 @@ export async function DELETE(
     }
 
     await prisma.$transaction([
-      prisma.invoice.deleteMany({ where: { projectId: id, organizationId: orgId } }),
-      prisma.project.delete({ where: { id, organizationId: orgId } }),
+      prisma.invoice.deleteMany({ where: { projectId: id } }),
+      prisma.project.delete({ where: { id } }),
     ]);
 
     await createAuditLog({

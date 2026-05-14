@@ -13,7 +13,7 @@ export async function GET() {
         const orgId = session.user.activeOrganizationId!;
 
         const templates = await prisma.sOWTemplate.findMany({
-            where: { organizationId: orgId },
+            where: {},
             orderBy: { createdAt: "desc" },
         });
 

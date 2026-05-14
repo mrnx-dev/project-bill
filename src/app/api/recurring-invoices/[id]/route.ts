@@ -16,7 +16,7 @@ export async function PUT(
     const orgId = session.user.activeOrganizationId!;
 
     const existing = await prisma.recurringInvoice.findFirst({
-      where: { id, organizationId: orgId },
+      where: { id },
     });
 
     if (!existing) {
@@ -24,7 +24,7 @@ export async function PUT(
     }
 
     const updated = await prisma.recurringInvoice.update({
-      where: { id, organizationId: orgId },
+      where: { id },
       data: json,
     });
 
@@ -47,7 +47,7 @@ export async function DELETE(
     const orgId = session.user.activeOrganizationId!;
 
     const existing = await prisma.recurringInvoice.findFirst({
-      where: { id, organizationId: orgId },
+      where: { id },
     });
 
     if (!existing) {
@@ -55,7 +55,7 @@ export async function DELETE(
     }
 
     await prisma.recurringInvoice.update({
-      where: { id, organizationId: orgId },
+      where: { id },
       data: { isActive: false },
     });
 

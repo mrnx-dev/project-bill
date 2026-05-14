@@ -18,6 +18,9 @@ const envSchema = z.object({
   AI_API_KEY: z.string().optional(),
   AI_MODEL: z.string().default("anthropic/claude-sonnet-4-20250514"),
   AI_BASE_URL: z.string().optional(),
+  // Client Portal JWT
+  CLIENT_JWT_SECRET: z.string().optional(),
+  CLIENT_JWT_EXPIRY: z.string().optional(),
 });
 
 // Validate `process.env` against our schema
