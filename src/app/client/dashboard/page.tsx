@@ -43,7 +43,7 @@ export default async function DashboardPage() {
       invoices={invoicesData?.invoices || []}
       projects={projectsData?.projects || []}
       companyName={settingsData?.companyName || "ProjectBill"}
-      companyLogoUrl={settingsData?.companyLogoUrl}
+      companyLogoUrl={settingsData?.companyLogoUrl ?? null}
     />
   );
 }

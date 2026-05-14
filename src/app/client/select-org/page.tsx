@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 interface OrgOption {
@@ -8,7 +8,7 @@ interface OrgOption {
   companyName: string;
 }
 
-export default function SelectOrgPage() {
+function SelectOrgContent() {
   const [orgs, setOrgs] = useState<OrgOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,20 +22,16 @@ export default function SelectOrgPage() {
       return;
     }
 
-    // Fetch available orgs for this token
     fetch(`/api/client-portal/auth/verify?token=${token}`)
       .then((res) => {
         if (res.redirected) {
-          // If redirected, token might be single-use and already consumed
           window.location.href = res.url;
           return null;
         }
         return res.json();
       })
       .then((data) => {
-        if (data?.orgs) {
-          setOrgs(data.orgs);
-        }
+        if (data?.orgs) setOrgs(data.orgs);
         setLoading(false);
       })
       .catch(() => {
@@ -51,9 +47,7 @@ export default function SelectOrgPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, organizationId }),
       });
-
       if (!res.ok) throw new Error("Failed");
-
       router.push("/client/dashboard");
     } catch {
       setError("Failed to select organization");
@@ -77,13 +71,9 @@ export default function SelectOrgPage() {
             Your email is associated with multiple organizations.
           </p>
         </div>
-
         {error && (
-          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
+          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
         )}
-
         <div className="space-y-3">
           {orgs.map((org) => (
             <button
@@ -97,5 +87,13 @@ export default function SelectOrgPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SelectOrgPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><p className="text-gray-500">Loading...</p></div>}>
+      <SelectOrgContent />
+    </Suspense>
   );
 }
