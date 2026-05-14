@@ -85,8 +85,26 @@ model Client {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   projects       Project[]
+  clientAuths    ClientAuth[]
   organization   Organization @relation(fields: [organizationId], references: [id])
 
+  @@index([organizationId])
+}
+
+model ClientAuth {
+  id             String       @id @default(uuid())
+  email          String
+  token          String       @unique
+  tokenExpiresAt DateTime
+  usedAt         DateTime?
+  clientId       String
+  organizationId String
+  createdAt      DateTime     @default(now())
+  client         Client       @relation(fields: [clientId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([token])
+  @@index([clientId])
   @@index([organizationId])
 }
 
@@ -114,11 +132,34 @@ model Project {
   client                 Client             @relation(fields: [clientId], references: [id])
   items                  ProjectItem[]
   recurringInvoices      RecurringInvoice[]
+  milestones             PaymentMilestone[]
   organization           Organization      @relation(fields: [organizationId], references: [id])
 
   @@index([status])
   @@index([clientId])
   @@index([organizationId])
+}
+
+model PaymentMilestone {
+  id             String         @id @default(uuid())
+  projectId      String
+  name           String
+  percentage     Decimal        @db.Decimal(5, 2)
+  amount         Decimal        @db.Decimal(19, 4)
+  status         String         @default("PENDING")
+  dueDate        DateTime?
+  invoiceId      String?
+  sortOrder      Int            @default(0)
+  organizationId String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  invoice        Invoice?       @relation(fields: [invoiceId], references: [id])
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+
+  @@index([projectId])
+  @@index([organizationId])
+  @@index([status])
 }
 
 model ProjectItem {
@@ -138,25 +179,26 @@ model ProjectItem {
 }
 
 model Invoice {
-  id             String       @id @default(uuid())
-  invoiceNumber  String       @unique @default(uuid())
+  id             String              @id @default(uuid())
+  invoiceNumber  String              @unique @default(uuid())
   projectId      String
   type           String
   notes          String?
-  amount         Decimal      @db.Decimal(19, 4)
-  status         String       @default("unpaid")
-  emailStatus    String       @default("pending")
+  amount         Decimal             @db.Decimal(19, 4)
+  status         String              @default("unpaid")
+  emailStatus    String              @default("pending")
   dueDate        DateTime?
   paymentLink    String?
   paymentId      String?
   paidAt         DateTime?
   lastReminderAt DateTime?
-  lateFeeApplied Boolean      @default(false)
+  lateFeeApplied Boolean             @default(false)
   organizationId String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  project        Project      @relation(fields: [projectId], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  project        Project             @relation(fields: [projectId], references: [id])
+  milestones     PaymentMilestone[]
+  organization   Organization        @relation(fields: [organizationId], references: [id])
 
   @@index([status])
   @@index([projectId])
