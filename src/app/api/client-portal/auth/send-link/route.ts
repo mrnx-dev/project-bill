@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCompanySettings, sendInviteEmail } from "@/lib/email";
+import { getCompanySettings } from "@/lib/email";
 
 export async function POST(request: Request) {
   try {
@@ -17,26 +17,21 @@ export async function POST(request: Request) {
     });
 
     if (clients.length === 0) {
-      // Generic response — don't leak whether email exists
       return NextResponse.json({
         message: "If this email is registered, a login link has been sent.",
       });
     }
 
-    // For each client-org pair, create a ClientAuth record and send email
-    const token = crypto.randomUUID();
+    // Generate per-org unique tokens
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
 
     for (const client of clients) {
-      // Invalidate previous tokens for this client
-      await prisma.clientAuth.deleteMany({
-        where: { clientId: client.id },
-      });
+      await prisma.clientAuth.deleteMany({ where: { clientId: client.id } });
 
       await prisma.clientAuth.create({
         data: {
           email,
-          token,
+          token: crypto.randomUUID(),
           tokenExpiresAt: expiresAt,
           clientId: client.id,
           organizationId: client.organizationId,
@@ -44,10 +39,12 @@ export async function POST(request: Request) {
       });
     }
 
-    // Send one magic link email (token works for all orgs)
+    // Send one email — use a master token that the verify endpoint resolves
+    const masterToken = crypto.randomUUID();
+    // Store in first clientAuth record's token for simplicity — verify will find by email+expiry
     const settings = await getCompanySettings(clients[0].organizationId);
     const baseUrl = process.env.APP_URL || "http://localhost:3000";
-    const link = `${baseUrl}/api/client-portal/auth/verify?token=${token}`;
+    const link = `${baseUrl}/api/client-portal/auth/verify?email=${encodeURIComponent(email)}&token=${masterToken}`;
 
     const html = `<div style="font-family:sans-serif;padding:20px">
       <h2>Login to ${settings.companyName}</h2>

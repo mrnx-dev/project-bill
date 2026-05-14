@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { createAuditLog } from "@/lib/audit-logger";
 
+const ALLOWED_PATCH_FIELDS = ["name", "percentage", "amount", "dueDate"];
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string; milestoneId: string }> },
@@ -23,9 +25,24 @@ export async function PATCH(
       return NextResponse.json({ error: "Milestone not found" }, { status: 404 });
     }
 
+    if (existing.status !== "PENDING") {
+      return NextResponse.json(
+        { error: `Cannot update milestone in ${existing.status} status` },
+        { status: 400 },
+      );
+    }
+
+    // Whitelist: only allow specific fields
+    const updateData: Record<string, unknown> = {};
+    for (const key of ALLOWED_PATCH_FIELDS) {
+      if (json[key] !== undefined) {
+        updateData[key] = json[key];
+      }
+    }
+
     // Validate percentage if changing
-    if (json.percentage !== undefined) {
-      const pct = parseFloat(json.percentage);
+    if (updateData.percentage !== undefined) {
+      const pct = parseFloat(String(updateData.percentage));
       const existingSum = await prisma.paymentMilestone.aggregate({
         where: { projectId, organizationId: orgId, id: { not: milestoneId } },
         _sum: { percentage: true },
@@ -42,12 +59,22 @@ export async function PATCH(
         where: { id: projectId },
         select: { totalPrice: true },
       });
-      json.amount = (Number(project!.totalPrice) * pct) / 100;
+      updateData.amount = (Number(project!.totalPrice) * pct) / 100;
+      updateData.percentage = pct;
     }
 
     const milestone = await prisma.paymentMilestone.update({
       where: { id: milestoneId, organizationId: orgId },
-      data: json,
+      data: updateData,
+    });
+
+    await createAuditLog({
+      userId: session.user.id,
+      action: "milestone.update",
+      entityType: "MILESTONE",
+      entityId: milestoneId,
+      newValue: JSON.stringify(updateData),
+      organizationId: orgId,
     });
 
     return NextResponse.json(milestone);
@@ -85,6 +112,15 @@ export async function DELETE(
 
     await prisma.paymentMilestone.delete({
       where: { id: milestoneId, organizationId: orgId },
+    });
+
+    await createAuditLog({
+      userId: session.user.id,
+      action: "milestone.delete",
+      entityType: "MILESTONE",
+      entityId: milestoneId,
+      oldValue: existing.name,
+      organizationId: orgId,
     });
 
     return NextResponse.json({ success: true });

@@ -52,14 +52,15 @@ function formatDate(dateStr: string | null) {
 }
 
 function statusBadge(status: string) {
+  const lower = status.toLowerCase();
   const styles: Record<string, string> = {
-    PAID: "bg-green-100 text-green-800",
-    UNPAID: "bg-yellow-100 text-yellow-800",
-    OVERDUE: "bg-red-100 text-red-800",
-    CANCELLED: "bg-gray-100 text-gray-600",
+    paid: "bg-green-100 text-green-800",
+    unpaid: "bg-yellow-100 text-yellow-800",
+    overdue: "bg-red-100 text-red-800",
+    cancelled: "bg-gray-100 text-gray-600",
   };
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[status] || styles.UNPAID}`}>
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[lower] || styles.unpaid}`}>
       {status}
     </span>
   );

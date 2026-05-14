@@ -14,22 +14,16 @@ function SelectOrgContent() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get("token");
+  const email = searchParams.get("email");
 
   useEffect(() => {
-    if (!token) {
+    if (!email) {
       router.push("/client/login?error=missing");
       return;
     }
 
-    fetch(`/api/client-portal/auth/verify?token=${token}`)
-      .then((res) => {
-        if (res.redirected) {
-          window.location.href = res.url;
-          return null;
-        }
-        return res.json();
-      })
+    fetch(`/api/client-portal/auth/orgs?email=${encodeURIComponent(email)}`)
+      .then((res) => res.json())
       .then((data) => {
         if (data?.orgs) setOrgs(data.orgs);
         setLoading(false);
@@ -38,14 +32,14 @@ function SelectOrgContent() {
         setError("Failed to load organizations");
         setLoading(false);
       });
-  }, [token, router]);
+  }, [email, router]);
 
   const handleSelect = async (organizationId: string) => {
     try {
       const res = await fetch("/api/client-portal/auth/select-org", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, organizationId }),
+        body: JSON.stringify({ email, organizationId }),
       });
       if (!res.ok) throw new Error("Failed");
       router.push("/client/dashboard");

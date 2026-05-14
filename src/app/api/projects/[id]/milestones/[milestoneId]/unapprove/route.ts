@@ -30,21 +30,22 @@ export async function POST(
     }
 
     // Only allow un-approve if invoice is UNPAID
-    if (milestone.invoice && milestone.invoice.status !== "UNPAID") {
+    if (milestone.invoice && milestone.invoice.status !== "unpaid") {
       return NextResponse.json(
         { error: "Cannot un-approve milestone with a paid invoice" },
         { status: 400 },
       );
     }
 
-    // Delete the invoice and rollback milestone
-    if (milestone.invoiceId) {
-      await prisma.invoice.delete({ where: { id: milestone.invoiceId } });
-    }
-
-    const updated = await prisma.paymentMilestone.update({
-      where: { id: milestoneId, organizationId: orgId },
-      data: { status: "PENDING", invoiceId: null },
+    // Delete the invoice and rollback milestone atomically
+    const updated = await prisma.$transaction(async (tx) => {
+      if (milestone.invoiceId) {
+        await tx.invoice.delete({ where: { id: milestone.invoiceId } });
+      }
+      return tx.paymentMilestone.update({
+        where: { id: milestoneId, organizationId: orgId },
+        data: { status: "PENDING", invoiceId: null },
+      });
     });
 
     return NextResponse.json(updated);

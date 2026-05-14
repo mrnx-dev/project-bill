@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { createAuditLog } from "@/lib/audit-logger";
 
 export async function POST(
   request: Request,
@@ -15,6 +16,7 @@ export async function POST(
 
     const milestone = await prisma.paymentMilestone.findFirst({
       where: { id: milestoneId, projectId, organizationId: orgId },
+      include: { invoice: { select: { id: true, status: true } } },
     });
 
     if (!milestone) {
@@ -25,9 +27,31 @@ export async function POST(
       return NextResponse.json({ error: "Already marked as paid" }, { status: 400 });
     }
 
-    const updated = await prisma.paymentMilestone.update({
-      where: { id: milestoneId, organizationId: orgId },
-      data: { status: "PAID" },
+    const updated = await prisma.$transaction(async (tx) => {
+      // Mark milestone as PAID
+      const m = await tx.paymentMilestone.update({
+        where: { id: milestoneId, organizationId: orgId },
+        data: { status: "PAID" },
+      });
+
+      // Also mark the linked invoice as paid if it exists
+      if (milestone.invoiceId) {
+        await tx.invoice.update({
+          where: { id: milestone.invoiceId },
+          data: { status: "paid", paidAt: new Date() },
+        });
+      }
+
+      return m;
+    });
+
+    await createAuditLog({
+      userId: session.user.id,
+      action: "milestone.mark_paid",
+      entityType: "MILESTONE",
+      entityId: milestoneId,
+      newValue: milestone.status + " → PAID",
+      organizationId: orgId,
     });
 
     return NextResponse.json(updated);

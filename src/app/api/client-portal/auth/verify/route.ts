@@ -4,15 +4,15 @@ import { signClientJWT } from "@/lib/client-jwt";
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.nextUrl.searchParams.get("token");
-    if (!token) {
+    const email = request.nextUrl.searchParams.get("email");
+    if (!email) {
       return NextResponse.redirect(new URL("/client/login?error=missing", request.url));
     }
 
-    // Find all unexpired, unused ClientAuth records for this token
+    // Find all unexpired, unused ClientAuth records for this email
     const auths = await prisma.clientAuth.findMany({
       where: {
-        token,
+        email,
         tokenExpiresAt: { gt: new Date() },
         usedAt: null,
       },
@@ -28,11 +28,10 @@ export async function GET(request: NextRequest) {
     const baseUrl = process.env.APP_URL || "http://localhost:3000";
 
     if (auths.length === 1) {
-      // Single org — set cookie and redirect to dashboard
+      // Single org — mark all tokens as used, set cookie and redirect
       const auth = auths[0];
-
-      await prisma.clientAuth.update({
-        where: { id: auth.id },
+      await prisma.clientAuth.updateMany({
+        where: { email, tokenExpiresAt: { gt: new Date() }, usedAt: null },
         data: { usedAt: new Date() },
       });
 
@@ -53,24 +52,11 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    // Multiple orgs — return org list as JSON for select-org page
-    const orgSettings = await prisma.settings.findMany({
-      where: {
-        organizationId: { in: auths.map((a) => a.organizationId) },
-      },
-      select: { organizationId: true, companyName: true },
-    });
-
-    const settingsMap = new Map(
-      orgSettings.map((s) => [s.organizationId, s.companyName]),
+    // Multiple orgs — redirect to org selector
+    const response = NextResponse.redirect(
+      new URL(`/client/select-org?email=${encodeURIComponent(email)}`, baseUrl),
     );
-
-    return NextResponse.json({
-      orgs: auths.map((a) => ({
-        organizationId: a.organizationId,
-        companyName: settingsMap.get(a.organizationId) || "Unknown Org",
-      })),
-    });
+    return response;
   } catch (error) {
     console.error("Failed to verify magic link:", error);
     return NextResponse.redirect(

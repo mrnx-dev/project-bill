@@ -1,38 +1,38 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyClientJWT, signClientJWT } from "@/lib/client-jwt";
-import { rlsContext } from "@/lib/rls";
+import { signClientJWT } from "@/lib/client-jwt";
 
 export async function POST(request: NextRequest) {
   try {
-    const { token, organizationId } = await request.json();
+    const { email, organizationId } = await request.json();
 
-    if (!token || !organizationId) {
+    if (!email || !organizationId) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 
-    const auth = await prisma.clientAuth.findFirst({
+    // Find the active token for this email+org
+    await prisma.clientAuth.updateMany({
       where: {
-        token,
+        email,
         organizationId,
         tokenExpiresAt: { gt: new Date() },
         usedAt: null,
       },
-    });
-
-    if (!auth) {
-      return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
-    }
-
-    await prisma.clientAuth.update({
-      where: { id: auth.id },
       data: { usedAt: new Date() },
     });
 
+    // Sign JWT and set cookie
+    const client = await prisma.client.findFirst({
+      where: { email, organizationId, isArchived: false },
+    });
+    if (!client) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    }
+
     const jwt = await signClientJWT({
-      clientId: auth.clientId,
-      email: auth.email,
-      organizationId: auth.organizationId,
+      clientId: client.id,
+      email,
+      organizationId,
     });
 
     const response = NextResponse.json({ success: true });

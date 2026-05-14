@@ -36,6 +36,41 @@ export async function POST(
     const defaultDueDate = new Date();
     defaultDueDate.setDate(defaultDueDate.getDate() + 7);
 
+    // Generate Mayar payment link if configured
+    let paymentLink: string | null = null;
+    let paymentId: string | null = null;
+    try {
+      const settings = await prisma.settings.findFirst({
+        where: { organizationId: orgId },
+        select: { mayarApiKey: true },
+      });
+      if (settings?.mayarApiKey) {
+        const { decrypt } = await import("@/lib/crypto");
+        const apiKey = decrypt(settings.mayarApiKey);
+        if (apiKey) {
+          const res = await fetch("https://api.mayar.id/api/v1/payment-link", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              name: `${milestone.project.title} — ${milestone.name}`,
+              amount: Number(milestone.amount),
+              redirectUrl: `${process.env.APP_URL || "http://localhost:3000"}/client/invoices`,
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            paymentLink = data.link || data.paymentLink || null;
+            paymentId = data.id || null;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Mayar payment link generation failed (non-fatal):", e);
+    }
+
     const invoice = await prisma.invoice.create({
       data: {
         invoiceNumber,
@@ -44,7 +79,9 @@ export async function POST(
         amount: milestone.amount,
         notes: `${milestone.project.title} — Milestone: ${milestone.name}`,
         dueDate: milestone.dueDate || defaultDueDate,
-        status: "UNPAID",
+        status: "unpaid",
+        paymentLink,
+        paymentId,
         organizationId: orgId,
       },
     });

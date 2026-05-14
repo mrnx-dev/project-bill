@@ -62,7 +62,7 @@ export default async function InvoiceDetailPage({
               <div>
                 <p className="text-sm text-gray-500">Status</p>
                 <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  invoice.status === "PAID" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                  invoice.status.toLowerCase() === "paid" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
                 }`}>
                   {invoice.status}
                 </span>
