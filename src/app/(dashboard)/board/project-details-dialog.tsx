@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,11 +11,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { NumericFormat } from "react-number-format";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { AlertCircle } from "lucide-react";
 import { formatMoney } from "@/lib/currency";
+import { PaymentSchedule } from "@/components/payment-schedule";
 
 type ProjectItem = {
   id: string;
@@ -23,6 +25,18 @@ type ProjectItem = {
   price: string;
   quantity?: number | null;
   rate?: string | null;
+};
+
+type Milestone = {
+  id: string;
+  name: string;
+  percentage: string;
+  amount: string;
+  status: string;
+  dueDate: string | null;
+  invoiceId: string | null;
+  sortOrder: number;
+  invoice?: { id: string; invoiceNumber: string; status: string } | null;
 };
 
 type ProjectDetailsDialogProps = {
@@ -55,6 +69,23 @@ export function ProjectDetailsDialog({
 
   const [isSaving, setIsSaving] = useState(false);
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
+
+  // Milestones
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+
+  const fetchMilestones = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/milestones`);
+      if (res.ok) {
+        const data = await res.json();
+        setMilestones(data);
+      }
+    } catch {}
+  }, [projectId]);
+
+  useEffect(() => {
+    if (isOpen) fetchMilestones();
+  }, [isOpen, fetchMilestones]);
 
   // Auto-calculate price if rating & qty are used instead of fixed price
   const computedPrice = useMemo(() => {
@@ -130,7 +161,7 @@ export function ProjectDetailsDialog({
         <DialogHeader>
           <DialogTitle>Project Details</DialogTitle>
           <DialogDescription>
-            Manage scoped deliverables for {projectTitle}.
+            Manage scope and payments for {projectTitle}.
           </DialogDescription>
         </DialogHeader>
 
@@ -144,7 +175,14 @@ export function ProjectDetailsDialog({
           </div>
         )}
 
-        <div className="flex flex-col gap-4 py-4 max-h-[60vh] overflow-y-auto px-1 -mx-1">
+        <Tabs defaultValue="scope" className="mt-2">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="scope">Scope & Deliverables</TabsTrigger>
+            <TabsTrigger value="payments">Payment Milestones</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="scope" className="mt-4">
+            <div className="flex flex-col gap-4 max-h-[50vh] overflow-y-auto px-1 -mx-1">
           <div className="hidden md:flex gap-3 items-center text-sm font-semibold text-muted-foreground pb-2 border-b px-2">
             <span className="flex-1">Description</span>
             <span className="w-[60px] text-right">Qty</span>
@@ -270,6 +308,18 @@ export function ProjectDetailsDialog({
             </div>
           )}
         </div>
+          </TabsContent>
+
+          <TabsContent value="payments" className="mt-4">
+            <PaymentSchedule
+              projectId={projectId}
+              currency={currency}
+              milestones={milestones}
+              hasInvoices={hasInvoices}
+              onMilestoneChange={fetchMilestones}
+            />
+          </TabsContent>
+        </Tabs>
       </DialogContent>
 
       {/* Delete Item Confirmation */}
