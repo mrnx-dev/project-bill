@@ -29,6 +29,8 @@ model Organization {
   recurringInvoices   RecurringInvoice[]
   agentConversations  AgentConversation[]
   agentMemories       AgentMemory[]
+  clientAuths         ClientAuth[]
+  paymentMilestones   PaymentMilestone[]
 }
 
 model OrganizationMember {
