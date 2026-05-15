@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
-import { Loader2, Building2, MapPin, Landmark } from "lucide-react";
+import { Loader2, Building2, MapPin, Landmark, Mail } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
@@ -15,6 +15,7 @@ import { settingsSchema, SettingsFormValues } from "@/lib/validations/settings";
 import { CompanyProfileFields } from "@/components/forms/company-profile-fields";
 import { BankDetailsFields } from "@/components/forms/bank-details-fields";
 import { IntegrationsFields } from "@/components/forms/integrations-fields";
+import { EmailProviderCard } from "@/components/forms/email-provider-card";
 
 export function SettingsFormClient() {
   const router = useRouter();
@@ -33,6 +34,8 @@ export function SettingsFormClient() {
       bankName: "",
       bankAccountName: "",
       bankAccountNumber: "",
+      emailProvider: "resend",
+      providerConfig: {},
     },
   });
 
@@ -51,12 +54,13 @@ export function SettingsFormClient() {
               senderEmail: data.senderEmail || "",
               companyLogoUrl: data.companyLogoUrl || "",
               companyWhatsApp: data.companyWhatsApp || "",
-              resendApiKey: data.resendApiKey || "",
               mayarApiKey: data.mayarApiKey || "",
               mayarWebhookSecret: data.mayarWebhookSecret || "",
               bankName: data.bankName || "",
               bankAccountName: data.bankAccountName || "",
               bankAccountNumber: data.bankAccountNumber || "",
+              emailProvider: data.emailProvider || "resend",
+              providerConfig: data.providerConfig || {},
             });
           }
         }
@@ -75,7 +79,12 @@ export function SettingsFormClient() {
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          ...values,
+          // Always send providerConfig for the selected provider
+          emailProvider: values.emailProvider,
+          providerConfig: values.providerConfig || {},
+        }),
       });
       if (!res.ok) throw new Error("Failed to update settings");
       toast.success("Settings updated successfully!");
@@ -132,11 +141,26 @@ export function SettingsFormClient() {
                 Integrations
               </CardTitle>
               <CardDescription>
-                Configure external services like Payment Gateway (Mayar) and Email Delivery (Resend). Keys are encrypted at rest.
+                Configure external services like Payment Gateway (Mayar). Keys are encrypted at rest.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <IntegrationsFields form={form} />
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Mail className="w-5 h-5 text-blue-500" />
+                Email Provider
+              </CardTitle>
+              <CardDescription>
+                Choose your email delivery provider and configure its credentials. Settings are encrypted at rest.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <EmailProviderCard form={form} />
             </CardContent>
           </Card>
 

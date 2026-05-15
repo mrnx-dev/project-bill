@@ -71,33 +71,6 @@ export function IntegrationsFields({ form }: IntegrationsFieldsProps) {
           </FormItem>
         )}
       />
-
-      <FormField
-        control={form.control}
-        name="resendApiKey"
-        render={({ field }) => (
-          <FormItem className="md:col-span-2">
-            <FormLabel>Resend API Key</FormLabel>
-            <FormControl>
-              <Input
-                placeholder="re_xxxxxxxxxxxxxxxxx"
-                type="password"
-                className="bg-slate-50 dark:bg-slate-900 border-slate-200 font-mono text-sm"
-                {...field}
-                onFocus={(e) => {
-                  if (e.target.value?.startsWith("****")) {
-                    field.onChange("");
-                  }
-                }}
-              />
-            </FormControl>
-            <FormDescription className="text-xs">
-              {field.value?.startsWith("****") ? "🔒 Key is set. Clear to replace." : ""}
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
     </div>
   );
 }
