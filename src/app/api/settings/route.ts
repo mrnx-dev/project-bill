@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { createAuditLog } from "@/lib/audit-logger";
 import { encrypt, decrypt, maskSecret, isMaskedValue } from "@/lib/crypto";
 import { providerRegistry } from "@/lib/email/providers/registry";
-import { getSenderFrom, loadProviderConfig } from "@/lib/email";
+import { getSenderFrom, loadProviderConfig } from "@/lib/email-config";
 
 const SENSITIVE_FIELDS = ["resendApiKey", "mayarApiKey", "mayarWebhookSecret"] as const;
 

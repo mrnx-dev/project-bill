@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { providerRegistry } from "@/lib/email/providers/registry";
-import { getCompanySettings, getSenderFrom, loadProviderConfig } from "@/lib/email";
+import { loadProviderConfig, getCompanySettings, getSenderFrom } from "@/lib/email-config";
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
