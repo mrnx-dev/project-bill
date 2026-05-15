@@ -8,6 +8,7 @@ import { Slider } from "@/components/ui/slider";
 import { Calculator, Plus, Trash2, CheckCircle2 } from "lucide-react";
 import { NumericFormat } from "react-number-format";
 import { formatMoney, getCurrencySymbol } from "@/lib/currency";
+import { generateId } from "@/lib/utils";
 import {
     Dialog,
     DialogContent,
@@ -33,7 +34,7 @@ export function CostEstimator({
 }) {
     const [isOpen, setIsOpen] = useState(false);
     const [tasks, setTasks] = useState<TaskItem[]>([
-        { id: crypto.randomUUID(), name: "Maintenance", hours: 4 },
+        { id: generateId(), name: "Maintenance", hours: 4 },
     ]);
     const [ratePerHour, setRatePerHour] = useState("150000");
     const [riskBuffer, setRiskBuffer] = useState([1.5]); // 1.5x by default
@@ -49,7 +50,7 @@ export function CostEstimator({
     }, [tasks, ratePerHour, riskBuffer]);
 
     const handleAddTask = () => {
-        setTasks([...tasks, { id: crypto.randomUUID(), name: "", hours: 0 }]);
+        setTasks([...tasks, { id: generateId(), name: "", hours: 0 }]);
     };
 
     const handleRemoveTask = (id: string) => {

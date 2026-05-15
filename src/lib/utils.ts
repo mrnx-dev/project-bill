@@ -40,3 +40,14 @@ export function isEnumLike(str: string): boolean {
   if (!str) return false;
   return /^[A-Z0-9_]+$/.test(str);
 }
+
+/**
+ * Cross-platform unique ID generator — works in all browsers and Node.
+ * Falls back from crypto.randomUUID() to Math.random() for insecure contexts (HTTP).
+ */
+export function generateId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+}
