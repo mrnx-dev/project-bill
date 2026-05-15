@@ -6,6 +6,7 @@ import { verifyClientJWT } from "@/lib/client-jwt";
 const PUBLIC_PATH_PREFIXES = [
   "/login",
   "/setup",
+  "/api/setup",
   "/invite",
   "/invoices",
   "/client/login",
@@ -25,7 +26,7 @@ function isPublicPath(pathname: string): boolean {
   return false;
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes — no auth, no RLS context needed

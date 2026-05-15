@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SENTRY_DSN: process.env.SENTRY_DSN || "",
     NEXT_PUBLIC_APP_VERSION: pkg.version,
   },
+  // Allow dev server accessed via public IP
+  allowedDevOrigins: ["185.128.227.229"],
 };
 
 export default withSentryConfig(nextConfig, {
