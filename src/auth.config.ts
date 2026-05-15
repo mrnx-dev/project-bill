@@ -6,6 +6,7 @@ declare module "next-auth" {
       id: string;
       role?: string;
       activeOrganizationId?: string;
+      activeOrganizationRole?: string;
     } & DefaultSession["user"];
   }
 
@@ -13,6 +14,7 @@ declare module "next-auth" {
     id: string;
     role?: string;
     defaultOrganizationId?: string;
+    activeOrganizationRole?: string;
   }
 }
 
@@ -28,9 +30,11 @@ export const authConfig = {
         token.id = user.id;
         token.role = user.role;
         token.activeOrganizationId = user.defaultOrganizationId;
+        token.activeOrganizationRole = user.activeOrganizationRole;
       }
       if (trigger === "update" && (session as any)?.activeOrganizationId) {
         token.activeOrganizationId = (session as any).activeOrganizationId;
+        token.activeOrganizationRole = (session as any).activeOrganizationRole;
       }
       return token;
     },
@@ -39,6 +43,7 @@ export const authConfig = {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
         session.user.activeOrganizationId = token.activeOrganizationId as string | undefined;
+        session.user.activeOrganizationRole = token.activeOrganizationRole as string | undefined;
       }
       return session;
     },

@@ -86,7 +86,7 @@ export async function PUT(request: Request) {
             where: { id: session.user.id },
         });
 
-        if (currentUser?.role !== "ADMIN") {
+        if (session.user.activeOrganizationRole !== "OWNER" && session.user.activeOrganizationRole !== "ADMIN") {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 

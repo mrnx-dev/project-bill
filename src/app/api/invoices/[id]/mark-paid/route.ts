@@ -15,7 +15,7 @@ export async function POST(
     const orgId = session.user.activeOrganizationId!;
     
     // Only admins or authorized staff should mark invoices as paid manually
-    if (session.user.role !== "ADMIN") {
+    if (session.user.activeOrganizationRole !== "OWNER" && session.user.activeOrganizationRole !== "ADMIN") {
       return new NextResponse("Forbidden", { status: 403 });
     }
 

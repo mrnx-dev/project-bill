@@ -10,7 +10,7 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    if (session.user.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+    if (session.user.activeOrganizationRole !== "OWNER") return new NextResponse("Forbidden", { status: 403 });
 
     const orgId = session.user.activeOrganizationId!;
 
@@ -42,7 +42,7 @@ export async function PUT(req: Request) {
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    if (session.user.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+    if (session.user.activeOrganizationRole !== "OWNER") return new NextResponse("Forbidden", { status: 403 });
 
     const orgId = session.user.activeOrganizationId!;
     const body = await req.json();

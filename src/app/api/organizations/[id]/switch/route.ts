@@ -25,6 +25,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       organizationId: id,
+      activeOrganizationRole: membership.role,
     });
   } catch (error) {
     console.error("Failed to switch organization:", error);

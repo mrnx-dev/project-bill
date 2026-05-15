@@ -134,11 +134,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 return null;
               }
 
+              const membership = user.defaultOrganizationId
+                ? await prisma.organizationMember.findUnique({
+                    where: {
+                      userId_organizationId: {
+                        userId: user.id,
+                        organizationId: user.defaultOrganizationId,
+                      },
+                    },
+                  })
+                : null;
+
               return {
                 id: user.id,
                 email: user.email,
                 name: user.name,
                 role: user.role,
+                activeOrganizationRole: membership?.role || "MEMBER",
                 defaultOrganizationId: user.defaultOrganizationId || undefined,
               };
             },
