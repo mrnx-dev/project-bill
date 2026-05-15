@@ -91,6 +91,7 @@ const clientManifests: ProviderManifest[] = [
         label: "Connection Security",
         type: "select",
         required: false,
+        defaultValue: "starttls",
         options: [
           { label: "STARTTLS (auto, port 587)", value: "starttls" },
           { label: "TLS (port 465)", value: "tls" },
@@ -103,6 +104,7 @@ const clientManifests: ProviderManifest[] = [
         label: "Reject Unauthorized Certs",
         type: "select",
         required: false,
+        defaultValue: "true",
         options: [
           { label: "Yes (secure)", value: "true" },
           { label: "No (allow self-signed)", value: "false" },
