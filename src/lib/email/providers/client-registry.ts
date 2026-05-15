@@ -77,12 +77,14 @@ const clientManifests: ProviderManifest[] = [
         label: "Username",
         type: "text",
         required: true,
+        placeholder: "user@example.com",
       },
       {
         id: "password",
         label: "Password",
         type: "password",
         required: true,
+        placeholder: "••••••••",
       },
       {
         id: "secure",
