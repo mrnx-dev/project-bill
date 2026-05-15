@@ -82,7 +82,8 @@ export function OrgSwitcher({ currentOrgName, currentOrgLogo }: OrgSwitcherProps
     try {
       const res = await fetch(`/api/organizations/${orgId}/switch`, { method: "POST" });
       if (res.ok) {
-        await update({ activeOrganizationId: orgId });
+        const data = await res.json();
+        await update({ activeOrganizationId: orgId, activeOrganizationRole: data.activeOrganizationRole });
         setOpen(false);
         router.refresh();
       }
@@ -102,7 +103,7 @@ export function OrgSwitcher({ currentOrgName, currentOrgLogo }: OrgSwitcherProps
       });
       if (res.ok) {
         const org = await res.json();
-        await update({ activeOrganizationId: org.id });
+        await update({ activeOrganizationId: org.id, activeOrganizationRole: "OWNER" });
         setCreateOpen(false);
         setNewOrgName("");
         router.refresh();
