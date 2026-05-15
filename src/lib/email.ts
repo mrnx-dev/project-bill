@@ -1,7 +1,7 @@
-import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
+import { providerRegistry } from "./providers/registry";
 import { InvoiceEmail } from "@/emails/InvoiceEmail";
 import { RecurringInvoiceEmail } from "@/emails/RecurringInvoiceEmail";
 import { ReminderEmail } from "@/emails/ReminderEmail";
@@ -12,7 +12,6 @@ import type { CompanyInfo, Language } from "@/emails/EmailLayout";
 export type { ReminderType };
 
 export interface CompanySettings extends CompanyInfo {
-  resendApiKey?: string;
   senderEmail?: string | null;
 }
 
@@ -27,7 +26,6 @@ export async function getCompanySettings(organizationId: string): Promise<Compan
       companyLogoUrl: settings?.companyLogoUrl || null,
       companyAddress: settings?.companyAddress || null,
       senderEmail: settings?.senderEmail || null,
-      resendApiKey: settings?.resendApiKey ? (decrypt(settings.resendApiKey) || undefined) : undefined,
     };
   } catch {
     return {
@@ -36,9 +34,34 @@ export async function getCompanySettings(organizationId: string): Promise<Compan
       companyLogoUrl: null,
       companyAddress: null,
       senderEmail: null,
-      resendApiKey: undefined,
     };
   }
+}
+
+export async function loadProviderConfig(
+  organizationId: string
+): Promise<{ providerId: string; config: Record<string, string> }> {
+  const settings = await prisma.settings.findFirst({
+    where: { organizationId },
+  });
+
+  const providerId = settings?.emailProvider || "resend";
+
+  const rows = await prisma.emailProviderConfig.findMany({
+    where: { organizationId, providerId },
+  });
+
+  const config: Record<string, string> = {};
+  for (const row of rows) {
+    config[row.key] = row.isEncrypted ? decrypt(row.value) : row.value;
+  }
+
+  // Fallback: if no rows in new table but old resendApiKey exists
+  if (Object.keys(config).length === 0 && settings?.resendApiKey) {
+    config.apiKey = decrypt(settings.resendApiKey);
+  }
+
+  return { providerId, config };
 }
 
 function getSenderFrom(companyName: string, senderEmail?: string | null): string {
@@ -72,13 +95,8 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
 
   const settings = await getCompanySettings(params.organizationId!);
 
-  if (!settings.resendApiKey) {
-    console.warn("No RESEND_API_KEY found in DB. Mocking email delivery.");
-    console.log(`[MOCK EMAIL] To: ${params.to} | Link: ${params.invoiceLink}`);
-    return { success: true, mocked: true };
-  }
-
-  const resend = new Resend(settings.resendApiKey);
+  const { providerId, config } = await loadProviderConfig(params.organizationId!);
+  const provider = providerRegistry.createProvider(providerId, config);
 
   try {
     const lang = params.lang || "id";
@@ -100,21 +118,26 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
       ? `Invoice untuk ${params.projectTitle} - Diperlukan Tindakan`
       : `Invoice for ${params.projectTitle} - Action Required`;
 
-    const data = await resend.emails.send({
+    const result = await provider.send({
       from: getSenderFrom(settings.companyName, settings.senderEmail),
       to: [params.to],
       subject,
       html,
     });
 
+    if (!result.success) {
+      console.error(`[EMAIL] ${provider.name} error:`, result.error);
+      return { success: false, error: result.error };
+    }
+
     if (params.organizationId) {
       const { incrementOrgUsage } = await import("@/lib/billing/subscription");
       await incrementOrgUsage(params.organizationId, "emailsSent");
     }
 
-    return { success: true, data };
+    return { success: true, data: result };
   } catch (error) {
-    console.error("Failed to send email via Resend:", error);
+    console.error("[EMAIL] Provider error:", error);
     return { success: false, error };
   }
 }
@@ -144,13 +167,8 @@ export async function sendRecurringInvoiceEmail(params: SendRecurringInvoiceEmai
 
   const settings = await getCompanySettings(params.organizationId!);
 
-  if (!settings.resendApiKey) {
-    console.warn("No RESEND_API_KEY found in DB. Mocking recurring email delivery.");
-    console.log(`[MOCK RECURRING EMAIL] To: ${params.to} | Link: ${params.invoiceLink}`);
-    return { success: true, mocked: true };
-  }
-
-  const resend = new Resend(settings.resendApiKey);
+  const { providerId, config } = await loadProviderConfig(params.organizationId!);
+  const provider = providerRegistry.createProvider(providerId, config);
 
   try {
     const lang = params.lang || "id";
@@ -173,16 +191,16 @@ export async function sendRecurringInvoiceEmail(params: SendRecurringInvoiceEmai
       ? `Tagihan Rutin untuk ${params.projectTitle} - Diperlukan Tindakan`
       : `Recurring Invoice for ${params.projectTitle} - Action Required`;
 
-    const { data, error } = await resend.emails.send({
+    const result = await provider.send({
       from: getSenderFrom(settings.companyName, settings.senderEmail),
       to: [params.to],
       subject,
       html,
     });
 
-    if (error) {
-      console.error("[RESEND] API Error:", error);
-      return { success: false, error: error.message };
+    if (!result.success) {
+      console.error(`[EMAIL] ${provider.name} error:`, result.error);
+      return { success: false, error: result.error };
     }
 
     if (params.organizationId) {
@@ -190,9 +208,9 @@ export async function sendRecurringInvoiceEmail(params: SendRecurringInvoiceEmai
       await incrementOrgUsage(params.organizationId, "emailsSent");
     }
 
-    return { success: true, data };
+    return { success: true, data: result };
   } catch (error) {
-    console.error("Failed to send recurring email via Resend:", error);
+    console.error("[EMAIL] Provider error:", error);
     return { success: false, error };
   }
 }
@@ -243,13 +261,8 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
   const subject = REMINDER_SUBJECTS[params.reminderType][lang](params.projectTitle);
   const settings = await getCompanySettings(params.organizationId!);
 
-  if (!settings.resendApiKey) {
-    console.warn("[MOCK REMINDER EMAIL]", params.reminderType);
-    console.log(`  To: ${params.to} | Subject: ${subject}`);
-    return { success: true, mocked: true };
-  }
-
-  const resend = new Resend(settings.resendApiKey);
+  const { providerId, config } = await loadProviderConfig(params.organizationId!);
+  const provider = providerRegistry.createProvider(providerId, config);
 
   try {
     const html = await render(
@@ -266,16 +279,16 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
       })
     );
 
-    const { data, error } = await resend.emails.send({
+    const result = await provider.send({
       from: getSenderFrom(settings.companyName, settings.senderEmail),
       to: [params.to],
       subject,
       html,
     });
 
-    if (error) {
-      console.error("[RESEND] API Error:", error);
-      return { success: false, error: error.message };
+    if (!result.success) {
+      console.error(`[EMAIL] ${provider.name} error:`, result.error);
+      return { success: false, error: result.error };
     }
 
     if (params.organizationId) {
@@ -283,9 +296,9 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
       await incrementOrgUsage(params.organizationId, "emailsSent");
     }
 
-    return { success: true, data };
+    return { success: true, data: result };
   } catch (error) {
-    console.error("Failed to send reminder email:", error);
+    console.error("[EMAIL] Provider error:", error);
     return { success: false, error };
   }
 }
@@ -316,13 +329,8 @@ export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailPar
   const lang = params.lang || "id";
   const settings = await getCompanySettings(params.organizationId!);
 
-  if (!settings.resendApiKey) {
-    console.warn("[MOCK PAYMENT SUCCESS EMAIL]");
-    console.log(`  To: ${params.to} | Subject: Payment Received for ${params.projectTitle}`);
-    return { success: true, mocked: true };
-  }
-
-  const resend = new Resend(settings.resendApiKey);
+  const { providerId, config } = await loadProviderConfig(params.organizationId!);
+  const provider = providerRegistry.createProvider(providerId, config);
 
   try {
     const attachments = [];
@@ -357,9 +365,9 @@ export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailPar
       : "Payment Received - Thank you for your business!";
 
     const from = getSenderFrom(settings.companyName, settings.senderEmail);
-    console.log(`[RESEND] Attempting to send payment success email from: ${from} to: ${params.to}`);
+    console.log(`[EMAIL] Attempting to send payment success email from: ${from} to: ${params.to}`);
 
-    const { data, error } = await resend.emails.send({
+    const result = await provider.send({
       from,
       to: [params.to],
       subject,
@@ -367,9 +375,9 @@ export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailPar
       attachments: attachments.length > 0 ? attachments : undefined,
     });
 
-    if (error) {
-      console.error("[RESEND] API Error:", error);
-      return { success: false, error: error.message };
+    if (!result.success) {
+      console.error(`[EMAIL] ${provider.name} error:`, result.error);
+      return { success: false, error: result.error };
     }
 
     if (params.organizationId) {
@@ -377,9 +385,9 @@ export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailPar
       await incrementOrgUsage(params.organizationId, "emailsSent");
     }
 
-    return { success: true, data };
+    return { success: true, data: result };
   } catch (error) {
-    console.error("Failed to send payment success email:", error);
+    console.error("[EMAIL] Provider error:", error);
     return { success: false, error };
   }
 }
@@ -396,18 +404,20 @@ export async function sendInviteEmail(params: { to: string; orgName: string; tok
   </div>`;
 
   const settings = await getCompanySettings(params.organizationId);
-  if (!settings.resendApiKey) {
-    console.log(`[MOCK INVITE EMAIL] To: ${params.to} | Link: ${inviteLink}`);
-    return { success: true, mocked: true };
-  }
+  const { providerId, config } = await loadProviderConfig(params.organizationId);
+  const provider = providerRegistry.createProvider(providerId, config);
+
   try {
-    const resend = new Resend(settings.resendApiKey);
-    await resend.emails.send({
+    const result = await provider.send({
       from: getSenderFrom(settings.companyName, settings.senderEmail),
       to: [params.to],
       subject: `You've been invited to join ${params.orgName}`,
       html,
     });
+    if (!result.success) {
+      console.error(`[EMAIL] ${provider.name} error:`, result.error);
+      return { success: false, error: result.error };
+    }
     return { success: true };
   } catch (error) {
     console.error("Failed to send invite email:", error);
@@ -423,18 +433,20 @@ export async function sendOrgDeletionEmail(params: { to: string; orgName: string
   </div>`;
 
   const settings = await getCompanySettings(params.organizationId);
-  if (!settings.resendApiKey) {
-    console.log(`[MOCK DELETION EMAIL] To: ${params.to}`);
-    return { success: true, mocked: true };
-  }
+  const { providerId, config } = await loadProviderConfig(params.organizationId);
+  const provider = providerRegistry.createProvider(providerId, config);
+
   try {
-    const resend = new Resend(settings.resendApiKey);
-    await resend.emails.send({
+    const result = await provider.send({
       from: getSenderFrom(settings.companyName, settings.senderEmail),
       to: [params.to],
       subject: `Organization Deletion - ${params.orgName}`,
       html,
     });
+    if (!result.success) {
+      console.error(`[EMAIL] ${provider.name} error:`, result.error);
+      return { success: false, error: result.error };
+    }
     return { success: true };
   } catch (error) {
     console.error("Failed to send deletion email:", error);
@@ -454,18 +466,20 @@ export async function sendExportReadyEmail(params: { to: string; orgName: string
   </div>`;
 
   const settings = await getCompanySettings(params.organizationId);
-  if (!settings.resendApiKey) {
-    console.log(`[MOCK EXPORT EMAIL] To: ${params.to} | Link: ${link}`);
-    return { success: true, mocked: true };
-  }
+  const { providerId, config } = await loadProviderConfig(params.organizationId);
+  const provider = providerRegistry.createProvider(providerId, config);
+
   try {
-    const resend = new Resend(settings.resendApiKey);
-    await resend.emails.send({
+    const result = await provider.send({
       from: getSenderFrom(settings.companyName, settings.senderEmail),
       to: [params.to],
       subject: `Data Export Ready - ${params.orgName}`,
       html,
     });
+    if (!result.success) {
+      console.error(`[EMAIL] ${provider.name} error:`, result.error);
+      return { success: false, error: result.error };
+    }
     return { success: true };
   } catch (error) {
     console.error("Failed to send export email:", error);
