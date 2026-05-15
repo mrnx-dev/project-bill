@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCompanySettings } from "@/lib/email";
+import { getCompanySettings, loadProviderConfig } from "@/lib/email";
+import { providerRegistry } from "@/lib/email/providers/registry";
 
 export async function POST(request: Request) {
   try {
@@ -54,20 +55,21 @@ export async function POST(request: Request) {
     </div>`;
 
     try {
-      const { Resend } = await import("resend");
-      if (settings.resendApiKey) {
-        const resend = new Resend(settings.resendApiKey);
-        const sender = settings.senderEmail
-          ? `${settings.companyName} <${settings.senderEmail}>`
-          : `${settings.companyName} <noreply@projectbill.mrndev.me>`;
-        await resend.emails.send({
-          from: sender,
-          to: [email],
-          subject: `Sign in to ${settings.companyName} Client Portal`,
-          html,
-        });
-      } else {
-        console.log(`[MOCK MAGIC LINK] To: ${email} | Link: ${link}`);
+      const { providerId, config } = await loadProviderConfig(clients[0].organizationId);
+      const provider = providerRegistry.createProvider(providerId, config);
+      const sender = settings.senderEmail
+        ? `${settings.companyName} <${settings.senderEmail}>`
+        : `${settings.companyName} <noreply@projectbill.mrndev.me>`;
+
+      const result = await provider.send({
+        from: sender,
+        to: [email],
+        subject: `Sign in to ${settings.companyName} Client Portal`,
+        html,
+      });
+
+      if (!result.success) {
+        console.error(`[EMAIL] ${provider.name} error:`, result.error);
       }
     } catch (e) {
       console.error("Failed to send magic link:", e);
