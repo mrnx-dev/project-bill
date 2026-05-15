@@ -102,7 +102,7 @@ export function EmailProviderCard({ form }: EmailProviderCardProps) {
                   </FormLabel>
                   {field.type === "select" ? (
                     <Select
-                      value={formField.value || field.defaultValue}
+                      value={formField.value ?? field.defaultValue ?? ""}
                       onValueChange={formField.onChange}
                     >
                       <SelectTrigger className="bg-slate-50 dark:bg-slate-900 border-slate-200">
@@ -128,7 +128,11 @@ export function EmailProviderCard({ form }: EmailProviderCardProps) {
                         }
                         placeholder={field.placeholder}
                         className="bg-slate-50 dark:bg-slate-900 border-slate-200 font-mono text-sm"
-                        {...formField}
+                        value={formField.value ?? ""}
+                        onChange={formField.onChange}
+                        onBlur={formField.onBlur}
+                        name={formField.name}
+                        ref={formField.ref}
                         onFocus={(e) => {
                           if (typeof e.target.value === "string" && e.target.value.startsWith("****")) {
                             formField.onChange("");
