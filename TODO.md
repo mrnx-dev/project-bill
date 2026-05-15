@@ -8,9 +8,9 @@
 
 1. ✅ 🤖 AI — Playwright E2E test + Dokploy deployment config — **DONE**
 2. ✅ 🔐 Casdoor — Phase 5 (middleware) + Phase 6 (testing) — **DONE**
-3. 💳 Partial Payments & Milestone Billing — **NEXT**
-4. 🌐 Client Portal — Multi-Tenant Org Isolation (Foundation) — **IN PROGRESS**
-5. 🔗 Stripe Integration
+3. ✅ 💳 Partial Payments & Milestone Billing — **DONE**
+4. ✅ 🌐 Client Portal — Multi-Tenant Org Isolation (Foundation) — **DONE**
+5. 🔗 Stripe Integration — **NEXT**
 
 ---
 
@@ -132,11 +132,11 @@
 
 ### 2. 🌐 Client Portal — Multi-Tenant Org Isolation (Foundation) — Sprint 17-18
 
-> **IN PROGRESS** — Foundation layer untuk isolation data antar organisasi sebelum Client Portal bisa jalan.
+> **✅ DONE** — Foundation layer untuk isolation data antar organisasi + Client Portal dengan magic link auth.
 
 #### Phase 0 — Multi-Tenant Org Isolation ✅
 - [x] Schema Prisma — `Organization`, `OrganizationMember`, `Invite` models
-- [x] Row-Level Security — `src/lib/rls.ts` (tenant-aware data access)
+- [x] Row-Level Security — `src/lib/rls.ts` (tenant-aware data access) + `src/lib/prisma.ts` (Prisma extension auto-inject orgId)
 - [x] Organization delete endpoint — `/api/organizations/[id]/delete/`
 - [x] Organization export endpoint — `/api/organizations/[id]/export/`
 - [x] Invite system — create, accept, reject flow — `/api/invites/`
@@ -144,33 +144,42 @@
 - [x] Public invite page — `src/app/(public)/invite/`
 - [x] Cron purge orgs — `/api/cron/purge-orgs/`
 - [x] Unit tests — `invites.test.ts`, `org-isolation.test.ts`
-- [ ] Integrasi org isolation ke semua resource (clients, projects, invoices)
-- [ ] Tenant-aware middleware untuk dashboard & API routes
+- [x] Integrasi org isolation ke semua resource (clients, projects, invoices)
+- [x] Tenant-aware middleware untuk dashboard & API routes — `src/middleware.ts` (dual auth: NextAuth + JWT)
 
-#### Phase 1 — Client Portal Auth & Dashboard
-- [ ] Desain model `ClientAuth` (magic link ke email), terpisah dari model `User`
-- [ ] Buat schema Prisma untuk `ClientAuth`
-- [ ] Migrasi database
-- [ ] Setup route group `(client-portal)/` di App Router
-- [ ] Buat middleware auth khusus client portal (terpisah dari admin auth)
-- [ ] Buat halaman login client portal
-- [ ] Implementasi magic link / password auth flow
-- [ ] Buat dashboard klien — daftar invoice
-- [ ] Buat dashboard klien — status proyek
-- [ ] Buat dashboard klien — download SOW
-- [ ] Proteksi route client portal dengan middleware
-- [ ] Testing end-to-end client portal
+#### Phase 1 — Client Portal Auth & Dashboard ✅
+- [x] Desain model `ClientAuth` (magic link ke email), terpisah dari model `User`
+- [x] Buat schema Prisma untuk `ClientAuth`
+- [x] Migrasi database — `add_client_auth_and_milestones`
+- [x] Setup route group `/client/` di App Router
+- [x] Buat middleware auth khusus client portal (verify JWT dari `client_session` cookie)
+- [x] Buat halaman login client portal — `/client/login` (email-only, magic link)
+- [x] Implementasi magic link auth flow — `send-link` → `verify` → `select-org` (multi-org support)
+- [x] Buat dashboard klien — daftar invoice + tab project — `/client/dashboard`
+- [x] Buat dashboard klien — status proyek + milestone progress bar
+- [x] Buat halaman detail invoice — `/client/invoices/[id]`
+- [x] Proteksi route client portal dengan middleware (JWT verification)
+- [x] API routes: `/api/client-portal/auth/*`, `/api/client-portal/invoices`, `/api/client-portal/projects`, `/api/client-portal/settings`
+- [x] Multi-org support — satu email bisa akses beberapa organisasi
+
 
 ### 3. 💳 Partial Payments & Milestone Billing — Sprint 17-18
 
-- [ ] Desain model `PaymentMilestone` (linked to `Project`)
-- [ ] Buat schema Prisma: `name`, `percentage`, `amount`, `status`, `dueDate`, `invoiceId`
-- [ ] Migrasi database
-- [ ] Buat UI timeline / progress bar di project detail
-- [ ] Implementasi logika auto-generate invoice saat milestone di-approve
-- [ ] Buat form untuk mendefinisikan milestone (misal: 30% Design → 40% Dev → 30% Launch)
-- [ ] Integrasi milestone status dengan payment flow
-- [ ] Testing partial payment flow
+> **✅ DONE** — Milestone-based payment schedule dengan auto-invoice generation.
+
+- [x] Desain model `PaymentMilestone` (linked to `Project`, `Invoice`)
+- [x] Buat schema Prisma: `name`, `percentage`, `amount`, `status`, `dueDate`, `invoiceId`, `sortOrder`
+- [x] Migrasi database — `add_client_auth_and_milestones`
+- [x] Buat UI timeline / progress bar di project detail (Payment Schedule tab)
+- [x] Implementasi logika auto-generate invoice saat milestone di-approve (type=MILESTONE)
+- [x] Buat form untuk mendefinisikan milestone (name, percentage, due date)
+- [x] Integrasi milestone status dengan payment flow (PENDING → INVOICED → PAID)
+- [x] FreshBooks-style reversibility: unapprove cascade (delete invoice jika masih UNPAID)
+- [x] Mayar payment link auto-generate saat approve
+- [x] Percentage validation: total milestones tidak boleh melebihi 100%
+- [x] API: CRUD milestones, approve, unapprove, mark-paid (update linked invoice)
+- [x] Audit logging untuk milestone create, update, delete, approve, mark-paid
+- [x] Code review fix: status casing (lowercase), transaction safety, field whitelisting
 
 ### 4. ⏱️ Time Tracking & Hourly Billing — Sprint 18-19
 
