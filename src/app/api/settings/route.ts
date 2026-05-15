@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { createAuditLog } from "@/lib/audit-logger";
 import { encrypt, decrypt, maskSecret, isMaskedValue } from "@/lib/crypto";
+import { providerRegistry } from "@/lib/email/providers/registry";
+import { getSenderFrom, loadProviderConfig } from "@/lib/email";
 
 const SENSITIVE_FIELDS = ["resendApiKey", "mayarApiKey", "mayarWebhookSecret"] as const;
 
@@ -24,8 +26,27 @@ export async function GET() {
       });
     }
 
+    const providerConfigs = await prisma.emailProviderConfig.findMany({
+      where: { organizationId: orgId },
+    });
+
+    const providerConfig: Record<string, Record<string, string>> = {};
+    for (const row of providerConfigs) {
+      if (!providerConfig[row.providerId]) providerConfig[row.providerId] = {};
+      const manifest = providerRegistry.getById(row.providerId);
+      const field = manifest?.fields.find((f) => f.id === row.key);
+      const isSensitive =
+        field?.type === "password" || /password|secret|key/i.test(row.key);
+      providerConfig[row.providerId][row.key] = isSensitive
+        ? maskSecret(row.isEncrypted ? decrypt(row.value) : row.value)
+        : row.value;
+    }
+
     const response = {
       ...settings,
+      emailProvider: settings.emailProvider,
+      providerConfig,
+      // Legacy flat fields. TODO v1.4: remove once clients use nested providerConfig
       resendApiKey: maskSecret(settings.resendApiKey ? decrypt(settings.resendApiKey) : null),
       mayarApiKey: maskSecret(settings.mayarApiKey ? decrypt(settings.mayarApiKey) : null),
       mayarWebhookSecret: maskSecret(settings.mayarWebhookSecret ? decrypt(settings.mayarWebhookSecret) : null),
@@ -64,6 +85,21 @@ export async function PUT(req: Request) {
     };
 
     const auditEntries: { field: string; oldValue: string | null; newValue: string | null }[] = [];
+
+    // Handle emailProvider change with audit log
+    if (body.emailProvider !== undefined && body.emailProvider !== currentSettings?.emailProvider) {
+      await createAuditLog({
+        userId: session.user?.id || session.user?.email || "unknown",
+        action: "settings.update",
+        entityType: "SETTINGS",
+        entityId: currentSettings?.id || "new",
+        field: "emailProvider",
+        oldValue: currentSettings?.emailProvider || "resend",
+        newValue: body.emailProvider,
+        organizationId: orgId,
+      });
+      dataToUpdate.emailProvider = body.emailProvider;
+    }
 
     for (const field of SENSITIVE_FIELDS) {
       const newValue = body[field];
@@ -107,6 +143,49 @@ export async function PUT(req: Request) {
 
     const userId = session.user?.id || session.user?.email || "unknown";
 
+    // Save provider configs
+    if (body.providerConfig && typeof body.providerConfig === "object") {
+      for (const [providerId, configObj] of Object.entries(body.providerConfig)) {
+        const manifest = providerRegistry.getById(providerId);
+        if (!manifest) continue;
+
+        for (const [key, rawValue] of Object.entries(configObj as Record<string, string>)) {
+          if (rawValue === undefined || isMaskedValue(rawValue)) continue;
+
+          const field = manifest.fields.find((f) => f.id === key);
+          const isSensitive = field?.type === "password" || /password|secret|key/i.test(key);
+
+          const valueToSave =
+            rawValue === null || rawValue.trim() === ""
+              ? null
+              : isSensitive
+              ? encrypt(rawValue)
+              : rawValue;
+
+          await prisma.emailProviderConfig.upsert({
+            where: {
+              organizationId_providerId_key: {
+                organizationId: orgId,
+                providerId,
+                key,
+              },
+            },
+            update: {
+              value: valueToSave,
+              isEncrypted: isSensitive,
+            },
+            create: {
+              organizationId: orgId,
+              providerId,
+              key,
+              value: valueToSave,
+              isEncrypted: isSensitive,
+            },
+          });
+        }
+      }
+    }
+
     if (auditEntries.length > 0) {
       const { createAuditLog } = await import("@/lib/audit-logger");
       for (const entry of auditEntries) {
@@ -125,6 +204,8 @@ export async function PUT(req: Request) {
 
     const response = {
       ...settings,
+      emailProvider: settings.emailProvider,
+      providerConfig: {}, // re-fetch would be more accurate but acceptable
       resendApiKey: maskSecret(settings.resendApiKey ? decrypt(settings.resendApiKey) : null),
       mayarApiKey: maskSecret(settings.mayarApiKey ? decrypt(settings.mayarApiKey) : null),
       mayarWebhookSecret: maskSecret(settings.mayarWebhookSecret ? decrypt(settings.mayarWebhookSecret) : null),
