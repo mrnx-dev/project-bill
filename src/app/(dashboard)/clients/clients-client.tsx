@@ -35,7 +35,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Pencil, Trash2, Plus, Users } from "lucide-react";
+import { Pencil, Trash2, Plus, Users, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -70,6 +70,7 @@ export function ClientsClient({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [sendingLinkId, setSendingLinkId] = useState<string | null>(null);
 
   const handleOpenDialog = async (client?: Client) => {
     if (client) {
@@ -162,6 +163,31 @@ export function ClientsClient({
     } catch (error) {
       console.error(error);
       toast.error("Network error while deleting");
+    }
+  };
+
+  const handleSendPortalLink = async (client: Client) => {
+    if (!client.email) {
+      toast.error("Client has no email address");
+      return;
+    }
+    setSendingLinkId(client.id);
+    try {
+      const res = await fetch("/api/client-portal/auth/send-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: client.email }),
+      });
+      if (res.ok) {
+        toast.success(`Portal login link sent to ${client.email}`);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to send portal link");
+      }
+    } catch {
+      toast.error("Network error while sending portal link");
+    } finally {
+      setSendingLinkId(null);
     }
   };
 
@@ -289,6 +315,18 @@ export function ClientsClient({
                 <CardTitle className="flex justify-between items-center text-base">
                   <span className="truncate">{client.name}</span>
                   <div className="flex gap-1 shrink-0">
+                    {client.email && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleSendPortalLink(client)}
+                        disabled={sendingLinkId === client.id}
+                        className="h-8 w-8"
+                        title="Send portal login link"
+                      >
+                        <Mail className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
@@ -375,6 +413,17 @@ export function ClientsClient({
                     {new Date(client.createdAt).toLocaleDateString("en-US")}
                   </TableCell>
                   <TableCell className="text-right">
+                    {client.email && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleSendPortalLink(client)}
+                        disabled={sendingLinkId === client.id}
+                        title="Send portal login link"
+                      >
+                        <Mail className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"

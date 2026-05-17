@@ -103,16 +103,16 @@ export async function sendInvoiceEmail(
                    : `Tagihan Rutin [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
 
                body = project.language === "en"
-                   ? `Hello ${client.name},\n\nPlease find your recurring invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nThank you!`
-                   : `Halo ${client.name},\n\nBerikut adalah detail tagihan rutin Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nTerima kasih!`;
+                   ? `Hello ${client.name},\n\nPlease find your recurring invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nAccess all your invoices: ${getBaseUrl()}/client/login\n\nThank you!`
+                   : `Halo ${client.name},\n\nBerikut adalah detail tagihan rutin Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nAkses semua invoice Anda: ${getBaseUrl()}/client/login\n\nTerima kasih!`;
            } else {
                subject = project.language === "en"
                    ? `Invoice [${invoice.invoiceNumber}] for ${project.title} - Action Required`
                    : `Invoice [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
 
                body = project.language === "en"
-                   ? `Hello ${client.name},\n\nPlease find your invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nThank you!`
-                   : `Halo ${client.name},\n\nBerikut adalah detail tagihan Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nTerima kasih!`;
+                   ? `Hello ${client.name},\n\nPlease find your invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nAccess all your invoices: ${getBaseUrl()}/client/login\n\nThank you!`
+                   : `Halo ${client.name},\n\nBerikut adalah detail tagihan Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nAkses semua invoice Anda: ${getBaseUrl()}/client/login\n\nTerima kasih!`;
            }
 
            mailtoData = { to: client.email!, subject, body };

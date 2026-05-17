@@ -36,7 +36,7 @@ export async function proxy(request: NextRequest) {
 
   const isApiRoute = pathname.startsWith("/api");
   const isClientApi = pathname.startsWith("/api/client-portal");
-  const isClientPage = pathname.startsWith("/client");
+  const isClientPage = pathname === "/client" || pathname.startsWith("/client/");
   const isClientAuthApi = pathname.startsWith("/api/client-portal/auth");
 
   // Client portal auth APIs are public
