@@ -1,5 +1,5 @@
 import { Text } from "@react-email/components";
-import { EmailLayout, InvoiceCard, CtaButton, DetailRow } from "./EmailLayout";
+import { EmailLayout, InvoiceCard, CtaButton, DetailRow, ClientPortalLink } from "./EmailLayout";
 import type { CompanyInfo, Language } from "./EmailLayout";
 
 export type ReminderType = "pre_due" | "overdue_d1" | "overdue_d3" | "late_fee";
@@ -12,8 +12,9 @@ interface ReminderEmailProps {
     invoiceLink: string;
     reminderType: ReminderType;
     lateFeeAmount?: string;
-    company?: CompanyInfo;
-    lang?: Language;
+  company?: CompanyInfo;
+  clientPortalUrl?: string;
+  lang?: Language;
 }
 
 const REMINDER_CONFIG: Record<
@@ -139,8 +140,9 @@ export const ReminderEmail = ({
     invoiceLink = "https://projectbill.com/invoices/INV-1234",
     reminderType = "pre_due",
     lateFeeAmount,
-    company,
-    lang = "id",
+  company,
+  clientPortalUrl,
+  lang = "id",
 }: ReminderEmailProps) => {
     const config = REMINDER_CONFIG[reminderType];
     const displayAmount = config.useLateFeeAmount && lateFeeAmount ? lateFeeAmount : amount;
@@ -191,6 +193,9 @@ export const ReminderEmail = ({
             </Text>
 
             <CtaButton label={lang === "id" ? "Lihat Invoice & Bayar" : "View Invoice & Pay"} href={invoiceLink} />
+            {clientPortalUrl && (
+              <ClientPortalLink href={clientPortalUrl} lang={lang} />
+            )}
         </EmailLayout>
     );
 };

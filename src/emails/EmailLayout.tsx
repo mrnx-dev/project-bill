@@ -310,4 +310,46 @@ export const CtaButton = ({ label, href }: CtaButtonProps) => (
     </Section>
 );
 
+interface ClientPortalLinkProps {
+  href: string;
+  lang?: Language;
+}
+
+export const ClientPortalLink = ({ href, lang = "id" }: ClientPortalLinkProps) => (
+  <>
+    <Section style={{ textAlign: "center", margin: "16px 0 4px 0" }}>
+      <Text style={{ fontSize: 12, color: "#9ca3af", margin: 0 }}>
+        {lang === "id" ? "──── atau ────" : "──── or ────"}
+      </Text>
+    </Section>
+    <Section style={{
+      textAlign: "center",
+      margin: "4px 0 0 0",
+      padding: "12px 16px",
+      backgroundColor: "#f9fafb",
+      borderRadius: 6,
+      border: "1px solid #e5e7eb",
+    }}>
+      <Text style={{ fontSize: 13, color: "#6b7280", margin: "0 0 6px 0" }}>
+        {lang === "id"
+          ? "Akses semua invoice dan proyek Anda kapan saja melalui"
+          : "Access all your invoices and projects anytime through"}
+      </Text>
+      <a
+        href={href}
+        target="_blank"
+        style={{
+          fontSize: 14,
+          fontWeight: 600,
+          color: "#4f46e5",
+          textDecoration: "none",
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        }}
+      >
+        {lang === "id" ? "Portal Klien →" : "Client Portal →"}
+      </a>
+    </Section>
+  </>
+);
+
 export default EmailLayout;

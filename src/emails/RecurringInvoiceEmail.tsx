@@ -1,5 +1,5 @@
 import { Text } from "@react-email/components";
-import { EmailLayout, InvoiceCard, CtaButton, DetailRow } from "./EmailLayout";
+import { EmailLayout, InvoiceCard, CtaButton, DetailRow, ClientPortalLink } from "./EmailLayout";
 import type { CompanyInfo, Language } from "./EmailLayout";
 
 interface RecurringInvoiceEmailProps {
@@ -10,8 +10,9 @@ interface RecurringInvoiceEmailProps {
     dueDate: Date | null;
     invoiceLink: string;
     description?: string | null;
-    company?: CompanyInfo;
-    lang?: Language;
+  company?: CompanyInfo;
+  clientPortalUrl?: string;
+  lang?: Language;
 }
 
 export const RecurringInvoiceEmail = ({
@@ -22,8 +23,9 @@ export const RecurringInvoiceEmail = ({
     dueDate = new Date(),
     invoiceLink = "https://projectbill.com/invoices/INV-1234",
     description,
-    company,
-    lang = "id",
+  company,
+  clientPortalUrl,
+  lang = "id",
 }: RecurringInvoiceEmailProps) => {
     const formattedDate = dueDate
         ? new Intl.DateTimeFormat(lang === "id" ? "id-ID" : "en-US", {
@@ -83,7 +85,10 @@ export const RecurringInvoiceEmail = ({
                 label={lang === "id" ? "Lihat Invoice & Bayar" : "View Invoice & Pay"}
                 href={invoiceLink}
             />
-        </EmailLayout>
+          {clientPortalUrl && (
+        <ClientPortalLink href={clientPortalUrl} lang={lang} />
+      )}
+    </EmailLayout>
     );
 };
 

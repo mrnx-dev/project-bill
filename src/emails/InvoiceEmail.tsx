@@ -1,5 +1,5 @@
 import { Text } from "@react-email/components";
-import { EmailLayout, InvoiceCard, CtaButton, DetailRow } from "./EmailLayout";
+import { EmailLayout, InvoiceCard, CtaButton, DetailRow, ClientPortalLink } from "./EmailLayout";
 import type { CompanyInfo, Language } from "./EmailLayout";
 
 interface InvoiceEmailProps {
@@ -10,6 +10,7 @@ interface InvoiceEmailProps {
   dueDate: Date | null;
   invoiceLink: string;
   company?: CompanyInfo;
+  clientPortalUrl?: string;
   lang?: Language;
 }
 
@@ -21,6 +22,7 @@ export const InvoiceEmail = ({
   dueDate = new Date(),
   invoiceLink = "https://projectbill.com/invoices/INV-1234",
   company,
+  clientPortalUrl,
   lang = "id",
 }: InvoiceEmailProps) => {
   const formattedDate = dueDate
@@ -73,6 +75,9 @@ export const InvoiceEmail = ({
         label={lang === "id" ? "Lihat Invoice & Bayar" : "View Invoice & Pay"}
         href={invoiceLink}
       />
+      {clientPortalUrl && (
+        <ClientPortalLink href={clientPortalUrl} lang={lang} />
+      )}
     </EmailLayout>
   );
 };

@@ -4,6 +4,7 @@ import {
     StatusBadge,
     DetailRow,
     CtaButton,
+    ClientPortalLink,
 } from "./EmailLayout";
 import type { CompanyInfo, Language } from "./EmailLayout";
 
@@ -15,6 +16,7 @@ interface PaymentSuccessEmailProps {
     invoiceLink: string;
     hasSowAttachment?: boolean;
     company?: CompanyInfo;
+    clientPortalUrl?: string;
     lang?: Language;
 }
 
@@ -26,6 +28,7 @@ export const PaymentSuccessEmail = ({
     invoiceLink = "https://projectbill.com/invoices/INV-1234",
     hasSowAttachment = false,
     company,
+    clientPortalUrl,
     lang = "id",
 }: PaymentSuccessEmailProps) => {
     const previewText = lang === "id"
@@ -146,6 +149,9 @@ export const PaymentSuccessEmail = ({
             )}
 
             <CtaButton label={lang === "id" ? "Lihat Invoice" : "View Invoices"} href={invoiceLink} />
+            {clientPortalUrl && (
+                <ClientPortalLink href={clientPortalUrl} lang={lang} />
+            )}
         </EmailLayout>
     );
 };
