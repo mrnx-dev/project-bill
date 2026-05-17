@@ -31,6 +31,7 @@ model Organization {
   agentMemories       AgentMemory[]
   clientAuths         ClientAuth[]
   paymentMilestones   PaymentMilestone[]
+  emailProviderConfigs EmailProviderConfig[]
 }
 
 model OrganizationMember {
@@ -229,12 +230,13 @@ model Settings {
   senderEmail        String?
   companyLogoUrl     String?
   companyWhatsApp    String?
-  resendApiKey       String?
+  resendApiKey       String?      // deprecated: migrated to EmailProviderConfig. Keep for rollback.
   mayarApiKey        String?
   mayarWebhookSecret String?
   bankName           String?
   bankAccountName    String?
   bankAccountNumber  String?
+  emailProvider      String?      @default("resend")
   organizationId     String
   updatedAt          DateTime     @updatedAt
   organization       Organization @relation(fields: [organizationId], references: [id])
@@ -394,4 +396,18 @@ model AgentConfig {
   updatedAt      DateTime @updatedAt
 
   @@index([userId])
+}
+
+model EmailProviderConfig {
+  id             String       @id @default(uuid())
+  organizationId String
+  providerId     String
+  key            String
+  value          String
+  isEncrypted    Boolean      @default(false)
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, providerId, key])
+  @@index([organizationId])
 }
