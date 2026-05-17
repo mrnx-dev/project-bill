@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
-import { providerRegistry } from "./providers/registry";
+import { providerRegistry } from "./email/providers/registry";
 
 export async function loadProviderConfig(
   organizationId: string

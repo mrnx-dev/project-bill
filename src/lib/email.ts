@@ -1,7 +1,7 @@
 import { render } from "@react-email/render";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
-import { providerRegistry } from "./providers/registry";
+import { providerRegistry } from "./email/providers/registry";
 import { InvoiceEmail } from "@/emails/InvoiceEmail";
 import { RecurringInvoiceEmail } from "@/emails/RecurringInvoiceEmail";
 import { ReminderEmail } from "@/emails/ReminderEmail";
