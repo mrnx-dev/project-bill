@@ -44,11 +44,15 @@ In `prisma/schema.prisma`, change the Subscription model:
    createdAt          DateTime  @default(now())
    updatedAt          DateTime  @updatedAt
    user               User      @relation(fields: [userId], references: [id])
-
-   @@index([userId])
-   @@index([status])
++  // userId dan user relation tetap ada di Phase A — organizationId nullable
++
++  @@index([userId])
++  @@index([status])
++  @@index([organizationId])
  }
 ```
+
+Note: `userId` dan `user` relation TETAP ADA di Phase A. Kita hanya menambah `organizationId` nullable + index. Jangan hapus `userId` atau relasi `user` di phase ini.
 
 **Step 2: Generate and apply migration**
 
@@ -86,9 +90,7 @@ git add prisma/schema.prisma prisma/migrations/ && git commit -m "feat(billing):
 Create `scripts/backfill-subscription-org.ts`:
 
 ```typescript
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 const BATCH_SIZE = 500;
 
 async function backfill() {
@@ -170,8 +172,6 @@ async function backfill() {
 
   console.log(`[DONE] Backfill complete. processed=${processed}, skipped=${skipped}`);
   console.log(`[DONE] Pre-flight check PASSED: 0 rows with null organizationId — safe to proceed to Phase B`);
-
-  await prisma.$disconnect();
 }
 
 backfill().catch((e) => {
@@ -485,7 +485,6 @@ export async function incrementOrgUsage(
   if (isSelfHosted()) return;
 
   try {
-    await getSubscriptionByOrg(organizationId);
     await prisma.subscription.update({
       where: { organizationId },
       data: { [field]: { increment: amount } },
@@ -495,6 +494,8 @@ export async function incrementOrgUsage(
   }
 }
 ```
+
+Note: Blueprint menginstruksikan langsung update tanpa `getSubscriptionByOrg()` call dulu — lebih efisien, satu query bukan dua.
 
 **Step 6: Remove dead code**
 
@@ -827,7 +828,42 @@ git add src/app/api/organizations/[id]/switch/route.ts && git commit -m "feat(ob
 
 ---
 
-### Task 11: Update `cancelSubscription` and `checkTrialStatus` callers
+### Task 11: Verify `GET /api/subscription/check` is already org-scoped
+
+**Objective:** Blueprint Task #13 requires checking this endpoint. File already uses `checkOrgLimit(orgId, resource)` — no changes needed, but must verify it doesn't import any removed functions after Task 4.
+
+**Files:**
+- Verify: `src/app/api/subscription/check/route.ts` (no modification expected)
+
+**Step 1: Read and verify the file**
+
+```bash
+cat src/app/api/subscription/check/route.ts
+```
+
+Expected: Uses `checkOrgLimit(orgId, resource)` — already org-scoped. Import `getSubscription` or `getOrgOwnerId` should NOT exist in this file.
+
+**Step 2: Search for any removed function imports**
+
+```bash
+cd /root/projects/project-bill && grep -n "getSubscription\|getOrgOwnerId\|checkLimit\|incrementUsage" src/app/api/subscription/check/route.ts
+```
+
+Expected: No matches for user-scoped functions. Only `checkOrgLimit` import.
+
+**Step 3: If any user-scoped imports found, fix them**
+
+Replace `getSubscription` → `getSubscriptionByOrg`, remove `getOrgOwnerId`/`checkLimit`/`incrementUsage`.
+
+**Step 4: Commit only if changes were needed**
+
+```bash
+git add src/app/api/subscription/check/route.ts && git commit -m "fix(billing): update subscription/check to use org-scoped imports"
+```
+
+---
+
+### Task 12: Update `cancelSubscription` and `checkTrialStatus` callers
 
 **Objective:** Search and update any callers of the old `getSubscription(userId)` and `cancelSubscription(userId)` that may have been missed.
 
@@ -876,7 +912,7 @@ git add -A && git commit -m "fix(billing): update remaining callers from userId 
 
 ## Phase 2: Data Isolation (FR-2)
 
-### Task 12: Fix dashboard layout data isolation — add orgId guard + scoped Prisma queries
+### Task 13: Fix dashboard layout data isolation — add orgId guard + scoped Prisma queries
 
 **Objective:** Fix `layout.tsx` to scope `settings.findFirst` and `client.findMany` to the active organization. Add `!orgId` guard that redirects to onboarding.
 
@@ -935,7 +971,7 @@ git add src/app/\(dashboard\)/layout.tsx && git commit -m "fix(data-isolation): 
 
 ---
 
-### Task 13: Fix `GET /api/settings` data isolation — scoped findFirst
+### Task 14: Fix `GET /api/settings` data isolation — scoped findFirst
 
 **Objective:** Fix `settings.findFirst({ where: {} })` in the GET handler to use `{ where: { organizationId: orgId } }`.
 
@@ -990,7 +1026,7 @@ git add src/app/api/settings/route.ts && git commit -m "fix(data-isolation): sco
 
 ## Phase 3: Organization Switcher Enhancement (FR-3)
 
-### Task 14: Add role badge and keyboard navigation to OrgSwitcher
+### Task 15: Add role badge and keyboard navigation to OrgSwitcher
 
 **Objective:** Enhance the existing OrgSwitcher component to display role badges next to org names and support full keyboard navigation.
 
@@ -1033,7 +1069,29 @@ If using shadcn/ui `Command` component (which already has keyboard support), ens
 
 When `organizations.length === 1`, render the switcher as non-interactive — just show the org name and role badge without the popover trigger functionality.
 
-**Step 5: Verify in browser**
+**Step 5: Add infinite re-render guard**
+
+Add a guard in the switch handler to prevent switching to the same org (infinite re-render loop per blueprint risk mitigation):
+
+```tsx
+async function handleSwitch(orgId: string) {
+  if (orgId === activeOrgId) return; // prevent infinite re-render
+  // ... existing switch logic
+}
+```
+
+**Step 6: Ensure 401 error handling redirects with callbackUrl**
+
+In the switch error handler, verify that 401 responses redirect to `/login` with a `callbackUrl` parameter so the user returns to their current page after re-authentication:
+
+```tsx
+if (res.status === 401) {
+  router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
+  return;
+}
+```
+
+**Step 7: Verify in browser**
 
 ```bash
 # Start dev server if not running
@@ -1045,15 +1103,15 @@ Check:
 - Keyboard navigation works (Tab, Enter, Arrows, Escape)
 - Single org shows as non-interactive
 
-**Step 6: Commit**
+**Step 8: Commit**
 
 ```bash
-git add src/components/org-switcher.tsx && git commit -m "feat(org-switcher): add role badges, keyboard navigation, single-org display"
+git add src/components/org-switcher.tsx && git commit -m "feat(org-switcher): add role badges, keyboard navigation, single-org display, re-render guard, 401 callbackUrl"
 ```
 
 ---
 
-### Task 15: Add unsaved form detection before org switch
+### Task 16: Add unsaved form detection before org switch
 
 **Objective:** Create a `useUnsavedForm` hook that detects if any form on the page is dirty, and add a confirm dialog to the OrgSwitcher before switching orgs when unsaved changes exist.
 
@@ -1142,7 +1200,7 @@ git add src/hooks/use-unsaved-form.ts src/components/org-switcher.tsx && git com
 
 ---
 
-### Task 16: Integrate OrgSwitcher data flow from layout.tsx
+### Task 17: Integrate OrgSwitcher data flow from layout.tsx
 
 **Objective:** Pass organization memberships data from `layout.tsx` to `AppSidebar` → `OrgSwitcher` so the switcher shows all user orgs. Currently the OrgSwitcher fetches orgs client-side; this task optionally adds server-side data passing for better UX.
 
@@ -1198,7 +1256,7 @@ git add src/app/\(dashboard\)/layout.tsx src/components/app-sidebar.tsx && git c
 
 ---
 
-### Task 17: Add "Create Organization" link to OrgSwitcher popover footer
+### Task 18: Add "Create Organization" link to OrgSwitcher popover footer
 
 **Objective:** Add a link/button at the bottom of the OrgSwitcher popover that allows users to create a new organization.
 
@@ -1242,7 +1300,7 @@ git add src/components/org-switcher.tsx && git commit -m "feat(org-switcher): ad
 
 ## Phase 4: Verification & Cleanup
 
-### Task 18: Full TypeScript compilation check
+### Task 19: Full TypeScript compilation check
 
 **Objective:** Ensure the entire codebase compiles without errors after all changes.
 
@@ -1272,7 +1330,7 @@ git add -A && git commit -m "fix: resolve remaining TypeScript errors after org-
 
 ---
 
-### Task 19: Verify no unscoped queries remain
+### Task 20: Verify no unscoped queries remain
 
 **Objective:** Scan the entire codebase for any remaining Prisma queries that should be org-scoped but aren't.
 
@@ -1304,7 +1362,7 @@ git add -A && git commit -m "fix: clean up remaining unscoped queries and userId
 
 ---
 
-### Task 20: Manual verification checklist
+### Task 21: Manual verification checklist
 
 **Objective:** Run through the PRD verification checklist manually.
 
@@ -1333,11 +1391,133 @@ git add -A && git commit -m "fix: clean up remaining unscoped queries and userId
 - [ ] Keyboard accessible (Tab, Enter, Arrows)
 - [ ] Unsaved form warning appears when switching with dirty form
 - [ ] Create org link works
-- [ ] Error handling: 401/403/network
+- [ ] Error handling: 401 redirects to /login with callbackUrl
+- [ ] Error handling: 403 and network errors show toast
+- [ ] Clicking active org does nothing (re-render guard)
 
-**Step 4: Document results**
+**Step 4: Verify edge cases**
+
+- [ ] User with no org → redirected to /onboarding/organization
+- [ ] Session expired during switch → redirected to /login with callbackUrl
+- [ ] Self-hosted mode: all billing functions bypass correctly
+
+**Step 5: Document results**
 
 If all checks pass, the feature is production-ready. If not, create follow-up tasks.
+
+---
+
+### Task 22: Rollback path for Phase B migration failure
+
+**Objective:** Document and prepare a rollback procedure if Phase B schema migration fails or causes issues in production.
+
+**No code changes — procedural only.**
+
+**Step 1: Before running Phase B migration, create a DB backup**
+
+```bash
+pg_dump -U <user> -d <dbname> > backup_before_phase_b.sql
+```
+
+**Step 2: If Phase B migration fails, rollback**
+
+```bash
+# Mark the failed migration as rolled-back
+cd /root/projects/project-bill && npx prisma migrate resolve --rolled-back <migration_name>
+
+# Restore from backup if needed
+psql -U <user> -d <dbname> < backup_before_phase_b.sql
+```
+
+**Step 3: If Phase B succeeds but issues found post-deploy**
+
+1. Revert the code commit: `git revert <commit-hash>`
+2. Re-run Phase A migration (add nullable organizationId back)
+3. The `userId` column is still in the DB backup — restore if needed
+4. Re-deploy previous version via Dokploy
+
+**Step 4: Document this in deployment runbook**
+
+Save rollback procedure alongside the plan for reference during deployment.
+
+---
+
+### Task 23: Handle edge case — user removed from active org or org deleted
+
+**Objective:** Add middleware/guard that detects when a user's active org is no longer accessible (removed or deleted) and auto-redirects them.
+
+**Files:**
+- Create: `src/middleware/org-guard.ts` or modify: `src/middleware.ts` (if it exists)
+- Modify: `src/app/(dashboard)/layout.tsx` (enhance orgId guard from Task 13)
+
+**Step 1: Check if middleware.ts exists**
+
+```bash
+ls src/middleware.ts
+```
+
+**Step 2: Enhance orgId guard in layout.tsx**
+
+In `src/app/(dashboard)/layout.tsx`, after the `!orgId` guard, add a membership verification:
+
+```typescript
+const orgId = session.user.activeOrganizationId;
+if (!orgId) {
+  redirect("/onboarding/organization");
+}
+
+// Verify user still has access to active org
+const membership = await prisma.organizationMember.findFirst({
+  where: { userId: session.user.id, organizationId: orgId },
+  include: { organization: true },
+});
+
+if (!membership || membership.organization.deletedAt) {
+  // User lost access or org was deleted — find next available org
+  const nextOrg = await prisma.organizationMember.findFirst({
+    where: {
+      userId: session.user.id,
+      organization: { deletedAt: null },
+    },
+    include: { organization: true },
+    orderBy: { joinedAt: "asc" },
+  });
+
+  if (!nextOrg) {
+    // No orgs available — redirect to create org
+    redirect("/onboarding/organization");
+  }
+
+  // Auto-switch to next available org
+  // Note: we can't update session server-side in a server component easily.
+  // Instead, redirect to switch endpoint which handles session update
+  redirect(`/api/organizations/${nextOrg.organizationId}/switch?auto=true`);
+}
+```
+
+**Step 3: Update switch endpoint to handle auto-redirect**
+
+In `src/app/api/organizations/[id]/switch/route.ts`, add support for auto-query param:
+
+```typescript
+// After successful switch, if auto=true, redirect to dashboard
+const url = new URL(request.url);
+if (url.searchParams.get("auto") === "true") {
+  return NextResponse.redirect(new URL("/board", url.origin));
+}
+```
+
+**Step 4: Verify in browser**
+
+- Remove user from active org → login again → should auto-switch to next org
+- Delete active org → should auto-switch to next org
+- No orgs available → redirect to onboarding
+
+**Step 5: Commit**
+
+```bash
+git add src/app/\(dashboard\)/layout.tsx src/app/api/organizations/[id]/switch/route.ts && git commit -m "feat(org): auto-redirect when user loses access to active org"
+```
 
 ---
 
@@ -1345,17 +1525,19 @@ If all checks pass, the feature is production-ready. If not, create follow-up ta
 
 | Phase | Tasks | Files | Est. |
 |-------|-------|-------|------|
-| Phase 1: Subscription Org-Scoped | 1-11 | ~10 files | ~90m |
-| Phase 2: Data Isolation | 12-13 | ~2 files | ~15m |
-| Phase 3: Org Switcher Enhancement | 14-17 | ~4 files | ~60m |
-| Phase 4: Verification & Cleanup | 18-20 | ~0 files | ~20m |
-| **Total** | **20 tasks** | **~12 files** | **~185m** |
+| Phase 1: Subscription Org-Scoped | 1-12 | ~11 files | ~100m |
+| Phase 2: Data Isolation | 13-14 | ~2 files | ~15m |
+| Phase 3: Org Switcher Enhancement | 15-18 | ~4 files | ~75m |
+| Phase 4: Verification, Rollback & Edge Cases | 19-23 | ~2 files | ~45m |
+| **Total** | **23 tasks** | **~14 files** | **~235m** |
 
 **Critical dependency chain:**
 - Tasks 1-3 must be sequential (schema migration Phase A → backfill → Phase B)
 - Task 4 depends on Task 3 (schema change must complete first)
 - Tasks 5-7 depend on Task 4 (getSubscriptionByOrg must exist)
-- Tasks 8-11 can be done in any order after Task 4
-- Phase 2 tasks (12-13) are independent of Phase 1 but should follow after
-- Phase 3 tasks (14-17) are independent and can begin anytime
-- Phase 4 tasks (18-20) must be last
+- Task 8-12 can be done in any order after Task 4
+- Phase 2 tasks (13-14) are independent of Phase 1 but should follow after
+- Phase 3 tasks (15-18) are independent and can begin anytime
+- Task 22 (rollback) should be prepared BEFORE executing Task 3 (Phase B)
+- Task 23 (edge cases) should follow after Task 13 (layout guard)
+- Phase 4 tasks (19-21) must be last
