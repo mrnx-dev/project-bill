@@ -115,14 +115,11 @@ export default async function InvoiceViewPage(props: {
   const hasMayar = !!settings.mayarApiKey;
 
   // Watermark: show "Powered by ProjectBill" for starter plan on managed cloud
-  const { isManagedCloud } = await import("@/lib/billing/subscription");
+  const { isManagedCloud, getSubscriptionByOrg } = await import("@/lib/billing/subscription");
   let showWatermark = false;
-  if (isManagedCloud()) {
-    const adminUser = await prisma.user.findFirst({
-      where: { role: "ADMIN" },
-      include: { subscription: true },
-    });
-    showWatermark = !adminUser?.subscription || adminUser.subscription.plan === "starter";
+  if (isManagedCloud() && settings.organizationId) {
+    const sub = await getSubscriptionByOrg(settings.organizationId);
+    showWatermark = sub.plan === "starter";
   }
 
   return (
