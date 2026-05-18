@@ -15,7 +15,7 @@ export async function PUT(
     const body = await req.json();
 
     const template = await prisma.sOWTemplate.update({
-      where: { id },
+      where: { id, organizationId: orgId },
       data: { name: body.name, content: body.content },
     });
 
@@ -36,7 +36,7 @@ export async function DELETE(
     const { id } = await params;
     const orgId = session.user.activeOrganizationId!;
 
-    await prisma.sOWTemplate.delete({ where: { id } });
+    await prisma.sOWTemplate.delete({ where: { id, organizationId: orgId } });
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
