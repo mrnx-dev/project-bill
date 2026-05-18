@@ -36,17 +36,22 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  const orgId = session.user.activeOrganizationId;
+  if (!orgId) {
+    redirect("/onboarding/organization");
+  }
+
   const dbUser = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { name: true, email: true, onboardingCompleted: true },
   });
 
   const settings = await prisma.settings.findFirst({
-    where: {},
+    where: { organizationId: orgId },
   });
 
   const clients = await prisma.client.findMany({
-    where: {},
+    where: { organizationId: orgId },
     orderBy: { createdAt: "desc" },
     select: { id: true, name: true },
   });
