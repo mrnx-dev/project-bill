@@ -35,11 +35,15 @@ export async function PATCH(
     if (name !== undefined && name !== existing.name) {
       changedFields.push({ field: "name", oldValue: existing.name, newValue: name });
     }
-    if (email !== undefined && email !== (existing.email ?? "")) {
-      changedFields.push({ field: "email", oldValue: existing.email ?? "", newValue: email ?? "" });
+    const normalizedEmail = email ?? "";
+    const normalizedExistingEmail = existing.email ?? "";
+    if (email !== undefined && normalizedEmail !== normalizedExistingEmail) {
+      changedFields.push({ field: "email", oldValue: normalizedExistingEmail, newValue: normalizedEmail });
     }
-    if (phone !== undefined && phone !== (existing.phone ?? "")) {
-      changedFields.push({ field: "phone", oldValue: existing.phone ?? "", newValue: phone ?? "" });
+    const normalizedPhone = phone ?? "";
+    const normalizedExistingPhone = existing.phone ?? "";
+    if (phone !== undefined && normalizedPhone !== normalizedExistingPhone) {
+      changedFields.push({ field: "phone", oldValue: normalizedExistingPhone, newValue: normalizedPhone });
     }
 
     for (const entry of changedFields) {
