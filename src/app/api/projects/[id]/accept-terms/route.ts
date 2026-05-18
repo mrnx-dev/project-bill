@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import { createAuditLog } from "@/lib/audit-logger";
 import { createNotification } from "@/lib/notifications";
 
@@ -8,14 +9,14 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const session = await auth();
+    if (!session) return new NextResponse("Unauthorized", { status: 401 });
     const resolvedParams = await params;
     const id = resolvedParams.id;
-
-    // This is a public endpoint deliberately accessible without auth,
-    // intended for the client viewing their invoice link.
+    const orgId = session.user.activeOrganizationId!;
 
     const project = await prisma.project.findUnique({
-      where: { id },
+      where: { id, organizationId: orgId },
       select: { terms: true, termsAcceptedAt: true, termsVersionId: true, updatedAt: true, organizationId: true },
     });
 
@@ -44,7 +45,7 @@ export async function PATCH(
     const nextVersion = (project.termsVersionId || 0) + 1;
 
     const updatedProject = await prisma.project.update({
-      where: { id },
+      where: { id, organizationId: orgId },
       data: {
         termsAcceptedAt: new Date(),
         termsAcceptedUserAgent: userAgent,
@@ -55,7 +56,7 @@ export async function PATCH(
 
     try {
       await createAuditLog({
-        userId: "system_client", // since this is a public unauthenticated route
+        userId: session.user.id || "system_client",
         organizationId: project.organizationId,
         action: "ACCEPT_SOW",
         entityType: "PROJECT",
@@ -64,7 +65,7 @@ export async function PATCH(
       });
 
       // Fetch project minimal title for notification
-      const p = await prisma.project.findUnique({ where: { id }, select: { title: true } });
+      const p = await prisma.project.findUnique({ where: { id, organizationId: orgId }, select: { title: true } });
       await createNotification({
         title: "SOW Signed",
         message: `Client accepted SOW for project "${p?.title}".`,
