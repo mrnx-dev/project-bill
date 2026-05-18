@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UseFormReturn } from "react-hook-form";
 import {
   FormControl,
@@ -34,6 +34,26 @@ export function EmailProviderCard({ form }: EmailProviderCardProps) {
   const manifests = clientProviderRegistry.getAll();
   const emailProvider = form.watch("emailProvider") || "resend";
   const selectedManifest = clientProviderRegistry.getById(emailProvider);
+
+  // Auto-populate default values for provider fields not yet in form state
+  useEffect(() => {
+    if (!selectedManifest) return;
+    const currentConfig: Record<string, string> =
+      form.getValues(`providerConfig.${selectedManifest.id}`) || {};
+    let hasChanges = false;
+    const updatedConfig = { ...currentConfig };
+
+    for (const field of selectedManifest.fields) {
+      if (field.defaultValue !== undefined && currentConfig[field.id] === undefined) {
+        updatedConfig[field.id] = field.defaultValue;
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      form.setValue(`providerConfig.${selectedManifest.id}`, updatedConfig);
+    }
+  }, [selectedManifest, form]);
 
   const handleTestConnection = async () => {
     setTesting(true);
