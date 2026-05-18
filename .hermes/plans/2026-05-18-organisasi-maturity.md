@@ -1677,7 +1677,7 @@ git add src/app/api/organizations/[id]/switch/route.ts && git commit -m "feat(or
 | Phase 2: Data Isolation | 13-14 | ~2 files | ~15m |
 | Phase 3: Org Switcher Enhancement | 15a, 15b, 15c, 15d, 16-18 | ~4 files | ~75m |
 | Phase 4: Verification, Rollback & Edge Cases | 19-22, 23a, 23b | ~2 files | ~45m |
-| **Total** | **29 tasks** | **~14 files** | **~235m** |
+| **Total** | **30 tasks** | **~14 files** | **~235m** |
 
 **Critical dependency chain:**
 - Tasks 1-3 must be sequential (schema migration Phase A → backfill → Phase B)
