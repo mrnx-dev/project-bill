@@ -44,10 +44,10 @@ export async function DELETE(
     // Attempt to delete and subtract from total price
     const [, updatedProject] = await prisma.$transaction([
       prisma.projectItem.delete({
-        where: { id: itemId },
+        where: { id: itemId, organizationId: orgId },
       }),
       prisma.project.update({
-        where: { id: projectId },
+        where: { id: projectId, organizationId: orgId },
         data: {
           totalPrice: {
             decrement: item.price,
