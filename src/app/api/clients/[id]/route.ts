@@ -30,15 +30,31 @@ export async function PATCH(
       data: { name, email, phone },
     });
 
-    await createAuditLog({
-      userId: session.user.id,
-      action: "client.update",
-      entityType: "CLIENT",
-      entityId: id,
-      oldValue: existing?.name || undefined,
-      newValue: name || undefined,
-      organizationId: orgId,
-    });
+    const changedFields: { field: string; oldValue: string; newValue: string }[] = [];
+
+    if (name !== undefined && name !== existing.name) {
+      changedFields.push({ field: "name", oldValue: existing.name, newValue: name });
+    }
+    if (email !== undefined && email !== (existing.email ?? "")) {
+      changedFields.push({ field: "email", oldValue: existing.email ?? "", newValue: email ?? "" });
+    }
+    if (phone !== undefined && phone !== (existing.phone ?? "")) {
+      changedFields.push({ field: "phone", oldValue: existing.phone ?? "", newValue: phone ?? "" });
+    }
+
+    for (const entry of changedFields) {
+      await createAuditLog({
+        userId: session.user.id,
+        action: "client.update",
+        title: `Updated ${entry.field} for ${existing.name}`,
+        entityType: "CLIENT",
+        entityId: id,
+        field: entry.field,
+        oldValue: entry.oldValue || undefined,
+        newValue: entry.newValue || undefined,
+        organizationId: orgId,
+      });
+    }
 
     return NextResponse.json(client);
   } catch (error) {
