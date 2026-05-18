@@ -17,7 +17,7 @@ export async function GET() {
     const orgId = session.user.activeOrganizationId!;
 
     let settings = await prisma.settings.findFirst({
-      where: {},
+      where: { organizationId: orgId },
     });
 
     if (!settings) {
@@ -69,7 +69,7 @@ export async function PUT(req: Request) {
     const body = await req.json();
 
     const currentSettings = await prisma.settings.findFirst({
-      where: {},
+      where: { organizationId: orgId },
     });
 
     const dataToUpdate: Record<string, string | null | undefined> = {
