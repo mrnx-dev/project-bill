@@ -79,6 +79,7 @@ export function OrgSwitcher({ currentOrgName, currentOrgLogo }: OrgSwitcherProps
   }
 
   async function switchOrg(orgId: string) {
+    if (orgId === activeOrgId) return; // prevent infinite re-render
     try {
       const res = await fetch(`/api/organizations/${orgId}/switch`, { method: "POST" });
       if (res.ok) {
