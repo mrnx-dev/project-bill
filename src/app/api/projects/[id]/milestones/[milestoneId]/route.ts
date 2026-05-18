@@ -56,7 +56,7 @@ export async function PATCH(
       }
 
       const project = await prisma.project.findFirst({
-        where: { id: projectId },
+        where: { id: projectId, organizationId: orgId },
         select: { totalPrice: true },
       });
       updateData.amount = (Number(project!.totalPrice) * pct) / 100;
