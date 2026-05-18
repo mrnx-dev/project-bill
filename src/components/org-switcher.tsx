@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useUnsavedForm } from "@/hooks/use-unsaved-form";
 
 interface Organization {
   id: string;
@@ -37,6 +38,7 @@ interface OrgSwitcherProps {
 export function OrgSwitcher({ currentOrgName, currentOrgLogo }: OrgSwitcherProps) {
   const { data: session, update } = useSession();
   const router = useRouter();
+  const { confirmSwitch } = useUnsavedForm();
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState("");
@@ -79,6 +81,7 @@ export function OrgSwitcher({ currentOrgName, currentOrgLogo }: OrgSwitcherProps
   }
 
   async function switchOrg(orgId: string) {
+    if (!confirmSwitch()) return;
     if (orgId === activeOrgId) return; // prevent infinite re-render
     try {
       const res = await fetch(`/api/organizations/${orgId}/switch`, { method: "POST" });
