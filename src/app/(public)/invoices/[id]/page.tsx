@@ -97,6 +97,7 @@ export default async function InvoiceViewPage(props: {
     bankAccountNumber: null,
     companyWhatsApp: null,
     mayarApiKey: null,
+    organizationId: invoice.organizationId,
   };
 
   const lang = invoice.project.language === "id" ? "id" : "en";

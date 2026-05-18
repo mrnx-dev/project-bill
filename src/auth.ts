@@ -35,15 +35,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 password: "OIDC_MANAGED_USER",
                 role: role,
                 onboardingCompleted: false,
-                subscription: {
-                  create: {
-                    plan: "starter",
-                    status: "active",
-                    trialStartedAt: new Date(),
-                    trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-                    currentPeriodEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-                  },
-                },
               },
             });
 
@@ -53,6 +44,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             });
             await prisma.organizationMember.create({
               data: { userId: createdUser.id, organizationId: org.id, role: "OWNER" },
+            });
+            await prisma.subscription.create({
+              data: {
+                organizationId: org.id,
+                plan: "starter",
+                status: "active",
+                trialStartedAt: new Date(),
+                trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+                currentPeriodEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+              },
             });
             await prisma.user.update({
               where: { id: createdUser.id },
