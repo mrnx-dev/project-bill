@@ -92,35 +92,82 @@ model Subscription {
 // scripts/backfill-subscription-org.ts
 import { prisma } from "@/lib/prisma";
 
+const BATCH_SIZE = 500;
+
 async function backfill() {
-  const subs = await prisma.subscription.findMany({
-    where: { organizationId: null }, // Hanya row yang belum di-backfill
+  // Pre-flight check: detect duplicate subscriptions per userId
+  const duplicates = await prisma.subscription.groupBy({
+    by: ["userId"],
+    _count: { id: true },
+    having: { id: { _count: { gt: 1 } } },
   });
-
-  for (const sub of subs) {
-    // Cari OWNER membership — user ini pasti punya membership
-    const membership = await prisma.organizationMember.findFirst({
-      where: { userId: sub.userId, role: "OWNER" },
-      orderBy: { joinedAt: "asc" },
-    });
-
-    if (!membership) {
-      console.warn(`[SKIP] No OWNER membership for userId=${sub.userId}, skipping`);
-      continue;
+  if (duplicates.length > 0) {
+    console.warn(`[WARN] Found ${duplicates.length} users with multiple subscriptions. Merging...`);
+    for (const dup of duplicates) {
+      const subs = await prisma.subscription.findMany({
+        where: { userId: dup.userId },
+        orderBy: { createdAt: "asc" },
+      });
+      // Keep the oldest subscription, delete the rest
+      const [keep, ...rest] = subs;
+      await prisma.subscription.deleteMany({
+        where: { id: { in: rest.map((s) => s.id) } },
+      });
+      console.log(`[MERGE] userId=${dup.userId}: kept ${keep.id}, removed ${rest.length} duplicates`);
     }
-
-    await prisma.subscription.update({
-      where: { id: sub.id },
-      data: { organizationId: membership.organizationId },
-    });
-    console.log(`[OK] sub=${sub.id} → org=${membership.organizationId}`);
   }
 
-  // Verifikasi: semua row sudah punya organizationId
+  // Batch backfill — process in chunks of BATCH_SIZE
+  let processed = 0;
+  let skipped = 0;
+  let cursor: string | undefined = undefined;
+
+  while (true) {
+    const subs = await prisma.subscription.findMany({
+      where: { organizationId: null },
+      take: BATCH_SIZE,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      orderBy: { id: "asc" },
+    });
+
+    if (subs.length === 0) break;
+    cursor = subs[subs.length - 1].id;
+
+    for (const sub of subs) {
+      const membership = await prisma.organizationMember.findFirst({
+        where: { userId: sub.userId, role: "OWNER" },
+        orderBy: { joinedAt: "asc" },
+      });
+
+      if (!membership) {
+        console.warn(`[SKIP] No OWNER membership for userId=${sub.userId}, skipping`);
+        skipped++;
+        continue;
+      }
+
+      await prisma.subscription.update({
+        where: { id: sub.id },
+        data: { organizationId: membership.organizationId },
+      });
+      processed++;
+    }
+
+    console.log(`[PROGRESS] Batch done: processed=${processed}, skipped=${skipped}`);
+  }
+
+  // Pre-flight verification for Phase B: ensure no null organizationId remains
   const remaining = await prisma.subscription.count({
     where: { organizationId: null },
   });
-  console.log(`Remaining without orgId: ${remaining}`);
+
+  if (remaining > 0) {
+    console.error(`[BLOCKING] Cannot proceed to Phase B: ${remaining} subscriptions still have null organizationId`);
+    console.error(`[BLOCKING] Fix these rows manually before running Phase B migration.`);
+    process.exit(1);
+  }
+
+  console.log(`[DONE] Backfill complete. processed=${processed}, skipped=${skipped}`);
+  console.log(`[DONE] Pre-flight check PASSED: 0 rows with null organizationId — safe to proceed to Phase B`);
 }
 ```
 
@@ -208,6 +255,12 @@ export async function checkOrgLimit(orgId: string, resource: ResourceType) {
   }
   
   // ... sisanya sama, baca PLAN_LIMITS, count resource by orgId
+
+  // Logging observability: log setiap deny (PRD NFR)
+  if (!result.allowed) {
+    console.warn(`[LIMIT_DENY] orgId=${orgId} resource=${resource} current=${result.current} limit=${result.limit} plan=${sub.plan}`);
+  }
+  return result;
 }
 ```
 
@@ -264,7 +317,7 @@ Note: Code sudah benar (`organizationId: orgId`), tidak perlu diubah.
 
 **`POST /api/organizations/[id]/switch`**
 
-Sudah ada dan berfungsi baik. Tidak ada perubahan API. Response:
+Sudah ada dan berfungsi baik. **Perubahan:** tambah logging untuk observability (PRD NFR).
 
 ```json
 {
@@ -272,6 +325,13 @@ Sudah ada dan berfungsi baik. Tidak ada perubahan API. Response:
   "organizationId": "uuid",
   "activeOrganizationRole": "OWNER"
 }
+```
+
+**Logging tambahan:**
+
+```typescript
+// Di handler POST /api/organizations/[id]/switch
+console.log(`[ORG_SWITCH] userId=${session.user.id} fromOrg=${currentOrgId} toOrg=${targetOrgId} role=${role}`);
 ```
 
 ### 4.5 Organization List Endpoint (FR-3)
@@ -357,7 +417,15 @@ export function OrgSwitcher({ organizations, activeOrgId }: OrgSwitcherProps) {
   // Trigger: avatar org + nama org
   // Klik org lain → panggil POST /api/organizations/{id}/switch
   // → update() session → router.push("/board") → router.refresh()
+  // Guard: if (orgId === activeOrgId) return — prevent infinite re-render
 }
+
+// UI Detail Requirements (per PRD):
+// - Role badge: tampilkan role (OWNER/ADMIN/MEMBER) di samping nama org sebagai pill/badge kecil
+// - Keyboard accessible: Tab untuk navigate, Enter untuk select, ArrowUp/Down untuk navigate list
+// - Single org: tetap render switcher tapi non-interactive, menunjukkan nama org saja
+// - Unsaved form warning: sebelum switch, cek if ada form dengan isDirty state → tampilkan confirm dialog "You have unsaved changes"
+// - "Create Organization" link di footer PopoverContent → redirect ke /settings/organization/new
 ```
 
 **Component Tree:**
@@ -368,13 +436,21 @@ AppSidebar
 ├── SidebarNav (menu items)
 ├── SidebarFooter
 │   ├── OrgSwitcher              // NEW
-│   │   ├── Trigger button
+│   │   ├── Trigger button (avatar + nama org + chevron)
 │   │   └── PopoverContent
-│   │       ├── Current org highlight
-│   │       ├── Other orgs list
-│   │       └── "Create Organization" button
+│   │       ├── Current org (highlight + checkmark)
+│   │       ├── Divider
+│   │       ├── Other orgs list (nama + role badge)
+│   │       ├── Divider
+│   │       └── "Create Organization" link → /settings/organization/new
 │   └── UserMenu (profil + logout)
 ```
+
+**Keyboard Navigation (per PRD FR-3 AC-5):**
+- `Tab`: masuk/keluar switcher
+- `Enter`: pilih org
+- `ArrowDown`/`ArrowUp`: navigate daftar org
+- `Escape`: tutup popover
 
 ### 5.3 Data Fetching Flow (OrgSwitcher)
 
@@ -387,12 +463,13 @@ layout.tsx (server component)
 OrgSwitcher (client component)
   ├── Display org list from props
   ├── On switch click:
+  │   ├── Check unsaved form state → if dirty, show confirm dialog "You have unsaved changes"
   │   ├── POST /api/organizations/{id}/switch
   │   ├── await update() // NextAuth session update
   │   ├── router.push("/board")
   │   └── router.refresh()
   └── Error handling:
-      ├── 401 → redirect /login
+      ├── 401 → redirect /login with callbackUrl
       ├── 403 → toast "Access denied"
       └── Network → toast "Connection error"
 ```
@@ -458,22 +535,24 @@ User create new client
 
 ### Phase 1: Foundation — Subscription Org-Scoped (FR-1)
 
-**8 files, ~2-3 commits**
+**~10 files, ~2-3 commits**
 
-| # | Task | Files | Est. |
-|---|------|-------|------|
-| 1 | Schema: tambah `organizationId` nullable ke `Subscription` | `prisma/schema.prisma` | 5m |
-| 2 | Backfill script: idempotent, untuk setiap subscription cari OWNER | `scripts/backfill-subscription-org.ts` | 15m |
-| 3 | Schema: hapus `userId`, `unique` pindah ke `organizationId`, tambah relasi | `prisma/schema.prisma` | 5m |
-| 4 | Refactor `checkOrgLimit()` — langsung query `findUnique({ organizationId })` | `src/lib/billing/subscription.ts` | 10m |
-| 5 | Refactor `incrementOrgUsage()` — langsung update `organizationId` | `src/lib/billing/subscription.ts` | 5m |
-| 6 | Deprecate: hapus `checkLimit()`, `incrementUsage()`, `getOrgOwnerId()` | `src/lib/billing/subscription.ts` | 5m |
-| 7 | Update `GET /api/subscription` — query by `organizationId` | `src/app/api/subscription/route.ts` | 5m |
-| 8 | Update `PUT /api/subscription` — query by `organizationId` | `src/app/api/subscription/route.ts` | 5m |
-| 9 | Update `POST /api/organizations` — auto-create subscription with trial | `src/app/api/organizations/route.ts` | 5m |
-| 10 | Update `POST /api/organizations/[id]/delete` — hapus subscription juga | `src/app/api/organizations/[id]/delete/route.ts` | 5m |
-| 11 | Update `POST /api/subscription/checkout` — query by `organizationId` | `src/app/api/subscription/checkout/route.ts` | 5m |
-| 12 | Update `GET /api/subscription/check` — query by `organizationId` | `src/app/api/subscription/check/route.ts` | 5m |
+|| # | Task | Files | Est. ||
+||---|------|-------|------||
+|| 1 | Schema: tambah `organizationId` nullable ke `Subscription` | `prisma/schema.prisma` | 5m ||
+|| 2 | Backfill script: idempotent, batch cursor-based, duplicate detection, pre-flight verification | `scripts/backfill-subscription-org.ts` | 20m ||
+|| 3 | Pre-flight check task: jalankan backfill, verify 0 rows with null `organizationId` before Phase B | (manual run) | 5m ||
+|| 4 | Schema: hapus `userId`, `unique` pindah ke `organizationId`, tambah relasi + `@@index` | `prisma/schema.prisma` | 5m ||
+|| 5 | Refactor `checkOrgLimit()` — langsung query `findUnique({ organizationId })` + add limit-deny logging | `src/lib/billing/subscription.ts` | 10m ||
+|| 6 | Refactor `incrementOrgUsage()` — langsung update `organizationId` | `src/lib/billing/subscription.ts` | 5m ||
+|| 7 | Deprecate: hapus `checkLimit()`, `incrementUsage()`, `getOrgOwnerId()` | `src/lib/billing/subscription.ts` | 5m ||
+|| 8 | Update `GET /api/subscription` — query by `organizationId` | `src/app/api/subscription/route.ts` | 5m ||
+|| 9 | Update `PUT /api/subscription` — query by `organizationId` | `src/app/api/subscription/route.ts` | 5m ||
+|| 10 | Update `POST /api/organizations` — auto-create subscription with trial | `src/app/api/organizations/route.ts` | 5m ||
+|| 11 | Update `POST /api/organizations/[id]/delete` — hapus subscription juga | `src/app/api/organizations/[id]/delete/route.ts` | 5m ||
+|| 12 | Update `POST /api/subscription/checkout` — query by `organizationId` | `src/app/api/subscription/checkout/route.ts` | 5m ||
+|| 13 | Update `GET /api/subscription/check` — query by `organizationId` | `src/app/api/subscription/check/route.ts` | 5m ||
+|| 14 | Add logging to `POST /api/organizations/[id]/switch` — log userId, fromOrg, toOrg | `src/app/api/organizations/[id]/switch/route.ts` | 5m ||
 
 ### Phase 2: Data Isolation (FR-2)
 
@@ -486,12 +565,13 @@ User create new client
 
 ### Phase 3: Organization Switcher UI (FR-3)
 
-**2 files, ~1 commit**
+**~3 files, ~1-2 commits**
 
-| # | Task | Files | Est. |
-|---|------|-------|------|
-| 15 | Buat `OrgSwitcher` component | `src/components/org-switcher.tsx` | 30m |
-| 16 | Integrasikan ke `AppSidebar` + pass data dari `layout.tsx` | `src/components/app-sidebar.tsx` + `layout.tsx` | 15m |
+|| # | Task | Files | Est. ||
+||---|------|-------|------||
+|| 15 | Buat `OrgSwitcher` component — popover, role badge, keyboard nav, single-org display, unsaved form check | `src/components/org-switcher.tsx` | 45m ||
+|| 16 | Integrasikan ke `AppSidebar` + pass data dari `layout.tsx` | `src/components/app-sidebar.tsx` + `layout.tsx` | 15m ||
+|| 17 | Add unsaved form detection hook — `useUnsavedForm` yang cek `formState.isDirty` sebelum switch | `src/hooks/use-unsaved-form.ts` | 10m ||
 
 ---
 
@@ -511,24 +591,36 @@ User create new client
 ## 10. Open Questions
 
 - [ ] **Org icon/logo untuk OrgSwitcher:** Saat ini `Organization.logoUrl` sudah ada di schema, tapi tidak ada UI untuk upload. Phase ini skip — gunakan avatar dengan inisial nama org sebagai fallback.
-- [ ] **"Create Organization" button di OrgSwitcher:** PRD mention sebagai opsional. Implementasi minimal — tampilkan link `+` di footer switcher yang redirect ke `/settings/organization/new`. Page tersebut sudah ada? Akan dicek saat implementasi.
+- [x] ~~**"Create Organization" button di OrgSwitcher"**~~ → Resolved: tampilkan link `+` di footer switcher yang redirect ke `/settings/organization/new`.
+- [x] ~~**Unsaved form warning sebelum switch**~~ → Resolved: task #17 menambahkan `useUnsavedForm` hook yang deteksi `formState.isDirty` dan tampilkan confirm dialog.
+- [x] ~~**Observability / logging**~~ → Resolved: task #14 menambahkan logging di switch endpoint, dan `checkOrgLimit()` deny logging di task #5.
 
 ---
 
 ## 11. Blueprint-to-PRD Gap Audit
 
-| Check | Result |
-|-------|--------|
-| **FR-1: Migration plan detail** | ✅ Covered — Phase A (backfill) + Phase B (switch) |
-| **FR-1: Auto-create trial subscription** | ✅ `checkOrgLimit()` upsert fallback |
-| **FR-1: `checkOrgLimit` refactor** | ✅ Langsung query, tanpa cari OWNER |
-| **FR-1: Deprecated functions removal** | ✅ `checkLimit`, `incrementUsage`, `getOrgOwnerId` marked |
-| **FR-2: layout.tsx guard `!orgId`** | ✅ Redirect guard |
-| **FR-2: settings/route.ts fix** | ✅ Scoped query |
-| **FR-3: OrgSwitcher component** | ✅ New file + integration plan |
-| **FR-3: Sidebar footer placement** | ✅ Component tree diagram |
-| **FR-3: Error handling** | ✅ 401, 403, Network |
-| **Edge case: Dua OWNER** | ✅ Backfill `orderBy: { joinedAt: "asc" }` ambil pertama |
-| **Edge case: Session expired switch** | ✅ 401 → redirect login with callbackUrl |
-| **Edge case: User baru no org** | ✅ Redirect guard |
-| **Self-hosted backward compat** | ✅ Semua bypass tetap di `isSelfHosted()` guard pertama |
+|| Check | Result ||
+||-------|--------||
+|| **FR-1: Migration plan detail** | ✅ Covered — Phase A (nullable + backfill) + Phase B (switch) ||
+|| **FR-1: Backfill performance (100K+ rows)** | ✅ Covered — Batch cursor-based, BATCH_SIZE=500, progress logging ||
+|| **FR-1: Duplicate subscription detection** | ✅ Covered — groupBy detection + merge strategy sebelum backfill ||
+|| **FR-1: Pre-flight verification before Phase B** | ✅ Covered — task #3 eksplisit, script exit(1) jika masih ada null ||
+|| **FR-1: Auto-create trial subscription** | ✅ `checkOrgLimit()` upsert fallback ||
+|| **FR-1: `checkOrgLimit` refactor** | ✅ Langsung query, tanpa cari OWNER ||
+|| **FR-1: Deprecated functions removal** | ✅ `checkLimit`, `incrementUsage`, `getOrgOwnerId` marked ||
+|| **FR-1: Switch endpoint logging** | ✅ task #14 — log userId, fromOrg, toOrg ||
+|| **FR-1: Limit deny logging** | ✅ task #5 — `[LIMIT_DENY]` log di checkOrgLimit ||
+|| **FR-2: layout.tsx guard `!orgId`** | ✅ Redirect guard ||
+|| **FR-2: settings/route.ts fix** | ✅ Scoped query ||
+|| **FR-3: OrgSwitcher component** | ✅ New file + integration plan ||
+|| **FR-3: Sidebar footer placement** | ✅ Component tree diagram ||
+|| **FR-3: Error handling** | ✅ 401 (with callbackUrl), 403, Network ||
+|| **FR-3: Role badge display** | ✅ OrgSwitcher UI requirements — role badge pill di samping nama org ||
+|| **FR-3: Keyboard accessibility** | ✅ Tab/Enter/ArrowUp/Down/Escape documented ||
+|| **FR-3: Single org display** | ✅ Non-interactive switcher, shows org name only ||
+|| **FR-3: Unsaved form warning** | ✅ task #17 `useUnsavedForm` hook + confirm dialog ||
+|| **FR-3: Create org link** | ✅ Link di footer PopoverContent → /settings/organization/new ||
+|| **Edge case: Dua OWNER** | ✅ Backfill `orderBy: { joinedAt: "asc" }` ambil pertama ||
+|| **Edge case: Session expired switch** | ✅ 401 → redirect login with callbackUrl ||
+|| **Edge case: User baru no org** | ✅ Redirect guard ||
+|| **Self-hosted backward compat** | ✅ Semua bypass tetap di `isSelfHosted()` guard pertama ||
