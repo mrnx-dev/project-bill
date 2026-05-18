@@ -424,7 +424,7 @@ export function OrgSwitcher({ organizations, activeOrgId }: OrgSwitcherProps) {
 // - Role badge: tampilkan role (OWNER/ADMIN/MEMBER) di samping nama org sebagai pill/badge kecil
 // - Keyboard accessible: Tab untuk navigate, Enter untuk select, ArrowUp/Down untuk navigate list
 // - Single org: tetap render switcher tapi non-interactive, menunjukkan nama org saja
-// - Unsaved form warning: sebelum switch, cek if ada form dengan isDirty state → tampilkan confirm dialog "You have unsaved changes"
+// - "Unsaved form warning": sebelum switch, hook useUnsavedForm menggunakan MutationObserver untuk deteksi atribut `data-dirty="true"` di form elements → tampilkan confirm dialog "You have unsaved changes"
 // - "Create Organization" link di footer PopoverContent → redirect ke /settings/organization/new
 ```
 
@@ -463,7 +463,7 @@ layout.tsx (server component)
 OrgSwitcher (client component)
   ├── Display org list from props
   ├── On switch click:
-  │   ├── Check unsaved form state → if dirty, show confirm dialog "You have unsaved changes"
+  │   ├── Check unsaved form via useUnsavedForm (MutationObserver + data-dirty) → if dirty, show confirm dialog "You have unsaved changes"
   │   ├── POST /api/organizations/{id}/switch
   │   ├── await update() // NextAuth session update
   │   ├── router.push("/board")
@@ -571,7 +571,7 @@ User create new client
 ||---|------|-------|------||
 || 15 | Buat `OrgSwitcher` component — popover, role badge, keyboard nav, single-org display, unsaved form check | `src/components/org-switcher.tsx` | 45m ||
 || 16 | Integrasikan ke `AppSidebar` + pass data dari `layout.tsx` | `src/components/app-sidebar.tsx` + `layout.tsx` | 15m ||
-|| 17 | Add unsaved form detection hook — `useUnsavedForm` yang cek `formState.isDirty` sebelum switch | `src/hooks/use-unsaved-form.ts` | 10m ||
+|| 17 | Add unsaved form detection hook — `useUnsavedForm` yang menggunakan MutationObserver untuk deteksi `data-dirty="true"` attribute sebelum switch | `src/hooks/use-unsaved-form.ts` | 10m ||
 
 ---
 
@@ -584,7 +584,7 @@ User create new client
 | User dengan multiple SUBSCRIPTION rows (data corrupt) | `@unique` constraint gagal di Phase B | Low | Query `groupBy` di backfill script untuk deteksi duplikat sebelum Phase B. Handle: merge ke satu row, drop duplicate |
 | Self-hosted DB tidak punya subscription sama sekali | `checkOrgLimit()` crash | Low | `findUnique` return null → auto-create trial. Self-hosted selalu bypass di guard pertama |
 | OrgSwitcher trigger infinite re-render loop | UI freeze | Low | `update() session → router.refresh()` — pastikan callback hanya fire sekali. Guard: `if (orgId === activeOrgId) return` |
-| User switch org saat ada form yang belum di-save | Data hilang | Medium | Tambahkan `beforeSwitch()` callback: deteksi `formState.isDirty` di form active. Jika dirty, tampilkan confirm dialog "You have unsaved changes" sebelum switch |
+| User switch org saat ada form yang belum di-save | Data hilang | Medium | Tambahkan `beforeSwitch()` callback: deteksi via `useUnsavedForm` hook (MutationObserver + `data-dirty` attribute) di form active. Jika dirty, tampilkan confirm dialog "You have unsaved changes" sebelum switch |
 
 ---
 
@@ -592,7 +592,7 @@ User create new client
 
 - [ ] **Org icon/logo untuk OrgSwitcher:** Saat ini `Organization.logoUrl` sudah ada di schema, tapi tidak ada UI untuk upload. Phase ini skip — gunakan avatar dengan inisial nama org sebagai fallback.
 - [x] ~~**"Create Organization" button di OrgSwitcher"**~~ → Resolved: tampilkan link `+` di footer switcher yang redirect ke `/settings/organization/new`.
-- [x] ~~**Unsaved form warning sebelum switch**~~ → Resolved: task #17 menambahkan `useUnsavedForm` hook yang deteksi `formState.isDirty` dan tampilkan confirm dialog.
+- [x] ~~**Unsaved form warning sebelum switch**~~ → Resolved: task #17 menambahkan `useUnsavedForm` hook yang menggunakan MutationObserver untuk deteksi `data-dirty` attribute dan tampilkan confirm dialog.
 - [x] ~~**Observability / logging**~~ → Resolved: task #14 menambahkan logging di switch endpoint, dan `checkOrgLimit()` deny logging di task #5.
 
 ---
@@ -618,7 +618,7 @@ User create new client
 || **FR-3: Role badge display** | ✅ OrgSwitcher UI requirements — role badge pill di samping nama org ||
 || **FR-3: Keyboard accessibility** | ✅ Tab/Enter/ArrowUp/Down/Escape documented ||
 || **FR-3: Single org display** | ✅ Non-interactive switcher, shows org name only ||
-|| **FR-3: Unsaved form warning** | ✅ task #17 `useUnsavedForm` hook + confirm dialog ||
+|| **FR-3: Unsaved form warning** | ✅ task #17 `useUnsavedForm` hook (MutationObserver + data-dirty) + confirm dialog ||
 || **FR-3: Create org link** | ✅ Link di footer PopoverContent → /settings/organization/new ||
 || **Edge case: Dua OWNER** | ✅ Backfill `orderBy: { joinedAt: "asc" }` ambil pertama ||
 || **Edge case: Session expired switch** | ✅ 401 → redirect login with callbackUrl ||
