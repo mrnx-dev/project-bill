@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { PLAN_PRICING, getSubscription } from "@/lib/billing/subscription";
+import { PLAN_PRICING, getSubscriptionByOrg } from "@/lib/billing/subscription";
 import { createPaymentLink } from "@/lib/billing/mayar";
 
 export async function POST(request: Request) {
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const userId = session.user.id;
+    const orgId = session.user.activeOrganizationId!;
     const body = await request.json();
     const { plan, billing } = body;
 
@@ -25,29 +25,24 @@ export async function POST(request: Request) {
       return new NextResponse("Free plan selected", { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      return new NextResponse("User not found", { status: 404 });
-    }
-
     // Ensure subscription exists
-    await getSubscription(userId);
+    await getSubscriptionByOrg(orgId);
 
     // Create payment link via Mayar
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const payment = await createPaymentLink({
       amount: price,
-      customerName: user.name || "Customer",
-      customerEmail: user.email || "",
+      customerName: session.user.name || "Customer",
+      customerEmail: session.user.email || "",
       customerMobile: "08000000000",
       description: `ProjectBill - Upgrade to ${plan.toUpperCase()} (${billing})`,
       redirectUrl: `${baseUrl}/settings/subscription?success=true`,
-      organizationId: session.user.activeOrganizationId!,
+      organizationId: orgId,
     });
 
     // Save payment intent
     await prisma.subscription.update({
-      where: { userId },
+      where: { organizationId: orgId },
       data: {
         mayarPaymentId: payment.id,
       },
