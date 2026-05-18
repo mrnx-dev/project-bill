@@ -33,7 +33,7 @@ export async function POST(
 
     // 1. Check if the project exists
     const project = await prisma.project.findFirst({
-      where: { id: projectId },
+      where: { id: projectId, organizationId: orgId },
       include: { invoices: true },
     });
 
@@ -63,7 +63,7 @@ export async function POST(
         },
       }),
       prisma.project.update({
-      where: { id: projectId },
+        where: { id: projectId, organizationId: orgId },
         data: {
           totalPrice: {
             increment: numericPrice,
