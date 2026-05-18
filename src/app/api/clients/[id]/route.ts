@@ -18,7 +18,7 @@ export async function PATCH(
     const orgId = session.user.activeOrganizationId!;
 
     const existing = await prisma.client.findFirst({
-      where: { id },
+      where: { id, organizationId: orgId },
     });
 
     if (!existing) {
@@ -26,7 +26,7 @@ export async function PATCH(
     }
 
     const client = await prisma.client.update({
-      where: { id },
+      where: { id, organizationId: orgId },
       data: { name, email, phone },
     });
 
@@ -83,7 +83,7 @@ export async function DELETE(
     const orgId = session.user.activeOrganizationId!;
 
     const clientWithInvoices = await prisma.client.findFirst({
-      where: { id },
+      where: { id, organizationId: orgId },
       include: {
         projects: {
           include: { invoices: true },
@@ -101,12 +101,12 @@ export async function DELETE(
 
     if (hasPaidInvoices) {
       await prisma.client.update({
-        where: { id },
+        where: { id, organizationId: orgId },
         data: { isArchived: true },
       });
     } else {
       await prisma.client.delete({
-        where: { id },
+        where: { id, organizationId: orgId },
       });
     }
 
