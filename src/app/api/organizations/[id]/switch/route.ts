@@ -22,6 +22,8 @@ export async function POST(
       return NextResponse.json({ error: "You are not a member of this organization" }, { status: 403 });
     }
 
+    console.log(`[ORG_SWITCH] userId=${session.user.id} fromOrg=${session.user.activeOrganizationId ?? "none"} toOrg=${id} role=${membership.role}`);
+
     return NextResponse.json({
       success: true,
       organizationId: id,
