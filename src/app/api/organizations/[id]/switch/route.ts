@@ -37,3 +37,43 @@ export async function POST(
     );
   }
 }
+
+// Handle auto-redirect from layout.tsx when user's active org is inaccessible
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      const loginUrl = `/login?callbackUrl=${encodeURIComponent(new URL(request.url).pathname)}`;
+      return NextResponse.redirect(new URL(loginUrl, request.url));
+    }
+
+    const { id } = await params;
+    const url = new URL(request.url);
+    const isAuto = url.searchParams.get("auto") === "true";
+
+    const membership = await prisma.organizationMember.findUnique({
+      where: { userId_organizationId: { userId: session.user.id, organizationId: id } },
+    });
+
+    if (!membership) {
+      return NextResponse.redirect(new URL("/onboarding/organization", request.url));
+    }
+
+    // For auto-redirect, just redirect to dashboard
+    if (isAuto) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    return NextResponse.json({
+      success: true,
+      organizationId: id,
+      activeOrganizationRole: membership.role,
+    });
+  } catch (error) {
+    console.error("Failed to switch organization:", error);
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+}

@@ -41,6 +41,31 @@ export default async function DashboardLayout({
     redirect("/onboarding/organization");
   }
 
+  // Verify user still has access to active org
+  const membership = await prisma.organizationMember.findFirst({
+    where: { userId: session.user.id, organizationId: orgId },
+    include: { organization: true },
+  });
+
+  if (!membership || membership.organization.deletedAt) {
+    // User lost access or org was deleted — find next available org
+    const nextOrg = await prisma.organizationMember.findFirst({
+      where: {
+        userId: session.user.id,
+        organization: { deletedAt: null },
+      },
+      include: { organization: true },
+      orderBy: { joinedAt: "asc" },
+    });
+
+    if (!nextOrg) {
+      redirect("/onboarding/organization");
+    }
+
+    // Auto-switch to next available org via switch endpoint
+    redirect(`/api/organizations/${nextOrg.organizationId}/switch?auto=true`);
+  }
+
   const dbUser = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { name: true, email: true, onboardingCompleted: true },
