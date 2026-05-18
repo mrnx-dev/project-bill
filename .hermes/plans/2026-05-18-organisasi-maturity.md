@@ -1,6 +1,9 @@
 # Organisasi Maturity — Multi-Tenant Production Readiness Implementation Plan
 
-> **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
+> **Status:** COMPLETED — 2025-05-18. Total: 17 commits across 4 phases.
+> 
+> **Completed phases:** Phase 1 (Tasks 1-12), Phase 2 (Tasks 13-14), Phase 3 (Tasks 15a-18), Phase 4 (Tasks 19-23b).
+> **Remaining pre-existing TS errors:** settings-form-client (zodResolver), send-invoice/send-receipt (mocked) — not related to this plan.
 
 **Goal:** Migrate Subscription from user-scoped to org-scoped, fix all data isolation leaks in dashboard/settings, and enhance OrgSwitcher with PRD-mandated UX features.
 
