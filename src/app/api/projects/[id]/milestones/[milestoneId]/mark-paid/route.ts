@@ -37,7 +37,7 @@ export async function POST(
       // Also mark the linked invoice as paid if it exists
       if (milestone.invoiceId) {
         await tx.invoice.update({
-          where: { id: milestone.invoiceId },
+          where: { id: milestone.invoiceId, organizationId: orgId },
           data: { status: "paid", paidAt: new Date() },
         });
       }
