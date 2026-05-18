@@ -82,14 +82,24 @@ export function OrgSwitcher({ currentOrgName, currentOrgLogo }: OrgSwitcherProps
     if (orgId === activeOrgId) return; // prevent infinite re-render
     try {
       const res = await fetch(`/api/organizations/${orgId}/switch`, { method: "POST" });
-      if (res.ok) {
-        const data = await res.json();
-        await update({ activeOrganizationId: orgId, activeOrganizationRole: data.activeOrganizationRole });
-        setOpen(false);
-        router.refresh();
+      if (res.status === 401) {
+        router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
+        return;
       }
+      if (res.status === 403) {
+        toast.error("Access denied. You are not a member of this organization.");
+        return;
+      }
+      if (!res.ok) {
+        toast.error("Connection error. Please try again.");
+        return;
+      }
+      const data = await res.json();
+      await update({ activeOrganizationId: orgId, activeOrganizationRole: data.activeOrganizationRole });
+      setOpen(false);
+      router.refresh();
     } catch {
-      toast.error("Failed to switch organization");
+      toast.error("Connection error. Please try again.");
     }
   }
 
