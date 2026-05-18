@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { getSubscription, checkTrialStatus, isSelfHosted, PLAN_LIMITS, type PlanType } from "@/lib/billing/subscription";
+import { getSubscriptionByOrg, checkTrialStatus, isSelfHosted, PLAN_LIMITS, type PlanType } from "@/lib/billing/subscription";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -23,8 +23,8 @@ export async function GET() {
             });
         }
 
-        const sub = await getSubscription(session.user.id);
-        const trialStatus = await checkTrialStatus(session.user.id);
+        const sub = await getSubscriptionByOrg(orgId);
+        const trialStatus = await checkTrialStatus(orgId);
         const planName = sub.plan as PlanType;
         const limits = PLAN_LIMITS[planName] || PLAN_LIMITS.starter;
 
@@ -34,7 +34,7 @@ export async function GET() {
             prisma.project.count({ where: { organizationId: orgId, status: { not: "DONE" } } }),
             prisma.recurringInvoice.count({ where: { organizationId: orgId, isActive: true } }),
             prisma.sOWTemplate.count({ where: { organizationId: orgId } }),
-            prisma.user.count(),
+            prisma.organizationMember.count({ where: { organizationId: orgId } }),
         ]);
 
         return NextResponse.json({
@@ -70,7 +70,6 @@ export async function GET() {
 
 // PUT: Admin-only endpoint to update a user's subscription plan
 const updateSchema = z.object({
-    userId: z.string().uuid().optional(), // If not provided, updates current user
     plan: z.enum(["starter", "pro", "business"]),
 });
 
@@ -105,14 +104,14 @@ export async function PUT(request: Request) {
             );
         }
 
-        const { userId, plan } = validation.data;
-        const targetUserId = userId || session.user.id;
+        const { plan } = validation.data;
+        const orgId = session.user.activeOrganizationId!;
 
         // Ensure subscription exists first
-        await getSubscription(targetUserId);
+        await getSubscriptionByOrg(orgId);
 
         const updated = await prisma.subscription.update({
-            where: { userId: targetUserId },
+            where: { organizationId: orgId },
             data: { plan },
         });
 
