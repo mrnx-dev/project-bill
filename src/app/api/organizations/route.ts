@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { createOrganizationSchema } from "@/lib/validations/organization";
+import { isSelfHosted } from "@/lib/billing/subscription";
 
 export async function GET() {
   try {
@@ -66,6 +67,23 @@ export async function POST(request: Request) {
         role: "OWNER",
       },
     });
+
+    // Auto-create trial subscription for managed mode
+    if (!isSelfHosted()) {
+      const now = new Date();
+      const trialEnds = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+      await prisma.subscription.create({
+        data: {
+          organizationId: org.id,
+          plan: "pro",
+          status: "TRIALING",
+          trialStartedAt: now,
+          trialEndsAt: trialEnds,
+          currentPeriodStart: now,
+          currentPeriodEnd: trialEnds,
+        },
+      });
+    }
 
     return NextResponse.json(
       { ...org, role: "OWNER" },
