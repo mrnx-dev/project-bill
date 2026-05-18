@@ -321,12 +321,12 @@ git add prisma/schema.prisma prisma/migrations/ && git commit -m "feat(billing):
 
 ---
 
-### Task 4: Refactor `getSubscription` → `getSubscriptionByOrg` and remove user-scoped helpers
+### Task 4a: Replace `getSubscription` → `getSubscriptionByOrg` + update `checkTrialStatus` and `cancelSubscription`
 
-**Objective:** Replace user-scoped `getSubscription(userId)` with org-scoped `getSubscriptionByOrg(orgId)`. Remove dead code: `checkLimit()`, `incrementUsage()`, `getOrgOwnerId()`.
+**Objective:** Replace the core getter function and its two direct dependents to use orgId instead of userId.
 
 **Files:**
-- Modify: `src/lib/billing/subscription.ts` (full refactor)
+- Modify: `src/lib/billing/subscription.ts` (lines ~165-200)
 
 **Step 1: Replace `getSubscription(userId)` with `getSubscriptionByOrg(orgId)`**
 
@@ -400,9 +400,32 @@ export async function cancelSubscription(organizationId: string): Promise<Subscr
 }
 ```
 
-**Step 4: Refactor `checkOrgLimit` — direct query without getOrgOwnerId**
+**Step 4: Verify no compilation errors yet** (expect some — callers not yet updated)
 
-Replace lines 68-130 of `checkOrgLimit`:
+```bash
+cd /root/projects/project-bill && npx tsc --noEmit 2>&1 | head -20
+```
+
+Expected: Some callers of old functions will error — fixed in Tasks 5-12.
+
+**Step 5: Commit**
+
+```bash
+git add src/lib/billing/subscription.ts && git commit -m "feat(billing): replace getSubscription with getSubscriptionByOrg, update checkTrialStatus and cancelSubscription"
+```
+
+---
+
+### Task 4b: Refactor `checkOrgLimit` — direct query without getOrgOwnerId + add limit-deny logging
+
+**Objective:** Remove the getOrgOwnerId lookup from checkOrgLimit. Query subscription directly by organizationId. Add `[LIMIT_DENY]` logging per PRD NFR.
+
+**Files:**
+- Modify: `src/lib/billing/subscription.ts` (checkOrgLimit function)
+
+**Step 1: Refactor `checkOrgLimit` to use direct orgId query**
+
+Replace the `checkOrgLimit` function entirely:
 
 ```typescript
 export async function checkOrgLimit(
@@ -463,7 +486,7 @@ export async function checkOrgLimit(
 
   const result: LimitCheckResult = { allowed: current < limit, current, limit, plan: planName };
 
-  // Logging observability: log every deny (PRD NFR)
+  // Observability: log every deny
   if (!result.allowed) {
     console.warn(`[LIMIT_DENY] orgId=${organizationId} resource=${resource} current=${result.current} limit=${result.limit} plan=${sub.plan}`);
   }
@@ -472,7 +495,28 @@ export async function checkOrgLimit(
 }
 ```
 
-**Step 5: Refactor `incrementOrgUsage` — direct update without getOrgOwnerId**
+**Step 2: Verify compilation**
+
+```bash
+cd /root/projects/project-bill && npx tsc --noEmit 2>&1 | head -20
+```
+
+**Step 3: Commit**
+
+```bash
+git add src/lib/billing/subscription.ts && git commit -m "feat(billing): refactor checkOrgLimit to direct orgId query, add limit-deny logging"
+```
+
+---
+
+### Task 4c: Refactor `incrementOrgUsage` — direct update without getOrgOwnerId
+
+**Objective:** Remove the getOrgOwnerId lookup from incrementOrgUsage. Update subscription directly by organizationId.
+
+**Files:**
+- Modify: `src/lib/billing/subscription.ts` (incrementOrgUsage function)
+
+**Step 1: Refactor `incrementOrgUsage`**
 
 Replace lines 132-151:
 
@@ -495,17 +539,38 @@ export async function incrementOrgUsage(
 }
 ```
 
-Note: Blueprint menginstruksikan langsung update tanpa `getSubscriptionByOrg()` call dulu — lebih efisien, satu query bukan dua.
+Note: This directly updates by organizationId — one query instead of two (no getSubscriptionByOrg call needed).
 
-**Step 6: Remove dead code**
+**Step 2: Verify compilation**
 
-Delete the following functions entirely from `src/lib/billing/subscription.ts`:
-- `getOrgOwnerId()` (lines 61-66)
-- `getSubscription(userId)` — the old one being replaced
-- `checkLimit()` (lines 265-339) — user-scoped, never called in production src
-- `incrementUsage()` (lines 349-369) — user-scoped, never called in production src
+```bash
+cd /root/projects/project-bill && npx tsc --noEmit 2>&1 | head -20
+```
 
-**Step 7: Verify no compilation errors**
+**Step 3: Commit**
+
+```bash
+git add src/lib/billing/subscription.ts && git commit -m "feat(billing): refactor incrementOrgUsage to direct orgId update"
+```
+
+---
+
+### Task 4d: Remove dead code — delete `checkLimit`, `incrementUsage`, `getOrgOwnerId`, old `getSubscription`
+
+**Objective:** Remove all user-scoped helper functions that are no longer needed. These were replaced in Tasks 4a-4c.
+
+**Files:**
+- Modify: `src/lib/billing/subscription.ts`
+
+**Step 1: Delete the following functions entirely**
+
+Delete these functions from `src/lib/billing/subscription.ts`:
+- `getOrgOwnerId()` (around lines 61-66)
+- `getSubscription(userId)` — the old user-scoped version
+- `checkLimit()` (around lines 265-339) — user-scoped, never called in production src
+- `incrementUsage()` (around lines 349-369) — user-scoped, never called in production src
+
+**Step 2: Verify no compilation errors**
 
 ```bash
 cd /root/projects/project-bill && npx tsc --noEmit 2>&1 | head -50
@@ -513,10 +578,10 @@ cd /root/projects/project-bill && npx tsc --noEmit 2>&1 | head -50
 
 Expected: Compilation errors pointing to remaining callers of removed functions (to be fixed in later tasks).
 
-**Step 8: Commit**
+**Step 3: Commit**
 
 ```bash
-git add src/lib/billing/subscription.ts && git commit -m "feat(billing): refactor to org-scoped getSubscriptionByOrg, remove dead user-scoped helpers"
+git add src/lib/billing/subscription.ts && git commit -m "refactor(billing): remove dead user-scoped helpers (getOrgOwnerId, checkLimit, incrementUsage, getSubscription)"
 ```
 
 ---
@@ -1026,9 +1091,9 @@ git add src/app/api/settings/route.ts && git commit -m "fix(data-isolation): sco
 
 ## Phase 3: Organization Switcher Enhancement (FR-3)
 
-### Task 15: Add role badge and keyboard navigation to OrgSwitcher
+### Task 15a: Add role badge UI to OrgSwitcher
 
-**Objective:** Enhance the existing OrgSwitcher component to display role badges next to org names and support full keyboard navigation.
+**Objective:** Display the user's role (OWNER/ADMIN/MEMBER) next to each org name in the OrgSwitcher popover list.
 
 **Files:**
 - Modify: `src/components/org-switcher.tsx`
@@ -1039,37 +1104,49 @@ git add src/app/api/settings/route.ts && git commit -m "fix(data-isolation): sco
 cat src/components/org-switcher.tsx
 ```
 
-**Step 2: Add role badge UI**
+**Step 2: Add role badge to each org item**
 
-In the org list item rendering, add a role badge:
+In the org list item rendering, add a role badge next to the org name:
 
 ```tsx
-// For each org item in the popover list, add a role badge next to the name:
 <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
   {org.role}
 </span>
 ```
 
-The badge should use different visual styles for OWNER/ADMIN/MEMBER:
-- OWNER: slightly emphasized (e.g., `bg-primary/10 text-primary`)
-- ADMIN: default muted
-- MEMBER: default muted
+Use different visual styles depending on role:
+- OWNER: slightly emphasized — `bg-primary/10 text-primary`
+- ADMIN: default muted — `bg-muted text-muted-foreground`
+- MEMBER: default muted — `bg-muted text-muted-foreground`
 
-**Step 3: Add keyboard navigation**
+**Step 3: Verify in browser**
 
-Ensure the OrgSwitcher popover supports:
-- `Tab` / `Shift+Tab`: navigate into/out of the switcher
-- `ArrowDown` / `ArrowUp`: cycle through org list items
-- `Enter`: select the focused org and trigger switch
-- `Escape`: close the popover
+```bash
+cd /root/projects/project-bill && npm run dev
+```
 
-If using shadcn/ui `Command` component (which already has keyboard support), ensure it's wired properly. If using custom Popover, add `onKeyDown` handler with focus management.
+Check: Role badges appear next to org names in the switcher.
 
-**Step 4: Add single-org non-interactive display**
+**Step 4: Commit**
 
-When `organizations.length === 1`, render the switcher as non-interactive — just show the org name and role badge without the popover trigger functionality.
+```bash
+git add src/components/org-switcher.tsx && git commit -m "feat(org-switcher): add role badges next to org names"
+```
 
-**Step 5: Add infinite re-render guard**
+---
+
+### Task 15b: Add single-org non-interactive display and infinite re-render guard
+
+**Objective:** When user has only 1 org, show the switcher as non-interactive (just the org name). Add a guard to prevent infinite re-render when switching to the same org.
+
+**Files:**
+- Modify: `src/components/org-switcher.tsx`
+
+**Step 1: Add single-org non-interactive mode**
+
+When `organizations.length === 1`, render the switcher as a static display — show org name + role badge without the popover trigger functionality. The trigger button should not open a popover; it should just display the current org.
+
+**Step 2: Add infinite re-render guard**
 
 Add a guard in the switch handler to prevent switching to the same org (infinite re-render loop per blueprint risk mitigation):
 
@@ -1080,33 +1157,88 @@ async function handleSwitch(orgId: string) {
 }
 ```
 
-**Step 6: Ensure 401 error handling redirects with callbackUrl**
+**Step 3: Verify in browser**
 
-In the switch error handler, verify that 401 responses redirect to `/login` with a `callbackUrl` parameter so the user returns to their current page after re-authentication:
+- With 1 org: switcher shows org name, no popover
+- Click on current org: nothing happens (guard works)
+
+**Step 4: Commit**
+
+```bash
+git add src/components/org-switcher.tsx && git commit -m "feat(org-switcher): single-org non-interactive display, re-render guard"
+```
+
+---
+
+### Task 15c: Add keyboard navigation to OrgSwitcher
+
+**Objective:** Make the OrgSwitcher fully keyboard accessible with Tab, Enter, ArrowUp/Down, and Escape support.
+
+**Files:**
+- Modify: `src/components/org-switcher.tsx`
+
+**Step 1: Add keyboard navigation**
+
+Ensure the OrgSwitcher popover supports:
+- `Tab` / `Shift+Tab`: navigate into/out of the switcher
+- `ArrowDown` / `ArrowUp`: cycle through org list items
+- `Enter`: select the focused org and trigger switch
+- `Escape`: close the popover
+
+If using shadcn/ui `Command` component (which already has keyboard support), ensure it's wired properly. If using custom Popover, add `onKeyDown` handler with focus management.
+
+**Step 2: Verify keyboard accessibility**
+
+- Tab into switcher → focus lands on trigger
+- Enter → opens popover
+- ArrowDown/ArrowUp → navigate org list
+- Enter on focused org → switch org
+- Escape → close popover
+
+**Step 3: Commit**
+
+```bash
+git add src/components/org-switcher.tsx && git commit -m "feat(org-switcher): keyboard navigation (Tab/Enter/Arrows/Escape)"
+```
+
+---
+
+### Task 15d: Add error handling (401/403/network) with callbackUrl redirect
+
+**Objective:** Handle all error cases in org switching: 401 redirect to login with callbackUrl, 403 toast "Access denied", network error toast.
+
+**Files:**
+- Modify: `src/components/org-switcher.tsx`
+
+**Step 1: Add error handling in the switch handler**
+
+In the switch function, add proper error handling for each HTTP status:
 
 ```tsx
 if (res.status === 401) {
   router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
   return;
 }
+if (res.status === 403) {
+  toast.error("Access denied. You are not a member of this organization.");
+  return;
+}
+if (!res.ok) {
+  toast.error("Connection error. Please try again.");
+  return;
+}
 ```
 
-**Step 7: Verify in browser**
+**Step 2: Verify error handling**
+
+- Simulate 401 (expired session) → redirect to /login with callbackUrl
+- Simulate 403 (no membership) → toast error
+- Simulate network error → toast error
+
+**Step 3: Commit**
 
 ```bash
-# Start dev server if not running
-cd /root/projects/project-bill && npm run dev
-```
-
-Check:
-- Switcher shows role badges
-- Keyboard navigation works (Tab, Enter, Arrows, Escape)
-- Single org shows as non-interactive
-
-**Step 8: Commit**
-
-```bash
-git add src/components/org-switcher.tsx && git commit -m "feat(org-switcher): add role badges, keyboard navigation, single-org display, re-render guard, 401 callbackUrl"
+git add src/components/org-switcher.tsx && git commit -m "feat(org-switcher): error handling for 401/403/network with callbackUrl redirect"
 ```
 
 ---
@@ -1442,23 +1574,16 @@ Save rollback procedure alongside the plan for reference during deployment.
 
 ---
 
-### Task 23: Handle edge case — user removed from active org or org deleted
+### Task 23a: Add membership verification + auto-switch in layout.tsx
 
-**Objective:** Add middleware/guard that detects when a user's active org is no longer accessible (removed or deleted) and auto-redirects them.
+**Objective:** Enhance the `!orgId` guard in layout.tsx to also verify the user still has access to their active org. If not, auto-switch to the next available org or redirect to onboarding.
 
 **Files:**
-- Create: `src/middleware/org-guard.ts` or modify: `src/middleware.ts` (if it exists)
-- Modify: `src/app/(dashboard)/layout.tsx` (enhance orgId guard from Task 13)
+- Modify: `src/app/(dashboard)/layout.tsx`
 
-**Step 1: Check if middleware.ts exists**
+**Step 1: Add membership verification after orgId guard**
 
-```bash
-ls src/middleware.ts
-```
-
-**Step 2: Enhance orgId guard in layout.tsx**
-
-In `src/app/(dashboard)/layout.tsx`, after the `!orgId` guard, add a membership verification:
+In `src/app/(dashboard)/layout.tsx`, after the `!orgId` guard (added in Task 13), add:
 
 ```typescript
 const orgId = session.user.activeOrganizationId;
@@ -1488,35 +1613,58 @@ if (!membership || membership.organization.deletedAt) {
     redirect("/onboarding/organization");
   }
 
-  // Auto-switch to next available org
-  // Note: we can't update session server-side in a server component easily.
-  // Instead, redirect to switch endpoint which handles session update
+  // Auto-switch to next available org via switch endpoint
   redirect(`/api/organizations/${nextOrg.organizationId}/switch?auto=true`);
 }
 ```
 
-**Step 3: Update switch endpoint to handle auto-redirect**
+**Step 2: Pass membership data to sidebar if needed**
 
-In `src/app/api/organizations/[id]/switch/route.ts`, add support for auto-query param:
+If the layout needs membership role info, add it to the data passed to AppSidebar.
+
+**Step 3: Verify compilation**
+
+```bash
+cd /root/projects/project-bill && npx tsc --noEmit 2>&1 | head -20
+```
+
+**Step 4: Commit**
+
+```bash
+git add src/app/\(dashboard\)/layout.tsx && git commit -m "feat(org): verify membership and auto-switch when user loses access to active org"
+```
+
+---
+
+### Task 23b: Update switch endpoint to handle auto-redirect
+
+**Objective:** Make the switch endpoint support an `?auto=true` query param so that programmatic redirects from layout.tsx auto-redirect back to dashboard after switching.
+
+**Files:**
+- Modify: `src/app/api/organizations/[id]/switch/route.ts`
+
+**Step 1: Add auto-redirect support**
+
+In the switch endpoint, after the successful switch response, add support for `?auto=true` query param:
 
 ```typescript
-// After successful switch, if auto=true, redirect to dashboard
+// After successful membership verification and session update...
 const url = new URL(request.url);
 if (url.searchParams.get("auto") === "true") {
   return NextResponse.redirect(new URL("/board", url.origin));
 }
 ```
 
-**Step 4: Verify in browser**
-
-- Remove user from active org → login again → should auto-switch to next org
-- Delete active org → should auto-switch to next org
-- No orgs available → redirect to onboarding
-
-**Step 5: Commit**
+**Step 2: Verify compilation**
 
 ```bash
-git add src/app/\(dashboard\)/layout.tsx src/app/api/organizations/[id]/switch/route.ts && git commit -m "feat(org): auto-redirect when user loses access to active org"
+cd /root/projects/project-bill && npx tsc --noEmit 2>&1 | head -20
+```
+
+**Step 3: Commit**
+
+```bash
+git add src/app/api/organizations/[id]/switch/route.ts && git commit -m "feat(org): switch endpoint supports auto-redirect param for programmatic org switching"
 ```
 
 ---
@@ -1525,19 +1673,19 @@ git add src/app/\(dashboard\)/layout.tsx src/app/api/organizations/[id]/switch/r
 
 | Phase | Tasks | Files | Est. |
 |-------|-------|-------|------|
-| Phase 1: Subscription Org-Scoped | 1-12 | ~11 files | ~100m |
+| Phase 1: Subscription Org-Scoped | 1, 2, 3, 4a, 4b, 4c, 4d, 5-12 | ~11 files | ~100m |
 | Phase 2: Data Isolation | 13-14 | ~2 files | ~15m |
-| Phase 3: Org Switcher Enhancement | 15-18 | ~4 files | ~75m |
-| Phase 4: Verification, Rollback & Edge Cases | 19-23 | ~2 files | ~45m |
-| **Total** | **23 tasks** | **~14 files** | **~235m** |
+| Phase 3: Org Switcher Enhancement | 15a, 15b, 15c, 15d, 16-18 | ~4 files | ~75m |
+| Phase 4: Verification, Rollback & Edge Cases | 19-22, 23a, 23b | ~2 files | ~45m |
+| **Total** | **29 tasks** | **~14 files** | **~235m** |
 
 **Critical dependency chain:**
 - Tasks 1-3 must be sequential (schema migration Phase A → backfill → Phase B)
-- Task 4 depends on Task 3 (schema change must complete first)
-- Tasks 5-7 depend on Task 4 (getSubscriptionByOrg must exist)
-- Task 8-12 can be done in any order after Task 4
+- Tasks 4a-4d depend on Task 3 (schema change must complete first)
+- Tasks 5-12 depend on Task 4a (getSubscriptionByOrg must exist)
 - Phase 2 tasks (13-14) are independent of Phase 1 but should follow after
-- Phase 3 tasks (15-18) are independent and can begin anytime
+- Phase 3 tasks (15a-18) are independent and can begin anytime
 - Task 22 (rollback) should be prepared BEFORE executing Task 3 (Phase B)
-- Task 23 (edge cases) should follow after Task 13 (layout guard)
+- Task 23a (edge cases) should follow after Task 13 (layout guard)
+- Task 23b depends on Task 23a (switch endpoint auto-redirect)
 - Phase 4 tasks (19-21) must be last
