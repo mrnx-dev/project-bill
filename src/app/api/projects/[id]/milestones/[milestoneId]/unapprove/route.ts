@@ -40,7 +40,7 @@ export async function POST(
     // Delete the invoice and rollback milestone atomically
     const updated = await prisma.$transaction(async (tx) => {
       if (milestone.invoiceId) {
-        await tx.invoice.delete({ where: { id: milestone.invoiceId } });
+        await tx.invoice.delete({ where: { id: milestone.invoiceId, organizationId: orgId } });
       }
       return tx.paymentMilestone.update({
         where: { id: milestoneId, organizationId: orgId },
