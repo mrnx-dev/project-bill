@@ -69,7 +69,7 @@ export async function POST(request: Request) {
         }
 
         const project = await prisma.project.findFirst({
-            where: { id: data.projectId },
+            where: { id: data.projectId, organizationId: orgId },
         });
 
         if (!project) {
