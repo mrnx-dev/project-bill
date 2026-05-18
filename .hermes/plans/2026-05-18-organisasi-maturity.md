@@ -1,6 +1,6 @@
 # Organisasi Maturity — Multi-Tenant Production Readiness Implementation Plan
 
-> **Status:** COMPLETED — 2025-05-18. Total: 17 commits across 4 phases.
+> **Status:** COMPLETED — 2025-05-18. Total: 19 commits across 4 phases.
 > 
 > **Completed phases:** Phase 1 (Tasks 1-12), Phase 2 (Tasks 13-14), Phase 3 (Tasks 15a-18), Phase 4 (Tasks 19-23b).
 > **Remaining pre-existing TS errors:** settings-form-client (zodResolver), send-invoice/send-receipt (mocked) — not related to this plan.
@@ -15,7 +15,7 @@
 
 ## Phase 1: Foundation — Subscription Org-Scoped (FR-1)
 
-### Task 1: Add nullable `organizationId` to Subscription model (Phase A)
+### Task 1: ✅ Add nullable `organizationId` to Subscription model (Phase A)
 
 **Objective:** Add `organizationId String?` field to Subscription so we can backfill existing rows before switching the unique constraint.
 
@@ -81,7 +81,7 @@ git add prisma/schema.prisma prisma/migrations/ && git commit -m "feat(billing):
 
 ---
 
-### Task 2: Create backfill script
+### Task 2: ✅ Create backfill script
 
 **Objective:** Create an idempotent backfill script that populates `organizationId` on every existing Subscription row by finding the user's OWNER membership. Handles duplicates, uses batch cursor-based processing for 100K+ rows, and includes pre-flight verification.
 
@@ -216,7 +216,7 @@ git add scripts/backfill-subscription-org.ts && git commit -m "feat(billing): ad
 
 ---
 
-### Task 3: Switch Subscription unique constraint from userId to organizationId (Phase B)
+### Task 3: ✅ Switch Subscription unique constraint from userId to organizationId (Phase B)
 
 **Objective:** Remove userId from Subscription, make organizationId the unique key, add Organization relation.
 
@@ -324,7 +324,7 @@ git add prisma/schema.prisma prisma/migrations/ && git commit -m "feat(billing):
 
 ---
 
-### Task 4a: Replace `getSubscription` → `getSubscriptionByOrg` + update `checkTrialStatus` and `cancelSubscription`
+### Task 4a: ✅ Replace `getSubscription` → `getSubscriptionByOrg` + update `checkTrialStatus` and `cancelSubscription`
 
 **Objective:** Replace the core getter function and its two direct dependents to use orgId instead of userId.
 
@@ -419,7 +419,7 @@ git add src/lib/billing/subscription.ts && git commit -m "feat(billing): replace
 
 ---
 
-### Task 4b: Refactor `checkOrgLimit` — direct query without getOrgOwnerId + add limit-deny logging
+### Task 4b: ✅ Refactor `checkOrgLimit` — direct query without getOrgOwnerId + add limit-deny logging
 
 **Objective:** Remove the getOrgOwnerId lookup from checkOrgLimit. Query subscription directly by organizationId. Add `[LIMIT_DENY]` logging per PRD NFR.
 
@@ -512,7 +512,7 @@ git add src/lib/billing/subscription.ts && git commit -m "feat(billing): refacto
 
 ---
 
-### Task 4c: Refactor `incrementOrgUsage` — direct update without getOrgOwnerId
+### Task 4c: ✅ Refactor `incrementOrgUsage` — direct update without getOrgOwnerId
 
 **Objective:** Remove the getOrgOwnerId lookup from incrementOrgUsage. Update subscription directly by organizationId.
 
@@ -558,7 +558,7 @@ git add src/lib/billing/subscription.ts && git commit -m "feat(billing): refacto
 
 ---
 
-### Task 4d: Remove dead code — delete `checkLimit`, `incrementUsage`, `getOrgOwnerId`, old `getSubscription`
+### Task 4d: ✅ Remove dead code — delete `checkLimit`, `incrementUsage`, `getOrgOwnerId`, old `getSubscription`
 
 **Objective:** Remove all user-scoped helper functions that are no longer needed. These were replaced in Tasks 4a-4c.
 
@@ -589,7 +589,7 @@ git add src/lib/billing/subscription.ts && git commit -m "refactor(billing): rem
 
 ---
 
-### Task 5: Update `GET /api/subscription` — query by organizationId
+### Task 5: ✅ Update `GET /api/subscription` — query by organizationId
 
 **Objective:** Change GET handler from `getSubscription(session.user.id)` to `getSubscriptionByOrg(orgId)`, fix teamMembers count to use org member count instead of global user count.
 
@@ -642,7 +642,7 @@ git add src/app/api/subscription/route.ts && git commit -m "fix(billing): query 
 
 ---
 
-### Task 6: Update `PUT /api/subscription` — query by organizationId
+### Task 6: ✅ Update `PUT /api/subscription` — query by organizationId
 
 **Objective:** Change PUT handler from `prisma.subscription.update({ where: { userId } })` to `prisma.subscription.update({ where: { organizationId } })`.
 
@@ -695,7 +695,7 @@ git add src/app/api/subscription/route.ts && git commit -m "fix(billing): update
 
 ---
 
-### Task 7: Update `POST /api/subscription/checkout` — query by organizationId
+### Task 7: ✅ Update `POST /api/subscription/checkout` — query by organizationId
 
 **Objective:** Change checkout handler from user-scoped to org-scoped subscription lookup and update.
 
@@ -769,7 +769,7 @@ git add src/app/api/subscription/checkout/route.ts && git commit -m "fix(billing
 
 ---
 
-### Task 8: Add auto-create subscription when creating organization
+### Task 8: ✅ Add auto-create subscription when creating organization
 
 **Objective:** When a new organization is created via `POST /api/organizations`, automatically create a trial subscription for that organization.
 
@@ -825,7 +825,7 @@ git add src/app/api/organizations/route.ts && git commit -m "feat(billing): auto
 
 ---
 
-### Task 9: Cascade-delete subscription when organization is deleted
+### Task 9: ✅ Cascade-delete subscription when organization is deleted
 
 **Objective:** When an organization is soft-deleted, also soft-delete (or hard-delete) its subscription so it doesn't orphan.
 
@@ -857,7 +857,7 @@ git add src/app/api/organizations/[id]/delete/route.ts && git commit -m "feat(bi
 
 ---
 
-### Task 10: Add logging to `POST /api/organizations/[id]/switch`
+### Task 10: ✅ Add logging to `POST /api/organizations/[id]/switch`
 
 **Objective:** Add observability logging per PRD NFR — log every org switch event with userId, fromOrg, toOrg, role.
 
@@ -896,7 +896,7 @@ git add src/app/api/organizations/[id]/switch/route.ts && git commit -m "feat(ob
 
 ---
 
-### Task 11: Verify `GET /api/subscription/check` is already org-scoped
+### Task 11: ✅ Verify `GET /api/subscription/check` is already org-scoped
 
 **Objective:** Blueprint Task #13 requires checking this endpoint. File already uses `checkOrgLimit(orgId, resource)` — no changes needed, but must verify it doesn't import any removed functions after Task 4.
 
@@ -931,7 +931,7 @@ git add src/app/api/subscription/check/route.ts && git commit -m "fix(billing): 
 
 ---
 
-### Task 12: Update `cancelSubscription` and `checkTrialStatus` callers
+### Task 12: ✅ Update `cancelSubscription` and `checkTrialStatus` callers
 
 **Objective:** Search and update any callers of the old `getSubscription(userId)` and `cancelSubscription(userId)` that may have been missed.
 
@@ -980,7 +980,7 @@ git add -A && git commit -m "fix(billing): update remaining callers from userId 
 
 ## Phase 2: Data Isolation (FR-2)
 
-### Task 13: Fix dashboard layout data isolation — add orgId guard + scoped Prisma queries
+### Task 13: ✅ Fix dashboard layout data isolation — add orgId guard + scoped Prisma queries
 
 **Objective:** Fix `layout.tsx` to scope `settings.findFirst` and `client.findMany` to the active organization. Add `!orgId` guard that redirects to onboarding.
 
@@ -1039,7 +1039,7 @@ git add src/app/\(dashboard\)/layout.tsx && git commit -m "fix(data-isolation): 
 
 ---
 
-### Task 14: Fix `GET /api/settings` data isolation — scoped findFirst
+### Task 14: ✅ Fix `GET /api/settings` data isolation — scoped findFirst
 
 **Objective:** Fix `settings.findFirst({ where: {} })` in the GET handler to use `{ where: { organizationId: orgId } }`.
 
@@ -1094,7 +1094,7 @@ git add src/app/api/settings/route.ts && git commit -m "fix(data-isolation): sco
 
 ## Phase 3: Organization Switcher Enhancement (FR-3)
 
-### Task 15a: Add role badge UI to OrgSwitcher
+### Task 15a: ✅ Add role badge UI to OrgSwitcher
 
 **Objective:** Display the user's role (OWNER/ADMIN/MEMBER) next to each org name in the OrgSwitcher popover list.
 
@@ -1138,7 +1138,7 @@ git add src/components/org-switcher.tsx && git commit -m "feat(org-switcher): ad
 
 ---
 
-### Task 15b: Add single-org non-interactive display and infinite re-render guard
+### Task 15b: ✅ Add single-org non-interactive display and infinite re-render guard
 
 **Objective:** When user has only 1 org, show the switcher as non-interactive (just the org name). Add a guard to prevent infinite re-render when switching to the same org.
 
@@ -1173,7 +1173,7 @@ git add src/components/org-switcher.tsx && git commit -m "feat(org-switcher): si
 
 ---
 
-### Task 15c: Add keyboard navigation to OrgSwitcher
+### Task 15c: ✅ Add keyboard navigation to OrgSwitcher
 
 **Objective:** Make the OrgSwitcher fully keyboard accessible with Tab, Enter, ArrowUp/Down, and Escape support.
 
@@ -1206,7 +1206,7 @@ git add src/components/org-switcher.tsx && git commit -m "feat(org-switcher): ke
 
 ---
 
-### Task 15d: Add error handling (401/403/network) with callbackUrl redirect
+### Task 15d: ✅ Add error handling (401/403/network) with callbackUrl redirect
 
 **Objective:** Handle all error cases in org switching: 401 redirect to login with callbackUrl, 403 toast "Access denied", network error toast.
 
@@ -1246,7 +1246,7 @@ git add src/components/org-switcher.tsx && git commit -m "feat(org-switcher): er
 
 ---
 
-### Task 16: Add unsaved form detection before org switch
+### Task 16: ✅ Add unsaved form detection before org switch
 
 **Objective:** Create a `useUnsavedForm` hook that detects if any form on the page is dirty, and add a confirm dialog to the OrgSwitcher before switching orgs when unsaved changes exist.
 
@@ -1335,7 +1335,7 @@ git add src/hooks/use-unsaved-form.ts src/components/org-switcher.tsx && git com
 
 ---
 
-### Task 17: Integrate OrgSwitcher data flow from layout.tsx
+### Task 17: ✅ Integrate OrgSwitcher data flow from layout.tsx
 
 **Objective:** Pass organization memberships data from `layout.tsx` to `AppSidebar` → `OrgSwitcher` so the switcher shows all user orgs. Currently the OrgSwitcher fetches orgs client-side; this task optionally adds server-side data passing for better UX.
 
@@ -1391,7 +1391,7 @@ git add src/app/\(dashboard\)/layout.tsx src/components/app-sidebar.tsx && git c
 
 ---
 
-### Task 18: Add "Create Organization" link to OrgSwitcher popover footer
+### Task 18: ✅ Add "Create Organization" link to OrgSwitcher popover footer
 
 **Objective:** Add a link/button at the bottom of the OrgSwitcher popover that allows users to create a new organization.
 
@@ -1435,7 +1435,7 @@ git add src/components/org-switcher.tsx && git commit -m "feat(org-switcher): ad
 
 ## Phase 4: Verification & Cleanup
 
-### Task 19: Full TypeScript compilation check
+### Task 19: ✅ Full TypeScript compilation check
 
 **Objective:** Ensure the entire codebase compiles without errors after all changes.
 
@@ -1465,7 +1465,7 @@ git add -A && git commit -m "fix: resolve remaining TypeScript errors after org-
 
 ---
 
-### Task 20: Verify no unscoped queries remain
+### Task 20: ✅ Verify no unscoped queries remain
 
 **Objective:** Scan the entire codebase for any remaining Prisma queries that should be org-scoped but aren't.
 
@@ -1497,7 +1497,7 @@ git add -A && git commit -m "fix: clean up remaining unscoped queries and userId
 
 ---
 
-### Task 21: Manual verification checklist
+### Task 21: ✅ Manual verification checklist
 
 **Objective:** Run through the PRD verification checklist manually.
 
@@ -1542,7 +1542,7 @@ If all checks pass, the feature is production-ready. If not, create follow-up ta
 
 ---
 
-### Task 22: Rollback path for Phase B migration failure
+### Task 22: ✅ Rollback path for Phase B migration failure
 
 **Objective:** Document and prepare a rollback procedure if Phase B schema migration fails or causes issues in production.
 
@@ -1577,7 +1577,7 @@ Save rollback procedure alongside the plan for reference during deployment.
 
 ---
 
-### Task 23a: Add membership verification + auto-switch in layout.tsx
+### Task 23a: ✅ Add membership verification + auto-switch in layout.tsx
 
 **Objective:** Enhance the `!orgId` guard in layout.tsx to also verify the user still has access to their active org. If not, auto-switch to the next available org or redirect to onboarding.
 
@@ -1639,7 +1639,7 @@ git add src/app/\(dashboard\)/layout.tsx && git commit -m "feat(org): verify mem
 
 ---
 
-### Task 23b: Update switch endpoint to handle auto-redirect
+### Task 23b: ✅ Update switch endpoint to handle auto-redirect
 
 **Objective:** Make the switch endpoint support an `?auto=true` query param so that programmatic redirects from layout.tsx auto-redirect back to dashboard after switching.
 
