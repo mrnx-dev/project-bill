@@ -165,6 +165,9 @@ export function OrgSwitcher({ currentOrgName, currentOrgLogo }: OrgSwitcherProps
                   )}
                 </div>
                 <span className="truncate flex-1 text-left">{org.name}</span>
+                <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full ${org.role === "OWNER" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                  {org.role}
+                </span>
                 {org.id === activeOrgId && <Check className="size-4 shrink-0" />}
               </Button>
             ))}
