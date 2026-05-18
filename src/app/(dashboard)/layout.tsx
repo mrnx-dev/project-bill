@@ -56,10 +56,27 @@ export default async function DashboardLayout({
     select: { id: true, name: true },
   });
 
+  const memberships = await prisma.organizationMember.findMany({
+    where: { userId: session.user.id },
+    include: { organization: true },
+    orderBy: { joinedAt: "asc" },
+  });
+
   return (
     <SidebarProvider>
       <SwipeSidebarHandler />
-      <AppSidebar user={dbUser || session.user} company={settings || undefined} />
+      <AppSidebar
+        user={dbUser || session.user}
+        company={settings || undefined}
+        organizations={memberships.map((m) => ({
+          id: m.organization.id,
+          name: m.organization.name,
+          slug: m.organization.slug,
+          logoUrl: m.organization.logoUrl,
+          role: m.role,
+        }))}
+        activeOrgId={orgId}
+      />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center justify-between border-b px-4">
           <div className="flex items-center gap-2">

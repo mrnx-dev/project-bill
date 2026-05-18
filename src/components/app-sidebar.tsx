@@ -58,6 +58,14 @@ interface AppSidebarProps {
     companyName?: string | null;
     companyLogoUrl?: string | null;
   };
+  organizations?: {
+    id: string;
+    name: string;
+    slug: string;
+    logoUrl?: string | null;
+    role: string;
+  }[];
+  activeOrgId?: string;
 }
 
 type NavItem = {
@@ -98,7 +106,7 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-export function AppSidebar({ user, company }: AppSidebarProps) {
+export function AppSidebar({ user, company, organizations, activeOrgId }: AppSidebarProps) {
   const pathname = usePathname();
   const { setTheme } = useTheme();
 
@@ -113,6 +121,8 @@ export function AppSidebar({ user, company }: AppSidebarProps) {
             <OrgSwitcher
               currentOrgName={companyName}
               currentOrgLogo={companyLogo}
+              organizations={organizations}
+              activeOrgId={activeOrgId}
             />
           </SidebarMenuItem>
         </SidebarMenu>

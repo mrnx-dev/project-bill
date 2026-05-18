@@ -33,22 +33,28 @@ interface Organization {
 interface OrgSwitcherProps {
   currentOrgName?: string;
   currentOrgLogo?: string | null;
+  organizations?: Organization[];
+  activeOrgId?: string;
 }
 
-export function OrgSwitcher({ currentOrgName, currentOrgLogo }: OrgSwitcherProps) {
+export function OrgSwitcher({ currentOrgName, currentOrgLogo, organizations: serverOrgs, activeOrgId: serverActiveOrgId }: OrgSwitcherProps) {
   const { data: session, update } = useSession();
   const router = useRouter();
   const { confirmSwitch } = useUnsavedForm();
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState("");
-  const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [fetchedOrgs, setFetchedOrgs] = useState<Organization[]>([]);
   const [isCreating, setIsCreating] = useState(false);
 
-  const activeOrgId = session?.user?.activeOrganizationId;
+  const activeOrgId = serverActiveOrgId || session?.user?.activeOrganizationId;
+  const orgs = serverOrgs && serverOrgs.length > 0 ? serverOrgs : fetchedOrgs;
 
   useEffect(() => {
-    fetchOrgs();
+    // Only fetch client-side if we don't have server-provided orgs
+    if (!serverOrgs || serverOrgs.length === 0) {
+      fetchOrgs();
+    }
   }, []);
 
   async function fetchOrgs() {
@@ -56,7 +62,7 @@ export function OrgSwitcher({ currentOrgName, currentOrgLogo }: OrgSwitcherProps
       const res = await fetch("/api/organizations");
       if (res.ok) {
         const data = await res.json();
-        setOrgs(data);
+        setFetchedOrgs(data);
       }
     } catch {
       console.error("Failed to fetch organizations");
