@@ -25,6 +25,11 @@ export async function POST(
 
     await prisma.organization.update({ where: { id }, data: { deletedAt: new Date() } });
 
+    // Delete the organization's subscription
+    await prisma.subscription.deleteMany({
+      where: { organizationId: id },
+    });
+
     // Notify all members
     const members = await prisma.organizationMember.findMany({
       where: { organizationId: id },
