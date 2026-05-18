@@ -149,12 +149,28 @@ export function OrgSwitcher({ currentOrgName, currentOrgLogo }: OrgSwitcherProps
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[280px] p-0" align="start">
-          <div className="p-2">
+          <div className="p-2" onKeyDown={(e) => {
+            if (e.key === "Escape") { setOpen(false); return; }
+            const buttons = e.currentTarget.querySelectorAll<HTMLButtonElement>('[data-org-item]');
+            if (!buttons.length) return;
+            const activeIdx = Array.from(buttons).indexOf(document.activeElement as HTMLButtonElement);
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              const next = buttons[(activeIdx + 1) % buttons.length];
+              next?.focus();
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              const prev = buttons[(activeIdx - 1 + buttons.length) % buttons.length];
+              prev?.focus();
+            }
+          }}>
             <p className="text-xs font-medium text-muted-foreground px-2 py-1.5">Organizations</p>
             {orgs.map((org) => (
               <Button
                 key={org.id}
                 variant="ghost"
+                data-org-item
+                tabIndex={0}
                 className="w-full justify-start gap-2 rounded-lg h-auto py-2 px-2"
                 onClick={() => switchOrg(org.id)}
               >
