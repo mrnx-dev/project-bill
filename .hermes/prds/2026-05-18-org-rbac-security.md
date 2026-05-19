@@ -1,9 +1,10 @@
 # PRD: Organization RBAC & Security
 
-> Version: 1.2 | Author: Naya | Date: 2026-05-18
+> Version: 1.3 | Author: Naya | Date: 2026-05-18
 > Changelog:
 > - v1.1 — Added FR-6 (critical auth/scoping fixes), FR-7 (invoice status protection), FR-8 (org switch persistence), FR-9 (notification scoping), extended permission matrix
 > - v1.2 — Added FR-10 (system context / cron-webhook exemption), FR-11 (invoice status standardization), FR-12 (client portal payment separation), FR-13 (server actions auth fix). Updated FR-6 (pay endpoint split), FR-7 (void endpoint), FR-8 (create org persistence).
+> - v1.3 — Added Phase Plan (section 7), Fix: Mayar webhook status validation + cancelAtPeriodEnd clarification + getAuthContext specs + migration scripts section (section 9). Updated FR-7 (strip cancelAtPeriodEnd, use notes instead), FR-10 (getAuthContext prioritization), FR-11 (Mayar webhook transition validation).
 
 ## 1. Executive Summary
 
@@ -283,7 +284,7 @@ ProjectBill currently lacks centralized role-based access control. Every API rou
 **Description:** Prevent invoice status from being changed through unauthorized means. Currently `PATCH /api/invoices/[id]` accepts `status` in the body, allowing any user to set any status including PAID. PAID invoices can also be deleted without restriction.
 
 **Acceptance Criteria:**
-- [ ] AC-1: `PATCH /api/invoices/[id]` — remove `status` from accepted fields. The only accepted field for PATCH is `cancelAtPeriodEnd`. Status changes must go through dedicated endpoints only.
+- [ ] AC-1: `PATCH /api/invoices/[id]` — remove `status` from accepted fields. The only accepted fields for PATCH are `notes` and `dueDate`. `cancelAtPeriodEnd` is NOT a field on the Invoice model (it belongs to Subscription) and must be removed from the PATCH handler entirely. Status changes must go through dedicated endpoints only.
 - [ ] AC-2: `DELETE /api/invoices/[id]` — add `requireOrgRole(session, ['OWNER', 'ADMIN'])` role check. OWNER and ADMIN can delete, MEMBER cannot.
 - [ ] AC-3: `DELETE /api/invoices/[id]` — add status guard: invoices with status `PAID` cannot be deleted. Return 409 with message "Cannot delete a paid invoice. Void the invoice first." OWNER/ADMIN must void first.
 - [ ] AC-4: `sendInvoiceEmail` Server Action — add `requireOrgRole(session, ['OWNER', 'ADMIN'])`. Only OWNER/ADMIN can send invoice emails to clients.
@@ -351,11 +352,11 @@ ProjectBill currently lacks centralized role-based access control. Every API rou
 | Route | Auth Method | Current Issue | Fix |
 |-------|-------------|---------------|-----|
 | `GET /api/cron/recurring-invoices` | CRON_SECRET | Calls `sendInvoiceEmail` Server Action which requires auth → fails silently | Extract email logic to utility, cron calls utility directly (FR-13) |
-| `GET /api/cron/reminders` | CRON_SECRET | Modifies financial data without user auth; no org-scope | Add org-scope queries; system context bypasses RBAC |
+| `GET /api/cron/reminders` | CRON_SECRET | Modifies financial data without user auth; no org-scope | Add org-scope queries; system context bypasses RBAC; status transition via `isValidTransition()` |
 | `GET /api/cron/reset-usage` | CRON_SECRET | Resets all orgs' counters | No fix needed (operates across all orgs by design) |
 | `GET /api/cron/purge-orgs` | CRON_SECRET | Hard-deletes soft-deleted orgs | No fix needed (operates across all orgs by design) |
 | `GET /api/cron/check-trials` | CRON_SECRET | Downgrades expired trials | No fix needed (operates across all orgs by design) |
-| `POST /api/webhooks/mayar` | Webhook signature | Updates invoice PAID without org-scope | Add org-scope to invoice update query |
+| `POST /api/webhooks/mayar` | Webhook signature | Updates invoice PAID without org-scope; can overwrite VOID | Add org-scope + `isValidTransition()` check (FR-11 AC-9/AC-10) |
 | `POST /api/webhooks/mayar-subscription` | Webhook signature | Upgrades subscription by paymentId | Less risky, no fix needed (finds by specific paymentId) |
 
 **Acceptance Criteria:**
@@ -406,8 +407,10 @@ export const VALID_TRANSITIONS: Record<string, string[]> = {
 - [ ] AC-5: `DELETE /api/invoices/[id]` — allow deletion only for `DRAFT`, `UNPAID`, and `VOID` invoices. `PAID` invoices cannot be deleted (must void first).
 - [ ] AC-6: Migration: existing invoices with status `"unpaid"` (lowercase) must be migrated to `"UNPAID"` (uppercase). Add migration script.
 - [ ] AC-7: Migration: add `voidedAt DateTime?` field to Invoice model
-- [ ] AC-8: All status changes (mark-paid, void, webhook mark-paid, milestone mark-paid) validate against `VALID_TRANSITIONS`
-- [ ] AC-9: VOID invoices: `amount` is preserved (for audit), but invoice is no longer counted in financial totals/reports.
+- [ ] AC-8: All status changes (mark-paid, void, milestone mark-paid) validate against `VALID_TRANSITIONS`
+- [ ] AC-9: `POST /api/webhooks/mayar` — after webhook signature verification, call `isValidTransition(invoice.status, INVOICE_STATUS.PAID)` before updating. If invoice is already PAID → return 200 (idempotent, skip update). If invoice is VOID → return 200 (skip, log warning `[WEBHOOK] Skipping PAID for VOID invoice id=X`).
+- [ ] AC-10: `POST /api/webhooks/mayar` — update query uses org-scoped lookup: `where: { id: invoiceId, organizationId: invoice.organizationId, status: "UNPAID" }` for defense-in-depth
+- [ ] AC-11: VOID invoices: `amount` is preserved (for audit), but invoice is no longer counted in financial totals/reports.
 
 **Edge Cases:**
 - Existing data has lowercase status values ("unpaid", "paid") → migration normalizes to uppercase ("UNPAID", "PAID")
@@ -462,7 +465,97 @@ export const VALID_TRANSITIONS: Record<string, string[]> = {
 - Cron email fails (e.g., SMTP error) → caught per-template, logged, doesn't block other orgs' processing
 - `countUnpaidInvoices` returns 0 for org with no unpaid invoices → valid result
 
-## 7. Non-Functional Requirements
+## 7. Phase Plan (Execution Order)
+
+**Goal:** One clear dependency-ordered plan so implementation does not deadlock.
+
+```
+LEGEND
+└── → depends on (must be done first)
+```
+
+```
+PHASE 0 — SCHEMA & FOUNDATION (independent)
+├── Schema migration: add voidedAt to Invoice            ─── MIG-3
+├── Schema migration: add userId to Notification         ─── FR-9
+├── Create: src/lib/invoice-status.ts (constants + transitions)  ─── FR-11
+├── Create: src/lib/auth/org-rbac.ts (requireOrgRole, AuthError)  ─── FR-1
+├── Create: src/lib/auth/org-scoping.ts (orgQuery)       ─── FR-3
+├── Create: src/lib/auth/permissions.ts (PERMISSIONS + canPerform)  ─── FR-2
+├── Create: src/lib/auth/hmac.ts (sign + verify)         ─── FR-12
+└── Create: src/lib/email/send-invoice-email.ts (utility) ─── FR-13 AC-1
+    └── Create: src/lib/email/send-receipt-email.ts (utility) ─── FR-13 AC-2
+
+PHASE 1 — SYSTEM CONTEXT (cron/webhook must keep working FIRST)
+├── Update: verifyCronSecret() in cron routes             ─── FR-10
+├── Update: GET /api/cron/recurring-invoices              ─── FR-10 AC-3, FR-13 AC-5
+│   └── Replace Server Action call with sendInvoiceEmailUtil()
+├── Update: GET /api/cron/reminders                       ─── FR-10 AC-4
+├── Update: POST /api/webhooks/mayar                      ─── FR-10 AC-5, FR-11 AC-9/AC-10
+│   └── Add org-scope + isValidTransition() check
+├── Update: countUnpaidInvoices Server Action             ─── FR-6 AC-8
+├── Update: checkInvoiceStatus Server Action              ─── FR-6 AC-9
+└── Run: MIG-1 (invoice status normalization)             ─── scripts/migrate-invoice-status.ts
+
+PHASE 2 — RBAC HELPER DEPLOYMENT (add requireOrgRole to ALL routes)
+├── Refactor: sendInvoiceEmail Server Action → wrapper    ─── FR-13 AC-3
+├── Refactor: sendReceiptEmail Server Action → wrapper    ─── FR-13 AC-4
+├── Update: PATCH /api/invoices/[id] (strip status)       ─── FR-7 AC-1
+├── Update: DELETE /api/invoices/[id] (add role + status guard) ─── FR-7 AC-2/AC-3
+├── Update: GET/PUT /api/settings (add requireOrgRole)    ─── FR-2 AC-5
+├── Update: subscription routes (add requireOrgRole)      ─── FR-2 AC-6
+├── Update: export routes (add requireOrgRole)            ─── FR-2 AC-7
+├── Update: org routes (PUT, DELETE)                      ─── FR-2 AC-8/AC-9
+├── Update: milestone approve/unapprove/mark-paid         ─── FR-2 AC-14/15/16
+├── Update: recurring invoice CUD                         ─── FR-2 AC-12
+├── Update: SOW template CUD                              ─── FR-2 AC-13
+├── Update: audit log, agent config, team view            ─── FR-2 AC-18/19/20
+└── Search: verify ALL remaining API routes + Server Actions    ─── FR-1 AC-7
+
+PHASE 3 — CRITICAL SECURITY FIXES
+├── Update: GET /api/recurring-invoices (add orgId filter) ─── FR-6 AC-3
+├── Update: GET /api/sow-templates (add orgId filter)     ─── FR-6 AC-4
+├── Update: PUT /api/recurring-invoices (field whitelist)  ─── FR-6 AC-5
+├── Update: POST /api/invoices/[id]/retry-email           ─── FR-6 AC-6
+├── Update: GET /api/events SSE (auth + org filter)       ─── FR-6 AC-2
+├── Create: POST /api/invoices/[id]/create-payment-link   ─── FR-12 AC-1
+│   └── Auth + requireOrgRole + Mayar payment link logic
+├── Update: POST /api/invoices/[id]/pay (HMAC sig)        ─── FR-12 AC-2/3/4/7
+└── Create: POST /api/invoices/[id]/void                  ─── FR-11 AC-4
+
+PHASE 4 — ORG PERSISTENCE & SETTINGS UI
+├── Update: POST /api/organizations/[id]/switch            ─── FR-8 AC-1
+├── Update: POST /api/organizations (create)               ─── FR-8 AC-8
+├── Update: auth.config.ts JWT callback                    ─── FR-8 AC-2/3
+├── Create: /settings/organization page                    ─── FR-5
+├── Update: sidebar nav items (role-based visibility)      ─── FR-4
+└── Run: MIG-2 (notification userId backfill)              ─── FR-9
+
+PHASE 5 — NOTIFICATION SCOPING (independent, can be last)
+├── Schema + migration: add userId to Notification         ─── FR-9 AC-1/2/3
+├── Update: GET /api/notifications (user-scoped filter)    ─── FR-9 AC-4
+├── Update: PATCH /api/notifications (user-scoped mark)    ─── FR-9 AC-5/6
+├── Update: createNotification() helper                    ─── FR-9 AC-7
+└── Run: MIG-2 (backfill existing rows to userId=null)     ─── FR-9 AC-8
+```
+
+**Dependency summary:**
+- Phase 0 (schema + new files) → ALL other phases depend on it
+- Phase 1 (system context) → must be done before Phase 2 (so cron/webhook don't break when RBAC is added)
+- Phase 2 (RBAC deploy) → depends on Phase 0 files existing
+- Phase 3 (critical fixes) → can run parallel to Phase 2
+- Phase 4 (org persistence + UI) → depends on Phase 2 RBAC helper for role checks
+- Phase 5 (notification scoping) → independent, can run any time after Phase 0
+
+**Phase 0 dependencies can be created in parallel:**
+- `src/lib/invoice-status.ts` — no imports from other new files
+- `src/lib/auth/org-rbac.ts` — no imports from other new files  
+- `src/lib/auth/org-scoping.ts` — no imports from other new files
+- `src/lib/auth/permissions.ts` — no imports from other new files
+- `src/lib/auth/hmac.ts` — no imports from other new files
+- `src/lib/email/send-invoice-email.ts` — no imports from other new files (extracted from existing Server Action)
+
+## 8. Non-Functional Requirements
 
 - **Performance:** `requireOrgRole()` must add ≤5ms overhead per request (single Prisma query by org+userId with compound unique index)
 - **Security:** Org-scoping helper must prevent ALL cross-org data leaks — no route can return data from another org even with crafted parameters
@@ -479,7 +572,7 @@ export const VALID_TRANSITIONS: Record<string, string[]> = {
 - **Observability:** Every 403 from `requireOrgRole()` logs `[RBAC_DENY] userId=X orgId=Y requiredRole=Z actualRole=W action=ActionName`
 - **Observability:** Every system-context action logs `[SYSTEM_ACTION] authMethod=X action=Y orgId=Z`
 
-## 8. High-Level Architecture
+## 9. High-Level Architecture
 
 ### Tech Stack
 - Server helper: `src/lib/auth/org-rbac.ts` — `requireOrgRole()`, `getAuthContext()`
@@ -603,11 +696,34 @@ export async function requireOrgRole(
 }
 
 export async function getAuthContext(request: Request): Promise<AuthContext> {
-  // 1. Try auth() session
-  // 2. If session exists → { type: 'user', ... }
-  // 3. If no session, check CRON_SECRET header → { type: 'system', authMethod: 'cron' }
-  // 4. If webhook path + valid signature → { type: 'system', authMethod: 'webhook' }
-  // 5. Otherwise → throw AuthError(401, "Unauthorized")
+  // PRIORITY 1: user session always wins (user context can coexist with CRON_SECRET headers)
+  const session = await auth();
+  if (session?.user?.id) {
+    const orgId = session.user.activeOrganizationId!;
+    const membership = await prisma.organizationMember.findUnique({
+      where: { userId_organizationId: { userId: session.user.id, organizationId: orgId } },
+    });
+    if (!membership) throw new AuthError(403, "Not a member of this organization");
+    return { type: 'user', session, orgId, role: membership.role, membership };
+  }
+
+  // PRIORITY 2: CRON_SECRET header
+  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = request.headers.get('authorization');
+  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+    const url = new URL(request.url);
+    return { type: 'system', authMethod: 'cron', orgId: url.searchParams.get('orgId') ?? undefined };
+  }
+
+  // PRIORITY 3: webhook path detection + signature verification
+  const url = new URL(request.url);
+  if (url.pathname.startsWith('/api/webhooks/')) {
+    // Delegate to specific webhook verifier (each webhook has its own signature logic)
+    return { type: 'system', authMethod: 'webhook', orgId: undefined };
+  }
+
+  // No valid auth found
+  throw new AuthError(401, "Unauthorized");
 }
 ```
 
@@ -660,7 +776,93 @@ export function verifyInvoicePaySig(invoiceId: string, orgId: string, sig: strin
 }
 ```
 
-## 9. Constraints & Assumptions
+## 9. Migration Scripts
+
+### MIG-1: Invoice Status Normalization (lowercase → uppercase)
+
+**Purpose:** Existing data has `"unpaid"` and `"paid"` (lowercase). PRD requires `"UNPAID"` and `"PAID"` (uppercase). New values `"DRAFT"`, `"VOID"` are introduced.
+
+**Script:** `scripts/migrate-invoice-status.ts`
+```typescript
+import { prisma } from "@/lib/prisma";
+
+async function migrate() {
+  console.log("[MIGRATE] Normalizing invoice status to uppercase...");
+
+  // Step 1: lowercase → uppercase
+  const [unpaid, paid] = await Promise.all([
+    prisma.invoice.updateMany({
+      where: { status: "unpaid" },
+      data: { status: "UNPAID" },
+    }),
+    prisma.invoice.updateMany({
+      where: { status: "paid" },
+      data: { status: "PAID" },
+    }),
+  ]);
+  console.log(`  → ${unpaid.count} invoices: unpaid → UNPAID`);
+  console.log(`  → ${paid.count} invoices: paid → PAID`);
+
+  // Step 2: any remaining unrecognized statuses → set to UNPAID (safe default)
+  const remaining = await prisma.invoice.count({
+    where: { status: { notIn: ["UNPAID", "PAID", "DRAFT", "VOID"] } },
+  });
+  if (remaining > 0) {
+    const result = await prisma.invoice.updateMany({
+      where: { status: { notIn: ["UNPAID", "PAID", "DRAFT", "VOID"] } },
+      data: { status: "UNPAID" },
+    });
+    console.log(`  → ${result.count} unrecognized statuses → UNPAID`);
+  }
+
+  console.log("[MIGRATE] Done.");
+}
+
+migrate().catch(console.error);
+```
+
+**Rollback:** Reverse the update (but data may have already changed state). Acceptable risk — status normalization is one-time correction.
+
+### MIG-2: Notification UserId Backfill
+
+**Purpose:** Existing Notification rows have no `userId`. All become org-wide notifications (`userId: null`).
+
+**Script:** Run after schema migration `add_user_id_to_notifications` is applied.
+```typescript
+import { prisma } from "@/lib/prisma";
+
+async function migrate() {
+  console.log("[MIGRATE] Backfilling notification userId to null...");
+  const result = await prisma.notification.updateMany({
+    where: { userId: null },
+    data: { userId: undefined },  // stays null — Prisma ignores undefined on optional fields
+  });
+  console.log(`  → ${result.count} notifications: already null (no-op)`);
+  console.log("[MIGRATE] Done. No changes needed — new field defaults to null.");
+}
+```
+
+**Note:** This is a no-op migration if schema already defaults to `null`. Included for completeness and runbook consistency.
+
+### MIG-3: Invoice VoidedAt Field
+
+**Purpose:** Add `voidedAt DateTime?` to Invoice model. New field defaults to null. No data backfill needed.
+
+**Run via Prisma:**
+```bash
+npx prisma migrate dev --name add_voided_at_to_invoice
+```
+
+**Rollback:** `npx prisma migrate down` or revert migration file.
+
+### Acceptance Criteria
+- [ ] MIG-1: All lowercase status values (`"unpaid"`, `"paid"`) are normalized to uppercase (`"UNPAID"`, `"PAID"`)
+- [ ] MIG-1: Any unrecognized status values are set to `"UNPAID"` (safe default)
+- [ ] MIG-1: Script is idempotent (running twice should not cause errors)
+- [ ] MIG-2: Existing Notification rows keep `userId: null` (no data loss)
+- [ ] MIG-3: `voidedAt` field exists on Invoice, defaults to null
+
+## 10. Constraints & Assumptions
 
 - **No new roles:** OWNER/ADMIN/MEMBER is sufficient for small agencies. VIEWER role is out of scope.
 - **Schema changes:** Three schema changes required: (1) add `userId` to Notification model, (2) add `voidedAt` to Invoice model, (3) User model already has `defaultOrganizationId` (no migration needed, just new usage).
@@ -674,7 +876,7 @@ export function verifyInvoicePaySig(invoiceId: string, orgId: string, sig: strin
 - **Cron exemption:** System-context routes are explicitly exempt from `requireOrgRole()`. They use `CRON_SECRET` or webhook signatures. This is by design — these operations run without user sessions.
 - **Invoice status migration:** Existing lowercase status values ("unpaid", "paid") must be normalized to uppercase in a migration. New status values (DRAFT, VOID) are introduced.
 
-## 10. Out of Scope (This PRD)
+## 11. Out of Scope (This PRD)
 
 1. **VIEWER role** — not needed for small agencies; defer until user demand
 2. **Custom permission per user** — matrix is role-based, not per-user overrides
@@ -688,7 +890,7 @@ export function verifyInvoicePaySig(invoiceId: string, orgId: string, sig: strin
 10. **Export download route** — the `downloadUrl` 404 issue is a separate bug, not RBAC-related
 11. **CRON_SECRET rotation mechanism** — secret management is a separate concern
 
-## 11. Success Criteria
+## 12. Success Criteria
 
 - [ ] `requireOrgRole()` is used in ALL API routes AND Server Actions that perform restricted actions — zero inline role checks remain
 - [ ] MEMBER receives 403 when attempting to mark invoice paid/sent, change company settings, access billing, delete org, delete invoices, send emails, approve milestones, CRUD recurring invoices, CRUD SOW templates
