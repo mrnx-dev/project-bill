@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 import { NextResponse } from "next/server";
 import { checkOrgLimit } from "@/lib/billing/subscription";
 
@@ -10,7 +11,7 @@ export async function GET(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const orgId = session.user.activeOrganizationId!;
+    const { organizationId: orgId } = await requireOrgRole(session, "OWNER");
 
     const { searchParams } = new URL(req.url);
     const resource = searchParams.get("resource");
@@ -29,6 +30,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("[SUBSCRIPTION_CHECK_GET]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
