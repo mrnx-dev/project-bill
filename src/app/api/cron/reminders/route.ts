@@ -19,6 +19,7 @@ export async function GET(request: Request) {
         status: "UNPAID",
         dueDate: { not: null },
         paymentLink: { not: null },
+        organizationId: { not: null },
       },
       include: {
         project: {
@@ -112,6 +113,7 @@ export async function GET(request: Request) {
           organizationId: invoice.organizationId,
         });
 
+        console.log(`[SYSTEM_ACTION] authMethod=cron action=reminder-send invoiceId=${invoice.id} orgId=${invoice.organizationId}`);
         if (emailResult.success) {
           await prisma.$transaction([
             prisma.invoice.update({
@@ -147,6 +149,7 @@ export async function GET(request: Request) {
           organizationId: invoice.organizationId,
         });
 
+        console.log(`[SYSTEM_ACTION] authMethod=cron action=reminder-send invoiceId=${invoice.id} orgId=${invoice.organizationId}`);
         if (emailResult.success) {
           await prisma.invoice.update({
             where: { id: invoice.id },
