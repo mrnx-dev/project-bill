@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 import { prisma } from "@/lib/prisma";
 import { PLAN_PRICING, getSubscriptionByOrg } from "@/lib/billing/subscription";
 import { createPaymentLink } from "@/lib/billing/mayar";
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const orgId = session.user.activeOrganizationId!;
+    const { organizationId: orgId } = await requireOrgRole(session, "OWNER");
     const body = await request.json();
     const { plan, billing } = body;
 
@@ -50,6 +51,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ checkoutUrl: payment.link, paymentId: payment.id });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("[CHECKOUT_ERROR]", error);
     return new NextResponse("Internal server error", { status: 500 });
   }
