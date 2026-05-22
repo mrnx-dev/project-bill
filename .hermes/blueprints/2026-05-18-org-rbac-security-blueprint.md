@@ -252,6 +252,7 @@ export async function requireOrgRole(
   // 4. Check role
   const roles = typeof requiredRoles === "string" ? [requiredRoles] : requiredRoles;
   if (!roles.includes(membership.role)) {
+    console.warn(`[RBAC_DENY] userId=${session.user.id} orgId=${organizationId} requiredRole=${roles.join("|")} actualRole=${membership.role}`);
     throw new AuthError(403, `Requires ${roles.join(" or ")} role`);
   }
 
@@ -797,9 +798,11 @@ export async function checkInvoiceStatus(invoiceId: string) {
 
 ### GET /api/cron/recurring-invoices — Fix Silent Email Failure
 - **Change:** Call `sendInvoiceEmailUtil()` directly instead of `sendInvoiceEmail()` Server Action
+- **Add logging:** `console.log(\`[SYSTEM_ACTION] authMethod=cron action=recurring-invoice-generate orgId=${template.organizationId} invoiceId=${newInvoice.id}\`);`
 - **Pattern:**
   ```typescript
   // Inside cron loop, after invoice creation:
+  console.log(`[SYSTEM_ACTION] authMethod=cron action=recurring-invoice-generate orgId=${template.organizationId} invoiceId=${newInvoice.id}`);
   await sendInvoiceEmailUtil({
     invoiceId: newInvoice.id,
     orgId: template.organizationId,
@@ -809,11 +812,13 @@ export async function checkInvoiceStatus(invoiceId: string) {
 
 ### GET /api/cron/reminders — Add Org Scope
 - **Change:** Add `organizationId: { not: null }` to invoice query
+- **Add logging:** `console.log(\`[SYSTEM_ACTION] authMethod=cron action=reminder-send invoiceId=${invoice.id} orgId=${invoice.organizationId}\`);`
 - **Pattern:** `where: { status: "UNPAID", organizationId: { not: null }, dueDate: { not: null }, paymentLink: { not: null } }`
 
 ### POST /api/webhooks/mayar — Add Org Scope + Transition Validation
 - **Change 1:** Query invoice with org-scoped lookup
 - **Change 2:** Validate `isValidTransition(invoice.status, 'PAID')` before updating
+- **Add logging:** `console.log(\`[SYSTEM_ACTION] authMethod=webhook action=mark-paid invoiceId=${invoiceId} orgId=${invoice.organizationId} status=${invoice.status}→PAID\`);`
 - **Pattern:**
   ```typescript
   const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
@@ -822,6 +827,7 @@ export async function checkInvoiceStatus(invoiceId: string) {
     console.warn(`[WEBHOOK] Skipping PAID for invoice id=${invoiceId}: transition ${invoice.status}→PAID invalid`);
     return NextResponse.json({ status: "skipped", reason: "invalid_transition" });
   }
+  console.log(`[SYSTEM_ACTION] authMethod=webhook action=mark-paid invoiceId=${invoiceId} orgId=${invoice.organizationId} status=${invoice.status}→PAID`);
   await prisma.invoice.update({
     where: { id: invoiceId, organizationId: invoice.organizationId },
     data: { status: 'PAID', paidAt: new Date() },
