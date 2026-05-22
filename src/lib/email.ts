@@ -53,12 +53,12 @@ export async function loadProviderConfig(
 
   const config: Record<string, string> = {};
   for (const row of rows) {
-    config[row.key] = row.isEncrypted ? decrypt(row.value) : row.value;
+    config[row.key] = (row.isEncrypted ? decrypt(row.value) : row.value) ?? "";
   }
 
   // Fallback: if no rows in new table but old resendApiKey exists
   if (Object.keys(config).length === 0 && settings?.resendApiKey) {
-    config.apiKey = decrypt(settings.resendApiKey);
+    config.apiKey = decrypt(settings.resendApiKey) ?? "";
   }
 
   return { providerId, config };
