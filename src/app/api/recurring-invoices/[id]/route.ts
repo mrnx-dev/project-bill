@@ -44,13 +44,12 @@ export async function DELETE(
 ) {
   try {
     const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
 
     const { id } = await params;
-    const orgId = session.user.activeOrganizationId!;
 
     const existing = await prisma.recurringInvoice.findFirst({
-      where: { id, organizationId: orgId },
+      where: { id, organizationId },
     });
 
     if (!existing) {
@@ -58,12 +57,15 @@ export async function DELETE(
     }
 
     await prisma.recurringInvoice.update({
-      where: { id, organizationId: orgId },
+      where: { id, organizationId },
       data: { isActive: false },
     });
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Failed to deactivate recurring invoice:", error);
     return NextResponse.json({ error: "Failed to deactivate" }, { status: 500 });
   }
