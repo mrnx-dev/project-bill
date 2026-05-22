@@ -4,12 +4,15 @@ import { sendInvoiceEmail } from "@/app/actions/send-invoice";
 import { auth } from "@/auth";
 import { generateInvoiceNumber } from "@/lib/invoice-utils";
 import { getBaseUrl } from "@/lib/utils";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 
 export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    const orgId = session.user.activeOrganizationId!;
+
+    const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN", "MEMBER"]);
+    const orgId = organizationId;
     const json = await request.json();
     const { projectId } = json;
 
@@ -129,6 +132,9 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Failed to generate invoice:", error);
     return NextResponse.json(
       { error: "Failed to generate invoice" },
