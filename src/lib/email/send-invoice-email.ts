@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { sendInvoiceEmail as baseSendInvoiceEmail, sendRecurringInvoiceEmail } from "@/lib/email";
+import { sendInvoiceEmail as baseSendInvoiceEmail, sendRecurringInvoiceEmail, loadProviderConfig } from "@/lib/email";
 import { getBaseUrl } from "@/lib/utils";
 import { formatMoney } from "@/lib/currency";
 
@@ -59,6 +59,45 @@ export async function sendInvoiceEmailUtil(
     const baseUrl = getBaseUrl();
     const invoiceDetailUrl = `${baseUrl}/invoices/${invoice.id}`;
 
+    // Check if an email provider is configured
+    const { config: providerConfig } = await loadProviderConfig(orgId);
+    const isManual = Object.keys(providerConfig).length === 0;
+
+    if (isManual) {
+      // No provider configured — return manual (mailto) result
+      let subject = "";
+      let body = "";
+
+      if (invoice.type === "RECURRING") {
+        subject = project.language === "en"
+          ? `Recurring Invoice [${invoice.invoiceNumber}] for ${project.title} - Action Required`
+          : `Tagihan Rutin [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
+
+        body = project.language === "en"
+          ? `Hello ${client.name},\n\nPlease find your recurring invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nAccess all your invoices: ${getBaseUrl()}/client/login\n\nThank you!`
+          : `Halo ${client.name},\nBerikut adalah detail tagihan rutin Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nAkses semua invoice Anda: ${getBaseUrl()}/client/login\n\nTerima kasih!`;
+      } else {
+        subject = project.language === "en"
+          ? `Invoice [${invoice.invoiceNumber}] for ${project.title} - Action Required`
+          : `Invoice [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
+
+        body = project.language === "en"
+          ? `Hello ${client.name},\n\nPlease find your invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nAccess all your invoices: ${getBaseUrl()}/client/login\n\nThank you!`
+          : `Halo ${client.name},\nBerikut adalah detail tagihan Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nAkses semua invoice Anda: ${getBaseUrl()}/client/login\n\nTerima kasih!`;
+      }
+
+      const mailtoData = { to: client.email!, subject, body };
+
+      return {
+        success: true,
+        manual: true,
+        message: "Select your preferred email provider...",
+        invoiceLink: invoiceDetailUrl,
+        mailtoData
+      };
+    }
+
+    // Provider configured — send via email provider
     try {
       let result;
 
@@ -89,7 +128,11 @@ export async function sendInvoiceEmailUtil(
         });
       }
 
-      if (result.success && !result.mocked) {
+      if (!result.success && result.error) {
+        throw result.error;
+      }
+
+      if (result.success) {
         await prisma.invoice.update({
           where: { id: invoiceId, organizationId: orgId },
           data: { emailStatus: 'SENT' }
@@ -97,42 +140,9 @@ export async function sendInvoiceEmailUtil(
         await incrementOrgUsage(orgId, "emailsSent");
       }
 
-      if (!result.success && result.error) {
-        throw result.error;
-      }
-
-      let mailtoData = undefined;
-      if (result.mocked) {
-        let subject = "";
-        let body = "";
-
-        if (invoice.type === "RECURRING") {
-          subject = project.language === "en"
-            ? `Recurring Invoice [${invoice.invoiceNumber}] for ${project.title} - Action Required`
-            : `Tagihan Rutin [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
-
-          body = project.language === "en"
-            ? `Hello ${client.name},\n\nPlease find your recurring invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nAccess all your invoices: ${getBaseUrl()}/client/login\n\nThank you!`
-            : `Halo ${client.name},\nBerikut adalah detail tagihan rutin Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nAkses semua invoice Anda: ${getBaseUrl()}/client/login\n\nTerima kasih!`;
-        } else {
-          subject = project.language === "en"
-            ? `Invoice [${invoice.invoiceNumber}] for ${project.title} - Action Required`
-            : `Invoice [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
-
-          body = project.language === "en"
-            ? `Hello ${client.name},\n\nPlease find your invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nAccess all your invoices: ${getBaseUrl()}/client/login\n\nThank you!`
-            : `Halo ${client.name},\nBerikut adalah detail tagihan Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nAkses semua invoice Anda: ${getBaseUrl()}/client/login\n\nTerima kasih!`;
-        }
-
-        mailtoData = { to: client.email!, subject, body };
-      }
-
       return {
         success: true,
-        manual: result.mocked,
-        message: result.mocked ? "Select your preferred email provider..." : undefined,
-        invoiceLink: result.mocked ? invoiceDetailUrl : undefined,
-        mailtoData
+        manual: false,
       };
     } catch (emailError: any) {
       console.error("Failed to send email via Resend:", emailError);
