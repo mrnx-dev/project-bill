@@ -68,6 +68,17 @@ export async function POST(request: Request) {
       },
     });
 
+    // Persist defaultOrganizationId so new org becomes the active org across sessions
+    try {
+      await prisma.user.update({
+        where: { id: session.user.id },
+        data: { defaultOrganizationId: org.id },
+      });
+      console.log(`[ORG_CREATE] Persisted defaultOrganizationId=${org.id} for userId=${session.user.id}`);
+    } catch (dbError) {
+      console.error("[ORG_CREATE] Failed to persist defaultOrganizationId to DB:", dbError);
+    }
+
     // Auto-create trial subscription for managed mode
     if (!isSelfHosted()) {
       const now = new Date();
