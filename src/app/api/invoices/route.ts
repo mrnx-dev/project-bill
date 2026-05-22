@@ -3,12 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { createAuditLog } from "@/lib/audit-logger";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 
 export async function GET(request: Request) {
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    const orgId = session.user.activeOrganizationId!;
+    const { organizationId: orgId } = await requireOrgRole(session, ["OWNER", "ADMIN", "MEMBER"]);
 
     const { searchParams } = new URL(request.url);
     const limitParam = searchParams.get("limit");
@@ -38,6 +39,9 @@ export async function GET(request: Request) {
     const invoices = await prisma.invoice.findMany(args);
     return NextResponse.json(invoices);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Failed to fetch invoices:", error);
     return NextResponse.json(
       { error: "Failed to fetch invoices" },
@@ -70,7 +74,7 @@ export async function POST(request: Request) {
     }
 
     const data = validation.data;
-    const orgId = session.user.activeOrganizationId!;
+    const { organizationId: orgId } = await requireOrgRole(session, ["OWNER", "ADMIN", "MEMBER"]);
 
     const { checkOrgLimit, incrementOrgUsage } = await import("@/lib/billing/subscription");
     const limitCheck = await checkOrgLimit(orgId, "invoicesPerMonth");
@@ -120,6 +124,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json(invoice, { status: 201 });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Failed to create invoice:", error);
     return NextResponse.json(
       { error: "Failed to create invoice" },
