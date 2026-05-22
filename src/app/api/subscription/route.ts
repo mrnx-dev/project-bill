@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 import { getSubscriptionByOrg, checkTrialStatus, isSelfHosted, PLAN_LIMITS, type PlanType } from "@/lib/billing/subscription";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
@@ -12,7 +13,7 @@ export async function GET() {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        const orgId = session.user.activeOrganizationId!;
+        const { organizationId: orgId } = await requireOrgRole(session, "OWNER");
 
         if (isSelfHosted()) {
             return NextResponse.json({
@@ -63,6 +64,9 @@ export async function GET() {
             },
         });
     } catch (error) {
+        if (error instanceof AuthError) {
+            return NextResponse.json({ error: error.message }, { status: error.statusCode });
+        }
         console.error("[SUBSCRIPTION_GET]", error);
         return new NextResponse("Internal Error", { status: 500 });
     }
@@ -80,14 +84,7 @@ export async function PUT(request: Request) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
-        // Only admin can update plans
-        const currentUser = await prisma.user.findUnique({
-            where: { id: session.user.id },
-        });
-
-        if (session.user.activeOrganizationRole !== "OWNER" && session.user.activeOrganizationRole !== "ADMIN") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
+        const { organizationId: orgId } = await requireOrgRole(session, "OWNER");
 
         let json;
         try {
@@ -105,7 +102,6 @@ export async function PUT(request: Request) {
         }
 
         const { plan } = validation.data;
-        const orgId = session.user.activeOrganizationId!;
 
         // Ensure subscription exists first
         await getSubscriptionByOrg(orgId);
@@ -120,6 +116,9 @@ export async function PUT(request: Request) {
             subscription: updated,
         });
     } catch (error) {
+        if (error instanceof AuthError) {
+            return NextResponse.json({ error: error.message }, { status: error.statusCode });
+        }
         console.error("[SUBSCRIPTION_PUT]", error);
         return new NextResponse("Internal Error", { status: 500 });
     }
