@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { createAuditLog } from "@/lib/audit-logger";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 
 export async function PUT(
   request: Request,
@@ -9,14 +10,13 @@ export async function PUT(
 ) {
   try {
     const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
 
     const { id } = await params;
     const json = await request.json();
-    const orgId = session.user.activeOrganizationId!;
 
     const existing = await prisma.recurringInvoice.findFirst({
-      where: { id, organizationId: orgId },
+      where: { id, organizationId },
     });
 
     if (!existing) {
@@ -24,12 +24,15 @@ export async function PUT(
     }
 
     const updated = await prisma.recurringInvoice.update({
-      where: { id, organizationId: orgId },
+      where: { id, organizationId },
       data: json,
     });
 
     return NextResponse.json(updated);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Failed to update recurring invoice:", error);
     return NextResponse.json({ error: "Failed to update" }, { status: 500 });
   }
