@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 
 const querySchema = z.object({
   entityType: z.string().optional(),
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const orgId = session.user.activeOrganizationId!;
+    const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
 
     const { searchParams } = new URL(request.url);
     const parsed = querySchema.safeParse({
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
     const { entityType, entityId, page, limit } = parsed.data;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = { organizationId: orgId };
+    const where: Record<string, unknown> = { organizationId };
     if (entityType) where.entityType = entityType;
     if (entityId) where.entityId = entityId;
 
@@ -76,6 +77,9 @@ export async function GET(request: Request) {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("[ACTIVITY_GET]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
