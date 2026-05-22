@@ -7,6 +7,7 @@ import { formatMoney } from "@/lib/currency";
 import { RateLimiter } from "@/lib/rate-limit";
 import { createNotification } from "@/lib/notifications";
 import { getBaseUrl } from "@/lib/utils";
+import { isValidTransition } from "@/lib/invoice-status";
 
 // Allow 20 webhook requests per minute per IP to prevent spam/abuse
 const webhookRateLimiter = new RateLimiter({ limit: 20, windowMs: 60 * 1000 });
@@ -54,24 +55,24 @@ export async function POST(request: Request) {
       }
 
       if (invoiceId) {
-        // Atomic Update: Only update if status is still 'UNPAID'.
-        // If two webhooks fire instantly, only one transaction matches "UNPAID".
-        const updateResult = await prisma.invoice.updateMany({
-          where: {
-            id: invoiceId,
-            status: "UNPAID",
-          },
+        // Validate invoice exists and check transition
+        const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
+        if (!invoice) {
+          return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+        }
+        if (!isValidTransition(invoice.status, 'PAID')) {
+          console.warn(`[WEBHOOK] Skipping PAID for invoice id=${invoiceId}: transition ${invoice.status}→PAID invalid`);
+          return NextResponse.json({ status: "skipped", reason: "invalid_transition" });
+        }
+        console.log(`[SYSTEM_ACTION] authMethod=webhook action=mark-paid invoiceId=${invoiceId} orgId=${invoice.organizationId}`);
+        await prisma.invoice.update({
+          where: { id: invoiceId, organizationId: invoice.organizationId },
           data: {
-            status: "PAID",
+            status: 'PAID',
             paidAt: new Date(),
             paymentId: data.data?.id || data.transaction_id || data.id,
           },
         });
-
-        if (updateResult.count === 0) {
-          console.log(`[Webhook] Invoice ${invoiceId} is already paid or doesn't exist. Ignoring webhook deduplication.`);
-          return NextResponse.json({ received: true, ignored: true }, { status: 200 });
-        }
 
         // Fetch the updated invoice to trigger emails & PDF
         const updatedInvoice = await prisma.invoice.findUnique({
