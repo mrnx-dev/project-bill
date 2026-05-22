@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 import { updateOrganizationSchema } from "@/lib/validations/organization";
 
 export async function PUT(
@@ -15,11 +16,10 @@ export async function PUT(
 
     const { id } = await params;
 
-    const membership = await prisma.organizationMember.findUnique({
-      where: { userId_organizationId: { userId: session.user.id, organizationId: id } },
-    });
+    const { organizationId } = await requireOrgRole(session, "OWNER");
 
-    if (!membership || (membership.role !== "OWNER" && membership.role !== "ADMIN")) {
+    // Verify the route param matches the user's active organization
+    if (id !== organizationId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -39,6 +39,9 @@ export async function PUT(
 
     return NextResponse.json(org);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Failed to update organization:", error);
     return NextResponse.json(
       { error: "Failed to update organization" },
