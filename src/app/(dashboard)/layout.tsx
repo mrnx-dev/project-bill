@@ -101,6 +101,7 @@ export default async function DashboardLayout({
           role: m.role,
         }))}
         activeOrgId={orgId}
+        activeRole={membership.role}
       />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center justify-between border-b px-4">

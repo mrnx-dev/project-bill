@@ -48,6 +48,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { OrgSwitcher } from "@/components/org-switcher";
 
+type OrgRole = "OWNER" | "ADMIN" | "MEMBER";
+
+const ROLE_HIERARCHY: Record<OrgRole, number> = {
+  OWNER: 3,
+  ADMIN: 2,
+  MEMBER: 1,
+};
+
+function hasMinRole(userRole: string | undefined, minRole: OrgRole): boolean {
+  if (!userRole) return false;
+  const userLevel = ROLE_HIERARCHY[userRole as OrgRole] ?? 0;
+  const minLevel = ROLE_HIERARCHY[minRole] ?? 0;
+  return userLevel >= minLevel;
+}
+
 interface AppSidebarProps {
   user?: {
     name?: string | null;
@@ -66,12 +81,14 @@ interface AppSidebarProps {
     role: string;
   }[];
   activeOrgId?: string;
+  activeRole?: string;
 }
 
 type NavItem = {
   title: string;
   url: string;
   icon: React.ElementType;
+  minRole?: OrgRole;
   subItems?: { title: string; url: string }[];
 };
 
@@ -97,16 +114,17 @@ const navGroups: NavGroup[] = [
   {
     label: "Settings",
     items: [
-      { title: "General", url: "/settings", icon: Settings },
-      { title: "Team", url: "/settings/team", icon: Users },
-      { title: "SOW Templates", url: "/settings/sow-template", icon: NotepadTextDashed },
-      { title: "Subscription", url: "/settings/subscription", icon: FileText },
-      { title: "AI Assistant", url: "/settings/agent", icon: Bot },
+      { title: "General", url: "/settings", icon: Settings, minRole: "ADMIN" },
+      { title: "Organization", url: "/settings/organization", icon: Pencil, minRole: "ADMIN" },
+      { title: "Team", url: "/settings/team", icon: Users, minRole: "ADMIN" },
+      { title: "SOW Templates", url: "/settings/sow-template", icon: NotepadTextDashed, minRole: "ADMIN" },
+      { title: "Subscription", url: "/settings/subscription", icon: FileText, minRole: "OWNER" },
+      { title: "AI Assistant", url: "/settings/agent", icon: Bot, minRole: "ADMIN" },
     ],
   },
 ];
 
-export function AppSidebar({ user, company, organizations, activeOrgId }: AppSidebarProps) {
+export function AppSidebar({ user, company, organizations, activeOrgId, activeRole }: AppSidebarProps) {
   const pathname = usePathname();
   const { setTheme } = useTheme();
 
@@ -129,40 +147,46 @@ export function AppSidebar({ user, company, organizations, activeOrgId }: AppSid
       </SidebarHeader>
 
       <SidebarContent>
-        {navGroups.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel className="text-xs font-semibold text-sidebar-foreground/50 tracking-wide mb-1 px-4 mt-2 uppercase">
-              {group.label}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-1">
-                {group.items.map((item) => {
-                  const isActive =
-                    item.url === "/"
-                      ? pathname === "/"
-                      : item.url === "/settings"
-                        ? pathname === "/settings"
-                        : pathname?.startsWith(item.url);
+        {navGroups.map((group) => {
+          const filteredItems = group.items.filter(
+            (item) => !item.minRole || hasMinRole(activeRole, item.minRole)
+          );
+          if (filteredItems.length === 0) return null;
+          return (
+            <SidebarGroup key={group.label}>
+              <SidebarGroupLabel className="text-xs font-semibold text-sidebar-foreground/50 tracking-wide mb-1 px-4 mt-2 uppercase">
+                {group.label}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-1">
+                  {filteredItems.map((item) => {
+                    const isActive =
+                      item.url === "/"
+                        ? pathname === "/"
+                        : item.url === "/settings"
+                          ? pathname === "/settings"
+                          : pathname?.startsWith(item.url);
 
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive}
-                        className={`rounded-lg transition-all duration-200 ${isActive ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"}`}
-                      >
-                        <Link href={item.url}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={isActive}
+                          className={`rounded-lg transition-all duration-200 ${isActive ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm" : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"}`}
+                        >
+                          <Link href={item.url}>
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
 
       <SidebarFooter>
