@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendInvoiceEmail } from "@/app/actions/send-invoice";
 import { auth } from "@/auth";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 
 export async function POST(
   request: Request,
@@ -10,13 +11,10 @@ export async function POST(
   try {
     const { id } = await context.params;
     const session = await auth();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const orgId = session.user.activeOrganizationId!;
+    const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
 
     const invoice = await prisma.invoice.findUnique({
-      where: { id, organizationId: orgId },
+      where: { id, organizationId },
       include: {
          project: {
             include: { client: true }
@@ -41,6 +39,9 @@ export async function POST(
     }
     
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Retry Email API Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
