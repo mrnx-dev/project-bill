@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 
 export async function POST(
   request: Request,
@@ -8,13 +9,12 @@ export async function POST(
 ) {
   try {
     const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
 
     const { id: projectId, milestoneId } = await params;
-    const orgId = session.user.activeOrganizationId!;
 
     const milestone = await prisma.paymentMilestone.findFirst({
-      where: { id: milestoneId, projectId, organizationId: orgId },
+      where: { id: milestoneId, projectId, organizationId },
       include: { invoice: true },
     });
 
@@ -40,16 +40,19 @@ export async function POST(
     // Delete the invoice and rollback milestone atomically
     const updated = await prisma.$transaction(async (tx) => {
       if (milestone.invoiceId) {
-        await tx.invoice.delete({ where: { id: milestone.invoiceId, organizationId: orgId } });
+        await tx.invoice.delete({ where: { id: milestone.invoiceId, organizationId } });
       }
       return tx.paymentMilestone.update({
-        where: { id: milestoneId, organizationId: orgId },
+        where: { id: milestoneId, organizationId },
         data: { status: "PENDING", invoiceId: null },
       });
     });
 
     return NextResponse.json(updated);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Failed to un-approve milestone:", error);
     return NextResponse.json({ error: "Failed to un-approve" }, { status: 500 });
   }
