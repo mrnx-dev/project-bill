@@ -23,9 +23,19 @@ export async function PUT(
       return NextResponse.json({ error: "Recurring invoice not found" }, { status: 404 });
     }
 
+    // Strip organizationId and only allow whitelisted fields
+    const { organizationId: _, ...rest } = json;
+    const allowedKeys = ["name", "amount", "interval", "intervalCount", "nextRunAt", "isActive", "projectId", "description", "startNumber", "prefix"];
+    const data: Record<string, unknown> = {};
+    for (const key of allowedKeys) {
+      if (key in rest) {
+        data[key] = rest[key];
+      }
+    }
+
     const updated = await prisma.recurringInvoice.update({
       where: { id, organizationId },
-      data: json,
+      data,
     });
 
     return NextResponse.json(updated);
