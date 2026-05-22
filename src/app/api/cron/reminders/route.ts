@@ -19,7 +19,6 @@ export async function GET(request: Request) {
         status: "UNPAID",
         dueDate: { not: null },
         paymentLink: { not: null },
-        organizationId: { not: null },
       },
       include: {
         project: {
