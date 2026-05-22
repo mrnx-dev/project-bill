@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { createPaymentLink } from "@/lib/billing/mayar";
 import { getBaseUrl } from "@/lib/utils";
 import { isMayarSupported } from "@/lib/currency";
-
+import { verifyInvoicePaySig } from "@/lib/auth/hmac";
 
 export async function POST(
   req: Request,
@@ -11,6 +11,30 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
+
+    // HMAC verification for public endpoint
+    const url = new URL(req.url);
+    const sig = url.searchParams.get("sig");
+    const hmacSecret = process.env.INVOICE_HMAC_SECRET;
+
+    if (hmacSecret) {
+      if (!sig) {
+        return NextResponse.json({ error: "Missing signature" }, { status: 403 });
+      }
+      // We need the invoice's organizationId to verify the sig
+      const invoiceForOrg = await prisma.invoice.findUnique({
+        where: { id },
+        select: { organizationId: true },
+      });
+      if (!invoiceForOrg) {
+        return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+      }
+      if (!verifyInvoicePaySig(id, invoiceForOrg.organizationId, sig)) {
+        return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+      }
+    } else {
+      console.warn("[PAY_ENDPOINT] INVOICE_HMAC_SECRET not set — HMAC verification disabled");
+    }
 
     const invoice = await prisma.invoice.findUnique({
       where: { id },
