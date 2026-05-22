@@ -1,7 +1,7 @@
 # Implementation Plan: Organization RBAC & Security
 
 > **For Hermes:** Use subagent-driven-development to implement this plan task-by-task per phase.
-> **67 atomic tasks, each ≤3 files, ≤5 min, with commit step. Audit-verified vs blueprint: 100% coverage.**
+> **64 atomic tasks, each ≤3 files, ≤5 min, with commit step. Audit-verified vs blueprint: 100% coverage.**
 
 **Goal:** Centralized RBAC, org-switch persistence, invoice status standardization, system context exemption, notification scoping, and critical security fixes.
 
@@ -17,9 +17,9 @@
 | Phase 1: System Context | 6 | ~40m |
 | Phase 2: RBAC Deploy | 27 | ~2h |
 | Phase 3: Critical Fixes | 8 | ~1.5h |
-| Phase 4: Org/UI | 12 | ~1.5h |
+| Phase 4: Org/UI | 9 | ~1.5h |
 | Phase 5: Notifications | 3 | ~30m |
-| **Total** | **67 tasks** | **~6h** |
+| **Total** | **64 tasks** | **~6h** |
 
 ---
 
