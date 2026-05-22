@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 import { createAuditLog } from "@/lib/audit-logger";
 import { encrypt, decrypt, maskSecret, isMaskedValue } from "@/lib/crypto";
 import { providerRegistry } from "@/lib/email/providers/registry";
@@ -12,22 +13,20 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    if (session.user.activeOrganizationRole !== "OWNER") return new NextResponse("Forbidden", { status: 403 });
-
-    const orgId = session.user.activeOrganizationId!;
+    const { organizationId } = await requireOrgRole(session, ['OWNER', 'ADMIN']);
 
     let settings = await prisma.settings.findFirst({
-      where: { organizationId: orgId },
+      where: { organizationId },
     });
 
     if (!settings) {
       settings = await prisma.settings.create({
-        data: { companyName: "ProjectBill", organizationId: orgId },
+        data: { companyName: "ProjectBill", organizationId },
       });
     }
 
     const providerConfigs = await prisma.emailProviderConfig.findMany({
-      where: { organizationId: orgId },
+      where: { organizationId },
     });
 
     const providerConfig: Record<string, Record<string, string>> = {};
@@ -54,6 +53,9 @@ export async function GET() {
 
     return NextResponse.json(response);
   } catch (error: unknown) {
+    if (error instanceof AuthError) {
+      return new NextResponse(error.message, { status: error.statusCode });
+    }
     console.error("Failed to fetch settings:", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
   }
@@ -63,13 +65,12 @@ export async function PUT(req: Request) {
   try {
     const session = await auth();
     if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    if (session.user.activeOrganizationRole !== "OWNER") return new NextResponse("Forbidden", { status: 403 });
+    const { organizationId } = await requireOrgRole(session, ['OWNER', 'ADMIN']);
 
-    const orgId = session.user.activeOrganizationId!;
     const body = await req.json();
 
     const currentSettings = await prisma.settings.findFirst({
-      where: { organizationId: orgId },
+      where: { organizationId },
     });
 
     const dataToUpdate: Record<string, string | null | undefined> = {
@@ -96,7 +97,7 @@ export async function PUT(req: Request) {
         field: "emailProvider",
         oldValue: currentSettings?.emailProvider || "resend",
         newValue: body.emailProvider,
-        organizationId: orgId,
+        organizationId,
       });
       dataToUpdate.emailProvider = body.emailProvider;
     }
@@ -136,7 +137,7 @@ export async function PUT(req: Request) {
         data: {
           ...dataToUpdate,
           companyName: (dataToUpdate.companyName as string) || "ProjectBill",
-          organizationId: orgId,
+          organizationId,
         } as any,
       });
     }
@@ -165,7 +166,7 @@ export async function PUT(req: Request) {
           await prisma.emailProviderConfig.upsert({
             where: {
               organizationId_providerId_key: {
-                organizationId: orgId,
+                organizationId,
                 providerId,
                 key,
               },
@@ -175,7 +176,7 @@ export async function PUT(req: Request) {
               isEncrypted: isSensitive,
             },
             create: {
-              organizationId: orgId,
+              organizationId,
               providerId,
               key,
               value: valueToSave,
@@ -197,7 +198,7 @@ export async function PUT(req: Request) {
           field: entry.field,
           oldValue: entry.oldValue ?? undefined,
           newValue: entry.newValue ?? undefined,
-          organizationId: orgId,
+          organizationId,
         });
       }
     }
@@ -213,6 +214,9 @@ export async function PUT(req: Request) {
 
     return NextResponse.json(response);
   } catch (error: unknown) {
+    if (error instanceof AuthError) {
+      return new NextResponse(error.message, { status: error.statusCode });
+    }
     console.error("Failed to update settings:", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
   }
