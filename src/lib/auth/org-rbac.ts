@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { OrganizationMember, Session } from "next-auth";
+import { OrganizationMember } from "@prisma/client";
+import { Session } from "next-auth";
 import { NextRequest } from "next/server";
 
 export class AuthError extends Error {
