@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { generateInvoiceNumber } from "@/lib/invoice-utils";
 import { createAuditLog } from "@/lib/audit-logger";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 
 export async function POST(
   request: Request,
@@ -10,13 +11,12 @@ export async function POST(
 ) {
   try {
     const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
 
     const { id: projectId, milestoneId } = await params;
-    const orgId = session.user.activeOrganizationId!;
 
     const milestone = await prisma.paymentMilestone.findFirst({
-      where: { id: milestoneId, projectId, organizationId: orgId },
+      where: { id: milestoneId, projectId, organizationId },
       include: { project: { select: { title: true } } },
     });
 
@@ -32,7 +32,7 @@ export async function POST(
     }
 
     // Auto-generate invoice
-    const invoiceNumber = await generateInvoiceNumber(orgId);
+    const invoiceNumber = await generateInvoiceNumber(organizationId);
     const defaultDueDate = new Date();
     defaultDueDate.setDate(defaultDueDate.getDate() + 7);
 
@@ -41,7 +41,7 @@ export async function POST(
     let paymentId: string | null = null;
     try {
       const settings = await prisma.settings.findFirst({
-        where: { organizationId: orgId },
+        where: { organizationId },
         select: { mayarApiKey: true },
       });
       if (settings?.mayarApiKey) {
@@ -82,12 +82,12 @@ export async function POST(
         status: "unpaid",
         paymentLink,
         paymentId,
-        organizationId: orgId,
+        organizationId,
       },
     });
 
     const updated = await prisma.paymentMilestone.update({
-      where: { id: milestoneId, organizationId: orgId },
+      where: { id: milestoneId, organizationId },
       data: {
         status: "INVOICED",
         invoiceId: invoice.id,
@@ -101,11 +101,14 @@ export async function POST(
       entityType: "MILESTONE",
       entityId: milestoneId,
       newValue: `Approved → Invoice ${invoiceNumber}`,
-      organizationId: orgId,
+      organizationId,
     });
 
     return NextResponse.json({ milestone: updated, invoice });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Failed to approve milestone:", error);
     return NextResponse.json({ error: "Failed to approve milestone" }, { status: 500 });
   }
