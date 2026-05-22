@@ -1,11 +1,20 @@
 import { NextResponse } from 'next/server';
 import { localEmitter, redisSub } from '@/lib/event-emitter';
+import { auth } from '@/auth';
 
 // Force dynamic and use nodejs to support EventEmitter
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const userId = session.user.id;
+  const orgId = session.user.activeOrganizationId;
+
   let cleanup = () => {};
 
   const customReadable = new ReadableStream({
@@ -26,8 +35,15 @@ export async function GET(req: Request) {
 
       const handleEvent = (data: any) => {
         try {
-          const payload = typeof data === 'string' ? data : JSON.stringify(data);
-          controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+          const payload = typeof data === 'string' ? JSON.parse(data) : data;
+          // Only emit events matching the authenticated user's org or user ID
+          if (orgId && payload?.organizationId && payload.organizationId !== orgId) return;
+          if (payload?.userId && payload.userId !== userId) {
+            // If event has a userId that doesn't match, skip it (unless it's an org-scoped event)
+            if (!payload?.organizationId) return;
+          }
+          const payloadStr = typeof data === 'string' ? data : JSON.stringify(data);
+          controller.enqueue(encoder.encode(`data: ${payloadStr}\n\n`));
         } catch (e) {
           // Stream might be closed
         }
