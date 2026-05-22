@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { sendExportReadyEmail } from "@/lib/email";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 
 export async function POST(
   _request: Request,
@@ -12,12 +13,7 @@ export async function POST(
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { id } = await params;
 
-    const membership = await prisma.organizationMember.findUnique({
-      where: { userId_organizationId: { userId: session.user.id, organizationId: id } },
-    });
-    if (!membership || membership.role !== "OWNER") {
-      return NextResponse.json({ error: "Only the owner can delete an organization" }, { status: 403 });
-    }
+    const { organizationId } = await requireOrgRole(session, "OWNER");
 
     const org = await prisma.organization.findUnique({ where: { id } });
     if (!org) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
@@ -42,6 +38,9 @@ export async function POST(
 
     return NextResponse.json({ success: true, message: "Organization scheduled for deletion" });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Failed to delete org:", error);
     return NextResponse.json({ error: "Failed to delete organization" }, { status: 500 });
   }
