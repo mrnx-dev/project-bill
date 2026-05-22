@@ -34,15 +34,17 @@ export async function DELETE(
 ) {
   try {
     const session = await auth();
-    if (!session?.user?.id) return new NextResponse("Unauthorized", { status: 401 });
+    const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
 
     const { id } = await params;
-    const orgId = session.user.activeOrganizationId!;
 
-    await prisma.sOWTemplate.delete({ where: { id, organizationId: orgId } });
+    await prisma.sOWTemplate.delete({ where: { id, organizationId } });
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     return new NextResponse("Internal Error", { status: 500 });
   }
 }
