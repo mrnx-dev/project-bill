@@ -5,6 +5,7 @@ import { inviteMemberSchema } from "@/lib/validations/organization";
 import { checkOrgLimit } from "@/lib/billing/subscription";
 import crypto from "crypto";
 import { sendInviteEmail } from "@/lib/email";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 
 export async function GET(
   _request: Request,
@@ -13,19 +14,17 @@ export async function GET(
   try {
     const session = await auth();
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const { id } = await params;
-
-    const membership = await prisma.organizationMember.findUnique({
-      where: { userId_organizationId: { userId: session.user.id, organizationId: id } },
-    });
-    if (!membership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
 
     const invites = await prisma.organizationInvite.findMany({
-      where: { organizationId: id },
+      where: { organizationId },
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(invites);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Failed to fetch invites:", error);
     return NextResponse.json({ error: "Failed to fetch invites" }, { status: 500 });
   }
