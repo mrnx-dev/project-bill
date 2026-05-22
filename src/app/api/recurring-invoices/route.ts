@@ -17,7 +17,7 @@ export async function GET(request: Request) {
         const projectId = searchParams.get("projectId");
 
         const args: Prisma.RecurringInvoiceFindManyArgs = {
-            where: {},
+            where: { organizationId: orgId },
             include: { project: { include: { client: true } } },
             orderBy: { createdAt: "desc" },
         };
