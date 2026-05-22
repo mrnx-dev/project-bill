@@ -22,6 +22,17 @@ export async function POST(
       return NextResponse.json({ error: "You are not a member of this organization" }, { status: 403 });
     }
 
+    // Persist defaultOrganizationId so it survives across sessions
+    try {
+      await prisma.user.update({
+        where: { id: session.user.id },
+        data: { defaultOrganizationId: id },
+      });
+      console.log(`[ORG_SWITCH] Persisted defaultOrganizationId=${id} for userId=${session.user.id}`);
+    } catch (dbError) {
+      console.error("[ORG_SWITCH] Failed to persist defaultOrganizationId to DB:", dbError);
+    }
+
     console.log(`[ORG_SWITCH] userId=${session.user.id} fromOrg=${session.user.activeOrganizationId ?? "none"} toOrg=${id} role=${membership.role}`);
 
     return NextResponse.json({
