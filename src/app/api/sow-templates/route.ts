@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { createAuditLog } from "@/lib/audit-logger";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 
 export async function GET() {
     try {
@@ -27,11 +28,7 @@ export async function GET() {
 export async function POST(req: Request) {
     try {
         const session = await auth();
-        if (!session?.user?.id) {
-            return new NextResponse("Unauthorized", { status: 401 });
-        }
-
-        const orgId = session.user.activeOrganizationId!;
+        const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
         const body = await req.json();
         const { name, content } = body;
 
@@ -40,7 +37,7 @@ export async function POST(req: Request) {
         }
 
         const { checkOrgLimit } = await import("@/lib/billing/subscription");
-        const limitCheck = await checkOrgLimit(orgId, "sowTemplates");
+        const limitCheck = await checkOrgLimit(organizationId, "sowTemplates");
         if (!limitCheck.allowed) {
             return NextResponse.json(
                 { error: "Plan limit reached", limitCheck },
@@ -49,7 +46,7 @@ export async function POST(req: Request) {
         }
 
         const template = await prisma.sOWTemplate.create({
-            data: { name, content, organizationId: orgId },
+            data: { name, content, organizationId },
         });
 
         await createAuditLog({
@@ -58,11 +55,14 @@ export async function POST(req: Request) {
             entityType: "SOW_TEMPLATE",
             entityId: template.id,
             newValue: name,
-            organizationId: orgId,
+            organizationId,
         });
 
         return NextResponse.json(template);
     } catch (error) {
+        if (error instanceof AuthError) {
+            return NextResponse.json({ error: error.message }, { status: error.statusCode });
+        }
         console.error("[SOW_TEMPLATES_POST]", error);
         return new NextResponse("Internal Error", { status: 500 });
     }
