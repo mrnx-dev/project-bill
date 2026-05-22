@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { createAuditLog } from "@/lib/audit-logger";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 
 export async function POST(
   request: Request,
@@ -9,13 +10,12 @@ export async function POST(
 ) {
   try {
     const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
 
     const { id: projectId, milestoneId } = await params;
-    const orgId = session.user.activeOrganizationId!;
 
     const milestone = await prisma.paymentMilestone.findFirst({
-      where: { id: milestoneId, projectId, organizationId: orgId },
+      where: { id: milestoneId, projectId, organizationId },
       include: { invoice: { select: { id: true, status: true } } },
     });
 
@@ -30,14 +30,14 @@ export async function POST(
     const updated = await prisma.$transaction(async (tx) => {
       // Mark milestone as PAID
       const m = await tx.paymentMilestone.update({
-        where: { id: milestoneId, organizationId: orgId },
+        where: { id: milestoneId, organizationId },
         data: { status: "PAID" },
       });
 
       // Also mark the linked invoice as paid if it exists
       if (milestone.invoiceId) {
         await tx.invoice.update({
-          where: { id: milestone.invoiceId, organizationId: orgId },
+          where: { id: milestone.invoiceId, organizationId },
           data: { status: "paid", paidAt: new Date() },
         });
       }
@@ -51,11 +51,14 @@ export async function POST(
       entityType: "MILESTONE",
       entityId: milestoneId,
       newValue: milestone.status + " → PAID",
-      organizationId: orgId,
+      organizationId,
     });
 
     return NextResponse.json(updated);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Failed to mark milestone paid:", error);
     return NextResponse.json({ error: "Failed to mark paid" }, { status: 500 });
   }
