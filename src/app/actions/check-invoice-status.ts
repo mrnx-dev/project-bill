@@ -1,23 +1,15 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 
 export async function checkInvoiceStatus(invoiceId: string) {
-    try {
-        const session = await auth();
-        const where: { id: string; organizationId?: string } = { id: invoiceId };
-        if (session?.user?.activeOrganizationId) {
-          where.organizationId = session.user.activeOrganizationId;
-        }
-        const invoice = await prisma.invoice.findFirst({
-            where,
-            select: { status: true },
-        });
-
-        return invoice?.status || null;
-    } catch (error) {
-        console.error("Failed to check invoice status:", error);
-        return null;
-    }
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId, organizationId: session.user.activeOrganizationId! },
+    select: { status: true },
+  });
+  if (!invoice) throw new Error("Invoice not found");
+  return invoice;
 }
