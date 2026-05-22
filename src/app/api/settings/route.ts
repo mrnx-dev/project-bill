@@ -37,7 +37,7 @@ export async function GET() {
       const isSensitive =
         field?.type === "password" || /password|secret|key/i.test(row.key);
       providerConfig[row.providerId][row.key] = isSensitive
-        ? maskSecret(row.isEncrypted ? decrypt(row.value) : row.value)
+        ? maskSecret(row.isEncrypted ? decrypt(row.value) : row.value) ?? "****"
         : row.value;
     }
 
@@ -172,14 +172,14 @@ export async function PUT(req: Request) {
               },
             },
             update: {
-              value: valueToSave,
+              value: valueToSave ?? "",
               isEncrypted: isSensitive,
             },
             create: {
               organizationId,
               providerId,
               key,
-              value: valueToSave,
+              value: valueToSave ?? "",
               isEncrypted: isSensitive,
             },
           });
