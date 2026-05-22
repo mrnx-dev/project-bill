@@ -28,6 +28,9 @@ export async function GET() {
 export async function POST(req: Request) {
     try {
         const session = await auth();
+        if (!session?.user?.id) {
+            return new NextResponse("Unauthorized", { status: 401 });
+        }
         const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
         const body = await req.json();
         const { name, content } = body;

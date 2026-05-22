@@ -52,6 +52,9 @@ export async function DELETE(
 ) {
   try {
     const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
     const resolvedParams = await params;
     const id = resolvedParams.id;

@@ -40,6 +40,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const session = await auth();
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
         const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
 
         let json;

@@ -10,6 +10,9 @@ export async function POST(
 ) {
   try {
     const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
 
     const { id: projectId, milestoneId } = await params;
