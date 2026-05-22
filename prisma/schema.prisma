@@ -197,6 +197,7 @@ model Invoice {
   paidAt         DateTime?
   lastReminderAt DateTime?
   lateFeeApplied Boolean             @default(false)
+  voidedAt       DateTime?           // NEW: timestamp when invoice was voided
   organizationId String
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
