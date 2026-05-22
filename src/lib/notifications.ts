@@ -9,6 +9,7 @@ interface CreateNotificationParams {
   type: NotificationType;
   linkUrl?: string;
   organizationId: string;
+  userId?: string | null;
 }
 
 export async function createNotification({
@@ -17,7 +18,14 @@ export async function createNotification({
   type,
   linkUrl,
   organizationId,
+  userId,
 }: CreateNotificationParams) {
+  if (userId === undefined) {
+    console.warn(
+      `[NOTIFICATIONS] createNotification called without userId — callers should pass userId or null for org-wide. title="${title}" orgId="${organizationId}"`
+    );
+  }
+
   try {
     const notification = await prisma.notification.create({
       data: {
@@ -26,6 +34,7 @@ export async function createNotification({
         type,
         linkUrl,
         organizationId,
+        userId: userId ?? null,
       },
     });
 

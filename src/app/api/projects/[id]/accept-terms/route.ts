@@ -72,6 +72,7 @@ export async function PATCH(
         type: "sow_signed",
         linkUrl: `/projects`,
         organizationId: project.organizationId,
+        userId: session.user.id,
       });
     } catch (e) {
       console.error(e);

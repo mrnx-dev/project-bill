@@ -97,6 +97,7 @@ export async function POST(request: Request) {
           type: "payment",
           linkUrl: `/invoices/${updatedInvoice.id}`,
           organizationId: updatedInvoice.organizationId,
+          userId: null, // org-wide — webhook has no user session
         });
 
         // Generate PDF and send Email in the background

@@ -73,6 +73,7 @@ export async function POST(
       type: "payment",
       linkUrl: `/invoices/${id}`,
       organizationId,
+      userId: session.user.id,
     }).catch(console.error);
 
     return NextResponse.json({ success: true, invoice: updatedInvoice });
