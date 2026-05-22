@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { recurringInvoiceSchema } from "@/lib/validations";
 import { createAuditLog } from "@/lib/audit-logger";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 
 export async function GET(request: Request) {
     try {
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const session = await auth();
-        if (!session) return new NextResponse("Unauthorized", { status: 401 });
+        const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
 
         let json;
         try {
@@ -57,10 +58,9 @@ export async function POST(request: Request) {
         }
 
         const data = validation.data;
-        const orgId = session.user.activeOrganizationId!;
 
         const { checkOrgLimit } = await import("@/lib/billing/subscription");
-        const limitCheck = await checkOrgLimit(orgId, "recurringTemplates");
+        const limitCheck = await checkOrgLimit(organizationId, "recurringTemplates");
         if (!limitCheck.allowed) {
             return NextResponse.json(
                 { error: "Plan limit reached", limitCheck },
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
         }
 
         const project = await prisma.project.findFirst({
-            where: { id: data.projectId, organizationId: orgId },
+            where: { id: data.projectId, organizationId },
         });
 
         if (!project) {
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
                 description: data.description,
                 isActive: data.isActive,
                 nextRunAt: nextRunAt,
-                organizationId: orgId,
+                organizationId,
             },
             include: { project: true },
         });
@@ -119,11 +119,14 @@ export async function POST(request: Request) {
             entityType: "RECURRING_INVOICE",
             entityId: recurringInvoice.id,
             newValue: data.title,
-            organizationId: orgId,
+            organizationId,
         });
 
         return NextResponse.json(recurringInvoice, { status: 201 });
     } catch (error) {
+        if (error instanceof AuthError) {
+            return NextResponse.json({ error: error.message }, { status: error.statusCode });
+        }
         console.error("Failed to create recurring invoice:", error);
         return NextResponse.json(
             { error: "Failed to create recurring invoice" },
