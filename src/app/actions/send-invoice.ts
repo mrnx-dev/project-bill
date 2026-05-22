@@ -1,10 +1,7 @@
 "use server";
 
-import { prisma } from "@/lib/prisma"
-import { sendInvoiceEmail as baseSendInvoiceEmail, sendRecurringInvoiceEmail } from "@/lib/email"
-import { getBaseUrl } from "@/lib/utils";
 import { auth } from "@/auth";
-import { formatMoney } from "@/lib/currency";
+import { sendInvoiceEmailUtil } from "@/lib/email/send-invoice-email";
 
 export async function sendInvoiceEmail(
   invoiceId: string,
@@ -16,125 +13,10 @@ export async function sendInvoiceEmail(
 
   const orgId = session.user.activeOrganizationId!;
 
-  const { checkOrgLimit, incrementOrgUsage } = await import("@/lib/billing/subscription");
-
-  try {
-    const limitCheck = await checkOrgLimit(orgId, "emailsPerMonth");
-    if (!limitCheck.allowed) {
-      return {
-        success: false,
-        error: "Monthly email limit reached. Please upgrade your plan.",
-        limitCheck
-      };
-    }
-
-    const invoice = await prisma.invoice.findFirst({
-      where: { id: invoiceId, organizationId: orgId },
-      include: {
-        project: {
-          include: {
-            client: true
-          }
-        }
-      }
-    })
-
-    if (!invoice || !invoice.project.client.email) {
-      throw new Error("Invoice or Client Email not found")
-    }
-
-    const client = invoice.project.client
-    const project = invoice.project
-
-    const amountStr = formatMoney(Number(invoice.amount), project.currency || "IDR");
-    const baseUrl = getBaseUrl();
-    const invoiceDetailUrl = `${baseUrl}/invoices/${invoice.id}`;
-
-    try {
-        let result;
-
-        if (invoice.type === "RECURRING") {
-          result = await sendRecurringInvoiceEmail({
-            to: client.email!,
-            clientName: client.name,
-            projectTitle: project.title,
-            invoiceId: invoice.invoiceNumber,
-            dueDate: invoice.dueDate,
-            amountStr: amountStr,
-            invoiceLink: invoiceDetailUrl,
-            description: customNotes || invoice.notes,
-            lang: project.language as "id" | "en",
-            organizationId: orgId,
-          });
-        } else {
-          result = await baseSendInvoiceEmail({
-            to: client.email!,
-            clientName: client.name,
-            projectTitle: project.title,
-            invoiceId: invoice.invoiceNumber,
-            dueDate: invoice.dueDate,
-            amountStr: amountStr,
-            invoiceLink: invoiceDetailUrl,
-            lang: project.language as "id" | "en",
-            organizationId: orgId,
-          });
-        }
-
-        if (result.success && !result.mocked) {
-          await prisma.invoice.update({
-             where: { id: invoiceId, organizationId: orgId },
-             data: { emailStatus: 'SENT' }
-          });
-          await incrementOrgUsage(orgId, "emailsSent");
-        }
-
-        if (!result.success && result.error) {
-           throw result.error;
-        }
-
-        let mailtoData = undefined;
-        if (result.mocked) {
-           let subject = "";
-           let body = "";
-
-           if (invoice.type === "RECURRING") {
-               subject = project.language === "en"
-                   ? `Recurring Invoice [${invoice.invoiceNumber}] for ${project.title} - Action Required`
-                   : `Tagihan Rutin [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
-
-               body = project.language === "en"
-                   ? `Hello ${client.name},\n\nPlease find your recurring invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nAccess all your invoices: ${getBaseUrl()}/client/login\n\nThank you!`
-                   : `Halo ${client.name},\n\nBerikut adalah detail tagihan rutin Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nAkses semua invoice Anda: ${getBaseUrl()}/client/login\n\nTerima kasih!`;
-           } else {
-               subject = project.language === "en"
-                   ? `Invoice [${invoice.invoiceNumber}] for ${project.title} - Action Required`
-                   : `Invoice [${invoice.invoiceNumber}] untuk ${project.title} - Diperlukan Tindakan`;
-
-               body = project.language === "en"
-                   ? `Hello ${client.name},\n\nPlease find your invoice detail here:\n${invoiceDetailUrl}\n\nAmount due: ${amountStr}\n\nAccess all your invoices: ${getBaseUrl()}/client/login\n\nThank you!`
-                   : `Halo ${client.name},\n\nBerikut adalah detail tagihan Anda:\n${invoiceDetailUrl}\n\nTotal tagihan: ${amountStr}\n\nAkses semua invoice Anda: ${getBaseUrl()}/client/login\n\nTerima kasih!`;
-           }
-
-           mailtoData = { to: client.email!, subject, body };
-        }
-
-        return {
-          success: true,
-          manual: result.mocked,
-          message: result.mocked ? "Select your preferred email provider..." : undefined,
-          invoiceLink: result.mocked ? invoiceDetailUrl : undefined,
-          mailtoData
-        }
-    } catch (emailError: any) {
-        console.error("Failed to send email via Resend:", emailError);
-        await prisma.invoice.update({
-          where: { id: invoiceId, organizationId: orgId },
-          data: { emailStatus: 'FAILED' }
-        });
-        return { success: false, error: emailError?.message || "Failed to send email" }
-    }
-  } catch (error) {
-    console.error("Error generating/sending invoice email:", error)
-    return { success: false, error: "Failed to send email" }
-  }
+  return sendInvoiceEmailUtil({
+    invoiceId,
+    orgId,
+    isAutoGenerated,
+    customNotes,
+  });
 }
