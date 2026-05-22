@@ -1,34 +1,33 @@
 // MIG-1: Invoice status normalization
 // Normalize lowercase "unpaid"/"paid" to "UNPAID"/"PAID"
 // Idempotent — safe to re-run
+// Uses raw pg connection since PrismaClient needs adapter setup
 
-import { PrismaClient } from "@prisma/client";
+import { Pool } from "pg";
 
-const prisma = new PrismaClient();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 async function migrate() {
   console.log("[MIGRATE] Normalizing invoice status to uppercase...");
 
-  const [unpaidRes, paidRes] = await Promise.all([
-    prisma.invoice.updateMany({
-      where: { status: { equals: "unpaid", mode: "insensitive" } },
-      data: { status: "UNPAID" },
-    }),
-    prisma.invoice.updateMany({
-      where: { status: "paid" },
-      data: { status: "PAID" },
-    }),
-  ]);
-  console.log(`  → ${unpaidRes.count} unpaid→UNPAID, ${paidRes.count} paid→PAID`);
+  const unpaidRes = await pool.query(
+    `UPDATE "Invoice" SET status = 'UNPAID' WHERE LOWER(status) = 'unpaid' AND status != 'UNPAID'`
+  );
+  console.log(`  → ${unpaidRes.rowCount} unpaid→UNPAID`);
 
-  const remaining = await prisma.invoice.count({
-    where: { status: { notIn: ["UNPAID", "PAID", "DRAFT", "VOID"] } },
-  });
+  const paidRes = await pool.query(
+    `UPDATE "Invoice" SET status = 'PAID' WHERE status = 'paid'`
+  );
+  console.log(`  → ${paidRes.rowCount} paid→PAID`);
+
+  const remainingRes = await pool.query(
+    `SELECT COUNT(*) as count FROM "Invoice" WHERE status NOT IN ('UNPAID', 'PAID', 'DRAFT', 'VOID')`
+  );
+  const remaining = parseInt(remainingRes.rows[0].count, 10);
   if (remaining > 0) {
-    await prisma.invoice.updateMany({
-      where: { status: { notIn: ["UNPAID", "PAID", "DRAFT", "VOID"] } },
-      data: { status: "UNPAID" },
-    });
+    await pool.query(
+      `UPDATE "Invoice" SET status = 'UNPAID' WHERE status NOT IN ('UNPAID', 'PAID', 'DRAFT', 'VOID')`
+    );
     console.log(`  → ${remaining} unrecognized → UNPAID`);
   }
 
@@ -36,8 +35,5 @@ async function migrate() {
 }
 
 migrate()
-  .then(() => process.exit(0))
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  });
+  .then(() => { pool.end(); process.exit(0); })
+  .catch((e) => { console.error(e); pool.end(); process.exit(1); });
