@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { updateMemberRoleSchema } from "@/lib/validations/organization";
+import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
 
 export async function PATCH(
   request: Request,
@@ -13,15 +14,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
+
     const { id, memberId } = await params;
-
-    const requesterMembership = await prisma.organizationMember.findUnique({
-      where: { userId_organizationId: { userId: session.user.id, organizationId: id } },
-    });
-
-    if (!requesterMembership || requesterMembership.role !== "OWNER") {
-      return NextResponse.json({ error: "Only the owner can change member roles" }, { status: 403 });
-    }
 
     const body = await request.json();
     const validation = updateMemberRoleSchema.safeParse(body);
@@ -40,6 +35,9 @@ export async function PATCH(
 
     return NextResponse.json(member);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Failed to update member:", error);
     return NextResponse.json(
       { error: "Failed to update member" },
@@ -58,6 +56,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { membership: requesterMembership } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
+
     const { id, memberId } = await params;
 
     const targetMember = await prisma.organizationMember.findUnique({
@@ -75,17 +75,10 @@ export async function DELETE(
       );
     }
 
-    const requesterMembership = await prisma.organizationMember.findUnique({
-      where: { userId_organizationId: { userId: session.user.id, organizationId: id } },
-    });
-
     const isLeavingOwn = targetMember.userId === session.user.id;
 
-    if (!requesterMembership && !isLeavingOwn) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    if (requesterMembership && requesterMembership.role === "MEMBER" && !isLeavingOwn) {
+    // MEMBER role can only remove themselves (leave org)
+    if (requesterMembership.role === "MEMBER" && !isLeavingOwn) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -95,6 +88,9 @@ export async function DELETE(
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Failed to remove member:", error);
     return NextResponse.json(
       { error: "Failed to remove member" },
