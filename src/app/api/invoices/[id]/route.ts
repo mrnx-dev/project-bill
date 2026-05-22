@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { createAuditLog } from "@/lib/audit-logger";
 import { requireOrgRole, AuthError } from "@/lib/auth/org-rbac";
+import { INVOICE_STATUS } from "@/lib/invoice-status";
 
 export async function PATCH(
   request: Request,
@@ -51,20 +52,26 @@ export async function DELETE(
 ) {
   try {
     const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    const { organizationId } = await requireOrgRole(session, ["OWNER", "ADMIN"]);
     const resolvedParams = await params;
     const id = resolvedParams.id;
-    const orgId = session.user.activeOrganizationId!;
 
     const invoice = await prisma.invoice.findFirst({
-      where: { id, organizationId: orgId },
+      where: { id, organizationId },
     });
 
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    await prisma.invoice.delete({ where: { id, organizationId: orgId } });
+    if (invoice.status === INVOICE_STATUS.PAID) {
+      return NextResponse.json(
+        { error: "Cannot delete a paid invoice. Void the invoice first." },
+        { status: 409 },
+      );
+    }
+
+    await prisma.invoice.delete({ where: { id, organizationId } });
 
     await createAuditLog({
       userId: session.user.id,
@@ -72,11 +79,14 @@ export async function DELETE(
       entityType: "INVOICE",
       entityId: id,
       oldValue: invoice.invoiceNumber,
-      organizationId: orgId,
+      organizationId,
     });
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.statusCode });
+    }
     console.error("Failed to delete invoice:", error);
     return NextResponse.json({ error: "Failed to delete invoice" }, { status: 500 });
   }
