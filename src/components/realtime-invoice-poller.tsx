@@ -12,7 +12,7 @@ export function RealtimeInvoicePoller({ invoiceId }: { invoiceId: string }) {
         const interval = setInterval(async () => {
             const status = await checkInvoiceStatus(invoiceId);
 
-            if (status === "PAID") {
+            if (status?.status === "PAID") {
                 // If the webhook updated the DB to paid, immediately refresh the current route.
                 // This will seamlessly re-fetch server components and dump the "Unpaid" UI.
                 router.refresh();

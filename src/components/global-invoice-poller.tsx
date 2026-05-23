@@ -16,7 +16,7 @@ export function GlobalInvoicePoller({ currentUnpaidCount }: { currentUnpaidCount
 
             // If the database has fewer unpaid invoices than what our screen currently shows, 
             // it means a webhook successfully marked one as paid. Refresh the UI!
-            if (liveCount !== null && liveCount < currentUnpaidCount) {
+            if (liveCount !== null && liveCount.count < currentUnpaidCount) {
                 router.refresh();
             }
         }, 5000);

@@ -22,7 +22,7 @@ export const integrationsSchema = z.object({
 
 /** Email provider config — dynamically validated by manifest */
 export const emailProviderSchema = z.object({
-  emailProvider: z.string().default("resend"),
+  emailProvider: z.string().optional().default("resend"),
   providerConfig: z.record(z.string(), z.record(z.string(), z.string())).optional().default({}),
 });
 

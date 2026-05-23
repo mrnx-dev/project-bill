@@ -131,7 +131,6 @@ export default async function DashboardLayout({
             bankName: settings.bankName || "",
             bankAccountName: settings.bankAccountName || "",
             bankAccountNumber: settings.bankAccountNumber || "",
-            resendApiKey: settings.resendApiKey || "",
             mayarApiKey: settings.mayarApiKey || "",
             mayarWebhookSecret: settings.mayarWebhookSecret || "",
           } : undefined}

@@ -62,7 +62,6 @@ export type SettingsData = {
   bankName: string;
   bankAccountName: string;
   bankAccountNumber: string;
-  resendApiKey: string;
   mayarApiKey: string;
   mayarWebhookSecret: string;
 };
@@ -124,7 +123,6 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
   const integrationsForm = useForm<IntegrationsFormValues>({
     resolver: zodResolver(integrationsSchema),
     defaultValues: {
-      resendApiKey: existingSettings?.resendApiKey || "",
       mayarApiKey: existingSettings?.mayarApiKey || "",
       mayarWebhookSecret: existingSettings?.mayarWebhookSecret || "",
     }
@@ -198,7 +196,6 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
   const handleNextIntegrations = async (values: IntegrationsFormValues) => {
     // Only pass non-empty strings, ignore undefined
     const payload: Record<string, string> = {};
-    if (values.resendApiKey) payload.resendApiKey = values.resendApiKey;
     if (values.mayarApiKey) payload.mayarApiKey = values.mayarApiKey;
     if (values.mayarWebhookSecret) payload.mayarWebhookSecret = values.mayarWebhookSecret;
 

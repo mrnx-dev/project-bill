@@ -22,8 +22,9 @@ export function SettingsFormClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Cast resolver to resolve Zod input/output type mismatch (settingsSchema has defaults that make output required but input optional)
   const form = useForm<SettingsFormValues>({
-    resolver: zodResolver(settingsSchema),
+    resolver: zodResolver(settingsSchema) as any,
     defaultValues: {
       companyName: "ProjectBill",
       companyAddress: "",
