@@ -3,13 +3,16 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronsUpDown, Plus, GalleryVerticalEnd } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, GalleryVerticalEnd, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +24,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useUnsavedForm } from "@/hooks/use-unsaved-form";
+import {
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+} from "@/components/ui/sidebar";
+import Link from "next/link";
 
 interface Organization {
   id: string;
@@ -41,7 +50,6 @@ export function OrgSwitcher({ currentOrgName, currentOrgLogo, organizations: ser
   const { data: session, update } = useSession();
   const router = useRouter();
   const { confirmSwitch } = useUnsavedForm();
-  const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState("");
   const [fetchedOrgs, setFetchedOrgs] = useState<Organization[]>([]);
@@ -51,7 +59,6 @@ export function OrgSwitcher({ currentOrgName, currentOrgLogo, organizations: ser
   const orgs = serverOrgs && serverOrgs.length > 0 ? serverOrgs : fetchedOrgs;
 
   useEffect(() => {
-    // Only fetch client-side if we don't have server-provided orgs
     if (!serverOrgs || serverOrgs.length === 0) {
       fetchOrgs();
     }
@@ -69,26 +76,9 @@ export function OrgSwitcher({ currentOrgName, currentOrgLogo, organizations: ser
     }
   }
 
-  if (orgs.length <= 1 && currentOrgName) {
-    return (
-      <div className="flex items-center gap-2 px-2">
-        <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden">
-          {currentOrgLogo ? (
-            <img src={currentOrgLogo} alt={currentOrgName} className="h-full w-full object-cover" />
-          ) : (
-            <GalleryVerticalEnd className="size-4" />
-          )}
-        </div>
-        <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-          <span className="truncate font-semibold text-base">{currentOrgName}</span>
-        </div>
-      </div>
-    );
-  }
-
   async function switchOrg(orgId: string) {
     if (!confirmSwitch()) return;
-    if (orgId === activeOrgId) return; // prevent infinite re-render
+    if (orgId === activeOrgId) return;
     try {
       const res = await fetch(`/api/organizations/${orgId}/switch`, { method: "POST" });
       if (res.status === 401) {
@@ -105,7 +95,6 @@ export function OrgSwitcher({ currentOrgName, currentOrgLogo, organizations: ser
       }
       const data = await res.json();
       await update({ activeOrganizationId: orgId, activeOrganizationRole: data.activeOrganizationRole });
-      setOpen(false);
       router.refresh();
     } catch {
       toast.error("Connection error. Please try again.");
@@ -139,87 +128,82 @@ export function OrgSwitcher({ currentOrgName, currentOrgLogo, organizations: ser
   }
 
   const activeOrg = orgs.find((o) => o.id === activeOrgId);
+  const displayName = activeOrg?.name || currentOrgName || "Select organization";
+  const displayLogo = activeOrg?.logoUrl || currentOrgLogo;
 
   return (
     <>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between rounded-lg px-2 h-auto py-2"
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden shrink-0">
-                {activeOrg?.logoUrl || currentOrgLogo ? (
-                  <img src={(activeOrg?.logoUrl || currentOrgLogo)!} alt={activeOrg?.name || currentOrgName || ""} className="h-full w-full object-cover" />
-                ) : (
-                  <GalleryVerticalEnd className="size-4" />
-                )}
-              </div>
-              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-semibold text-base">
-                  {activeOrg?.name || currentOrgName || "Select organization"}
-                </span>
-              </div>
-            </div>
-            <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50 group-data-[collapsible=icon]:hidden" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[280px] p-0" align="start">
-          <div className="p-2" onKeyDown={(e) => {
-            if (e.key === "Escape") { setOpen(false); return; }
-            const buttons = e.currentTarget.querySelectorAll<HTMLButtonElement>('[data-org-item]');
-            if (!buttons.length) return;
-            const activeIdx = Array.from(buttons).indexOf(document.activeElement as HTMLButtonElement);
-            if (e.key === "ArrowDown") {
-              e.preventDefault();
-              const next = buttons[(activeIdx + 1) % buttons.length];
-              next?.focus();
-            } else if (e.key === "ArrowUp") {
-              e.preventDefault();
-              const prev = buttons[(activeIdx - 1 + buttons.length) % buttons.length];
-              prev?.focus();
-            }
-          }}>
-            <p className="text-xs font-medium text-muted-foreground px-2 py-1.5">Organizations</p>
-            {orgs.map((org) => (
-              <Button
-                key={org.id}
-                variant="ghost"
-                data-org-item
-                tabIndex={0}
-                className="w-full justify-start gap-2 rounded-lg h-auto py-2 px-2"
-                onClick={() => switchOrg(org.id)}
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuButton
+                size="lg"
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground rounded-lg"
               >
-                <div className="flex size-6 items-center justify-center rounded-sm border overflow-hidden shrink-0">
-                  {org.logoUrl ? (
-                    <img src={org.logoUrl} alt={org.name} className="h-full w-full object-cover" />
+                <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden">
+                  {displayLogo ? (
+                    <img src={displayLogo} alt={displayName} className="h-full w-full object-cover" />
                   ) : (
-                    <GalleryVerticalEnd className="size-3" />
+                    <GalleryVerticalEnd className="size-4" />
                   )}
                 </div>
-                <span className="truncate flex-1 text-left">{org.name}</span>
-                <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full ${org.role === "OWNER" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                  {org.role}
-                </span>
-                {org.id === activeOrgId && <Check className="size-4 shrink-0" />}
-              </Button>
-            ))}
-          </div>
-          <div className="border-t p-2">
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 rounded-lg px-2"
-              onClick={() => { setOpen(false); setCreateOpen(true); }}
+                <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                  <span className="truncate font-semibold text-base">{displayName}</span>
+                </div>
+                <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+              align="start"
+              side="bottom"
+              sideOffset={4}
             >
-              <Plus className="size-4" />
-              Create Organization
-            </Button>
-          </div>
-        </PopoverContent>
-      </Popover>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">
+                Organizations
+              </DropdownMenuLabel>
+              {orgs.map((org) => (
+                <div key={org.id} className="flex items-center justify-between p-2">
+                  <DropdownMenuItem
+                    className="gap-2 flex-1 cursor-pointer"
+                    onClick={() => switchOrg(org.id)}
+                  >
+                    <div className="flex size-6 items-center justify-center rounded-sm border overflow-hidden">
+                      {org.logoUrl ? (
+                        <img src={org.logoUrl} alt={org.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <GalleryVerticalEnd className="size-3 shrink-0" />
+                      )}
+                    </div>
+                    <span className="truncate flex-1">{org.name}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${org.role === "OWNER" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                      {org.role}
+                    </span>
+                    {org.id === activeOrgId && <Check className="size-4 shrink-0" />}
+                  </DropdownMenuItem>
+                  <Link
+                    href="/settings/organization"
+                    className="text-muted-foreground hover:text-foreground text-xs relative z-10 p-1 flex items-center justify-center rounded-sm hover:bg-muted/50 cursor-pointer"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Link>
+                </div>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="gap-2 p-2 cursor-pointer"
+                onClick={() => setCreateOpen(true)}
+              >
+                <div className="flex size-6 items-center justify-center rounded-md border bg-background">
+                  <Plus className="size-4" />
+                </div>
+                <span className="font-medium text-muted-foreground">Create Organization</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarMenuItem>
+      </SidebarMenu>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>

@@ -134,16 +134,12 @@ export function AppSidebar({ user, company, organizations, activeOrgId, activeRo
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <OrgSwitcher
-              currentOrgName={companyName}
-              currentOrgLogo={companyLogo}
-              organizations={organizations}
-              activeOrgId={activeOrgId}
-            />
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <OrgSwitcher
+          currentOrgName={companyName}
+          currentOrgLogo={companyLogo}
+          organizations={organizations}
+          activeOrgId={activeOrgId}
+        />
       </SidebarHeader>
 
       <SidebarContent>
