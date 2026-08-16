@@ -1,22 +1,45 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { withTenant, getTenantCtx } from "@/lib/rls";
 
-export async function GET(request: Request) {
-  const session = await auth();
-  if (!session?.user) return new NextResponse("Unauthorized", { status: 401 });
+export const GET = withTenant(async (request: Request) => {
+  const ctx = getTenantCtx()!;
   const { searchParams } = new URL(request.url);
   const conversationId = searchParams.get("conversationId");
+
   if (conversationId) {
+    // Object-level authorization (OWASP API1:2023 BOLA): verify ownership
+    // before returning messages. 404 (not 403) to avoid leaking existence.
+    // NOTE: AgentConversation is a tenant model, so withTenant's RLS context
+    // also auto-injects `organizationId` into this findUnique's `where` (via the
+    // prisma extension). The explicit organizationId check below is therefore
+    // belt-and-suspenders (never fails when RLS is active) but is kept as
+    // defense-in-depth in case the context is ever absent. The `userId` check
+    // is the meaningful one (RLS does not filter by user).
+    const conversation = await prisma.agentConversation.findUnique({
+      where: { id: conversationId },
+      select: { userId: true, organizationId: true },
+    });
+    if (
+      !conversation ||
+      conversation.userId !== ctx.userId ||
+      conversation.organizationId !== ctx.organizationId
+    ) {
+      return new NextResponse("Not Found", { status: 404 });
+    }
     const messages = await prisma.agentMessage.findMany({
-      where: { conversationId }, orderBy: { createdAt: "asc" },
+      where: { conversationId },
+      orderBy: { createdAt: "asc" },
       select: { id: true, role: true, content: true, metadata: true, createdAt: true },
     });
     return NextResponse.json({ messages });
   }
+
   const conversations = await prisma.agentConversation.findMany({
-    where: { userId: session.user.id }, orderBy: { updatedAt: "desc" }, take: 10,
+    where: { userId: ctx.userId, organizationId: ctx.organizationId },
+    orderBy: { updatedAt: "desc" },
+    take: 10,
     select: { id: true, title: true, updatedAt: true, _count: { select: { messages: true } } },
   });
   return NextResponse.json({ conversations });
-}
+});

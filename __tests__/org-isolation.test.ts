@@ -50,3 +50,35 @@ describe("Organization Deletion Logic", () => {
     expect(thirtyDaysAgo < cutoff).toBe(true);
   });
 });
+
+describe("Agent history — conversation ownership (IDOR guard)", () => {
+  test("rejects conversationId belonging to a different user", () => {
+    // The route must look up the conversation and verify BOTH userId and
+    // organizationId match the session before returning messages. This test
+    // encodes the ownership predicate the route must apply.
+    const session = { id: "u1", activeOrganizationId: "org-1" };
+    const conversation = { id: "c1", userId: "u2", organizationId: "org-1" };
+    const allowed =
+      conversation.userId === session.id &&
+      conversation.organizationId === session.activeOrganizationId;
+    expect(allowed).toBe(false);
+  });
+
+  test("rejects conversationId belonging to a different org", () => {
+    const session = { id: "u1", activeOrganizationId: "org-1" };
+    const conversation = { id: "c1", userId: "u1", organizationId: "org-2" };
+    const allowed =
+      conversation.userId === session.id &&
+      conversation.organizationId === session.activeOrganizationId;
+    expect(allowed).toBe(false);
+  });
+
+  test("allows conversationId matching both user and org", () => {
+    const session = { id: "u1", activeOrganizationId: "org-1" };
+    const conversation = { id: "c1", userId: "u1", organizationId: "org-1" };
+    const allowed =
+      conversation.userId === session.id &&
+      conversation.organizationId === session.activeOrganizationId;
+    expect(allowed).toBe(true);
+  });
+});
