@@ -7,6 +7,7 @@
  */
 
 import { env } from "@/lib/env";
+import { isPublicPath } from "@/lib/proxy-paths";
 
 // Mock env at module level
 jest.mock("@/lib/env", () => ({
@@ -135,22 +136,16 @@ describe("Casdoor Auth — Conditional Provider Logic", () => {
     ];
 
     it("allows public paths without auth", () => {
-      const PUBLIC_PATHS = ["/login", "/setup", "/api/auth", "/api/webhooks", "/invoices"];
+      // Uses the real proxy matcher so the test reflects actual behavior
+      // (e.g. /invoices/:id is public but bare /invoices is protected).
       for (const path of publicPaths) {
-        const isPublic = PUBLIC_PATHS.some(
-          (p) => path === p || path.startsWith(p + "/")
-        );
-        expect(isPublic).toBe(true);
+        expect(isPublicPath(path)).toBe(true);
       }
     });
 
     it("blocks protected paths without auth", () => {
-      const PUBLIC_PATHS = ["/login", "/setup", "/api/auth", "/api/webhooks", "/invoices"];
       for (const path of protectedPaths) {
-        const isPublic = PUBLIC_PATHS.some(
-          (p) => path === p || path.startsWith(p + "/")
-        );
-        expect(isPublic).toBe(false);
+        expect(isPublicPath(path)).toBe(false);
       }
     });
   });

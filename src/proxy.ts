@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { env } from "@/lib/env";
-import { isPublicPath, isPublicApi } from "@/lib/proxy-paths";
+import { isPublicPath } from "@/lib/proxy-paths";
 
 export { isPublicPath };
 
@@ -16,8 +16,10 @@ export async function proxy(req: NextRequest) {
     if (token) return NextResponse.redirect(new URL("/board", req.url));
   }
 
-  // Public pages and public API pass through.
-  if (isPublicPath(pathname) || isPublicApi(pathname)) {
+  // Public pages and public API pass through. isPublicPath folds in the
+  // API-public cases (see proxy-paths.ts), so a separate isPublicApi call is
+  // redundant here.
+  if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
 

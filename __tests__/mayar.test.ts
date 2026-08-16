@@ -5,7 +5,7 @@ import { decrypt } from "../src/lib/crypto";
 jest.mock("../src/lib/prisma", () => ({
   prisma: {
     settings: {
-      findUnique: jest.fn(),
+      findFirst: jest.fn(),
     },
     user: {
       findFirst: jest.fn(),
@@ -25,7 +25,7 @@ describe("verifyMayarWebhook", () => {
   it("should return false if MAYAR_WEBHOOK_SECRET is empty", async () => {
     const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
-    (prisma.settings.findUnique as jest.Mock).mockResolvedValue({
+    (prisma.settings.findFirst as jest.Mock).mockResolvedValue({
       mayarWebhookSecret: null,
     });
 
@@ -39,7 +39,7 @@ describe("verifyMayarWebhook", () => {
   it("should return true for a valid payload and signature", async () => {
     const secret = "my_super_secret_webhook_key";
     
-    (prisma.settings.findUnique as jest.Mock).mockResolvedValue({
+    (prisma.settings.findFirst as jest.Mock).mockResolvedValue({
       mayarWebhookSecret: "encrypted_secret",
     });
     (decrypt as jest.Mock).mockReturnValue(secret);
@@ -59,7 +59,7 @@ describe("verifyMayarWebhook", () => {
   it("should return false for an invalid signature", async () => {
     const secret = "my_super_secret_webhook_key";
     
-    (prisma.settings.findUnique as jest.Mock).mockResolvedValue({
+    (prisma.settings.findFirst as jest.Mock).mockResolvedValue({
       mayarWebhookSecret: "encrypted_secret",
     });
     (decrypt as jest.Mock).mockReturnValue(secret);
@@ -79,7 +79,7 @@ describe("verifyMayarWebhook", () => {
   it("should return false if signature length is mismatched", async () => {
     const secret = "secret";
     
-    (prisma.settings.findUnique as jest.Mock).mockResolvedValue({
+    (prisma.settings.findFirst as jest.Mock).mockResolvedValue({
       mayarWebhookSecret: "encrypted_secret",
     });
     (decrypt as jest.Mock).mockReturnValue(secret);
