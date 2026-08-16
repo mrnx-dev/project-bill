@@ -1,21 +1,33 @@
 import { NextResponse } from 'next/server';
 import { localEmitter, redisSub } from '@/lib/event-emitter';
+import { withTenant, getTenantCtx } from '@/lib/rls';
 
 // Force dynamic and use nodejs to support EventEmitter
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET(req: Request) {
+export const GET = withTenant(async (req: Request) => {
+  const ctx = getTenantCtx()!;
+  const orgId = ctx.organizationId;
   let cleanup = () => {};
+
+  // Only forward events whose payload belongs to this tenant.
+  const isRelevant = (raw: string): boolean => {
+    try {
+      const parsed = JSON.parse(raw);
+      const data = parsed?.data ?? parsed;
+      return data?.organizationId === orgId;
+    } catch {
+      return false;
+    }
+  };
 
   const customReadable = new ReadableStream({
     start(controller) {
       const encoder = new TextEncoder();
 
-      // Send initial heartbeat immediately to establish connection
       controller.enqueue(encoder.encode(': connected\n\n'));
 
-      // Keep connection alive (important for proxies/Vercel timeouts)
       const heartbeat = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(': heartbeat\n\n'));
@@ -27,6 +39,7 @@ export async function GET(req: Request) {
       const handleEvent = (data: any) => {
         try {
           const payload = typeof data === 'string' ? data : JSON.stringify(data);
+          if (!isRelevant(payload)) return;
           controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
         } catch (e) {
           // Stream might be closed
@@ -75,4 +88,4 @@ export async function GET(req: Request) {
       'X-Accel-Buffering': 'no',
     },
   });
-}
+});
