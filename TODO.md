@@ -151,6 +151,7 @@
 - [x] Fix cross-tenant SSE leak — `events` per-org event filter + auth
 - [x] Fix public-sow field leakage — reduced `select` + IP rate limiting
 - [ ] **Tier 2 (deferred, robust standard):** PostgreSQL `ENABLE/FORCE ROW LEVEL SECURITY` + `CREATE POLICY tenant_isolation` + `SET LOCAL app.current_tenant_id` per request. See spec `docs/superpowers/specs/2026-08-16-multi-tenant-foundation-design.md` §9.
+- [ ] **E2E BOLA verification (deferred):** Playwright cross-tenant isolation case — user A gets 404 fetching user B's `agent/history?conversationId=<B>`, and SSE only delivers this-tenant events. The BOLA logic is unit-tested + contract-tested; the live two-user scenario was not run to avoid writing to the DB.
 
 #### Phase 1 — Client Portal Auth & Dashboard
 - [ ] Desain model `ClientAuth` (magic link ke email), terpisah dari model `User`
