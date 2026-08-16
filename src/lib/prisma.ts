@@ -2,7 +2,7 @@ import { env } from "./env";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
-import { getOrgContext, isTenantModel } from "./rls";
+import { getOrgContext, applyTenantScope } from "./rls";
 
 const prismaClientSingleton = () => {
   const pool = new Pool({ connectionString: env.DATABASE_URL });
@@ -22,105 +22,46 @@ const scopedClient = baseClient.$extends({
   query: {
     $allModels: {
       findUnique({ model, args, query }) {
-        const orgId = getOrgContext();
-        if (orgId && isTenantModel(model) && !(args as any).where?.organizationId) {
-          (args as any).where = { ...((args as any).where || {}), organizationId: orgId };
-        }
-        return query(args);
+        return query(applyTenantScope(model, args, getOrgContext(), "where"));
       },
       findFirst({ model, args, query }) {
-        const orgId = getOrgContext();
-        if (orgId && isTenantModel(model) && !(args as any).where?.organizationId) {
-          (args as any).where = { ...((args as any).where || {}), organizationId: orgId };
-        }
-        return query(args);
+        return query(applyTenantScope(model, args, getOrgContext(), "where"));
       },
       findFirstOrThrow({ model, args, query }) {
-        const orgId = getOrgContext();
-        if (orgId && isTenantModel(model) && !(args as any).where?.organizationId) {
-          (args as any).where = { ...((args as any).where || {}), organizationId: orgId };
-        }
-        return query(args);
+        return query(applyTenantScope(model, args, getOrgContext(), "where"));
       },
       findMany({ model, args, query }) {
-        const orgId = getOrgContext();
-        if (orgId && isTenantModel(model) && !(args as any).where?.organizationId) {
-          (args as any).where = { ...((args as any).where || {}), organizationId: orgId };
-        }
-        return query(args);
+        return query(applyTenantScope(model, args, getOrgContext(), "where"));
       },
       findUniqueOrThrow({ model, args, query }) {
-        const orgId = getOrgContext();
-        if (orgId && isTenantModel(model) && !(args as any).where?.organizationId) {
-          (args as any).where = { ...((args as any).where || {}), organizationId: orgId };
-        }
-        return query(args);
+        return query(applyTenantScope(model, args, getOrgContext(), "where"));
       },
       count({ model, args, query }) {
-        const orgId = getOrgContext();
-        if (orgId && isTenantModel(model) && !(args as any).where?.organizationId) {
-          (args as any).where = { ...((args as any).where || {}), organizationId: orgId };
-        }
-        return query(args);
+        return query(applyTenantScope(model, args, getOrgContext(), "where"));
       },
       update({ model, args, query }) {
-        const orgId = getOrgContext();
-        if (orgId && isTenantModel(model) && !(args as any).where?.organizationId) {
-          (args as any).where = { ...((args as any).where || {}), organizationId: orgId };
-        }
-        return query(args);
+        return query(applyTenantScope(model, args, getOrgContext(), "where"));
       },
       updateMany({ model, args, query }) {
-        const orgId = getOrgContext();
-        if (orgId && isTenantModel(model) && !(args as any).where?.organizationId) {
-          (args as any).where = { ...((args as any).where || {}), organizationId: orgId };
-        }
-        return query(args);
+        return query(applyTenantScope(model, args, getOrgContext(), "where"));
       },
       delete({ model, args, query }) {
-        const orgId = getOrgContext();
-        if (orgId && isTenantModel(model) && !(args as any).where?.organizationId) {
-          (args as any).where = { ...((args as any).where || {}), organizationId: orgId };
-        }
-        return query(args);
+        return query(applyTenantScope(model, args, getOrgContext(), "where"));
       },
       deleteMany({ model, args, query }) {
-        const orgId = getOrgContext();
-        if (orgId && isTenantModel(model) && !(args as any).where?.organizationId) {
-          (args as any).where = { ...((args as any).where || {}), organizationId: orgId };
-        }
-        return query(args);
+        return query(applyTenantScope(model, args, getOrgContext(), "where"));
       },
       create({ model, args, query }) {
-        const orgId = getOrgContext();
-        if (orgId && isTenantModel(model) && !(args as any).data?.organizationId) {
-          (args as any).data = { ...((args as any).data || {}), organizationId: orgId };
-        }
-        return query(args);
+        return query(applyTenantScope(model, args, getOrgContext(), "data"));
       },
       createMany({ model, args, query }) {
-        const orgId = getOrgContext();
-        if (orgId && isTenantModel(model)) {
-          (args as any).data = ((args as any).data || []).map((d: any) => ({
-            ...d,
-            organizationId: d.organizationId || orgId,
-          }));
-        }
-        return query(args);
+        return query(applyTenantScope(model, args, getOrgContext(), "dataMany"));
       },
       aggregate({ model, args, query }) {
-        const orgId = getOrgContext();
-        if (orgId && isTenantModel(model) && !(args as any).where?.organizationId) {
-          (args as any).where = { ...((args as any).where || {}), organizationId: orgId };
-        }
-        return query(args);
+        return query(applyTenantScope(model, args, getOrgContext(), "where"));
       },
       groupBy({ model, args, query }) {
-        const orgId = getOrgContext();
-        if (orgId && isTenantModel(model) && !(args as any).where?.organizationId) {
-          (args as any).where = { ...((args as any).where || {}), organizationId: orgId };
-        }
-        return query(args);
+        return query(applyTenantScope(model, args, getOrgContext(), "where"));
       },
     },
   },
