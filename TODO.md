@@ -119,7 +119,7 @@
 - [x] Pastikan `Subscription` auto-create juga berjalan untuk user Casdoor baru
 
 #### Phase 5 — Route Protection & Middleware (✅ Complete)
-- [x] Buat `src/middleware.ts` — centralized auth check (dashboard redirect, API 401, public route allow)
+- [x] Buat `src/proxy.ts` — centralized auth check (dashboard redirect, API 401, public route allow). NOTE: Next.js 16 renamed `middleware.ts` → `proxy.ts`; the pre-existing middleware-style proxy was rewritten to a JWT-based check (`getToken`) in this sprint.
 - [x] API routes (Server Actions) tetap aman di kedua mode via middleware
 - [x] Proteksi Casdoor callback route (`/api/auth/callback/casdoor` via public path allowlist)
 
@@ -144,8 +144,13 @@
 - [x] Public invite page — `src/app/(public)/invite/`
 - [x] Cron purge orgs — `/api/cron/purge-orgs/`
 - [x] Unit tests — `invites.test.ts`, `org-isolation.test.ts`
-- [ ] Integrasi org isolation ke semua resource (clients, projects, invoices)
-- [ ] Tenant-aware middleware untuk dashboard & API routes
+- [x] Integrasi org isolation ke semua resource (clients, projects, invoices, recurring, sow, notifications, activity, agent chat, server actions) — `session.user.activeOrganizationId` + `organizationId` filtering including `[id]` routes
+- [x] Tenant-aware proxy — `src/proxy.ts` (Next.js 16) with JWT check + public allowlist
+- [x] RLS aktivasi — `withTenant` HOF + `applyTenantScope` pure function (unit tested); defense-in-depth safety net live
+- [x] Fix BOLA/IDOR — `agent/history` conversation ownership check (OWASP API1:2023)
+- [x] Fix cross-tenant SSE leak — `events` per-org event filter + auth
+- [x] Fix public-sow field leakage — reduced `select` + IP rate limiting
+- [ ] **Tier 2 (deferred, robust standard):** PostgreSQL `ENABLE/FORCE ROW LEVEL SECURITY` + `CREATE POLICY tenant_isolation` + `SET LOCAL app.current_tenant_id` per request. See spec `docs/superpowers/specs/2026-08-16-multi-tenant-foundation-design.md` §9.
 
 #### Phase 1 — Client Portal Auth & Dashboard
 - [ ] Desain model `ClientAuth` (magic link ke email), terpisah dari model `User`
