@@ -24,6 +24,18 @@ jest.mock("@/lib/billing/subscription", () => ({
 }));
 jest.mock("@/lib/billing/mayar", () => ({ verifyMayarWebhook: jest.fn().mockResolvedValue(true) }));
 jest.mock("@/app/actions/send-invoice", () => ({ sendInvoiceEmail: jest.fn().mockResolvedValue({ success: true }) }));
+// The webhook route imports these at module load; puppeteer keeps handles open
+// and hangs jest, so stub the heavy side-effect chain (never asserted anyway).
+jest.mock("@/lib/pdf-generator", () => ({
+  generateSowPdfBuffer: jest.fn().mockResolvedValue(Buffer.from("sow")),
+  generateInvoicePdfBuffer: jest.fn().mockResolvedValue(Buffer.from("inv")),
+}));
+jest.mock("@/lib/email", () => ({ sendPaymentSuccessEmail: jest.fn().mockResolvedValue(undefined) }));
+jest.mock("@/lib/notifications", () => ({ createNotification: jest.fn().mockResolvedValue(undefined) }));
+// REDIS_URL is set in .env; the real ioredis client makes every dispatchEvent
+// (createAuditLog) wait on connection retries. Stub it for fast, deterministic tests.
+jest.mock("@/lib/event-emitter", () => ({ dispatchEvent: jest.fn().mockResolvedValue(undefined) }));
+jest.mock("next/cache", () => ({ revalidatePath: jest.fn() }));
 
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
@@ -180,5 +192,43 @@ describe("POST .../milestones/[mid]/invoice — Tagih", () => {
     const res = await POST(req, { params: Promise.resolve({ id: "p1", mid: "m1" }) });
     expect(res.status).toBe(409);
     expect(prisma.invoice.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("webhook mayar — milestone PAID sync (transactional)", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test("marks invoice PAID + linked milestone PAID + audit atomically", async () => {
+    (prisma.invoice.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+    (prisma.invoice.findUnique as jest.Mock).mockResolvedValue({
+      id: "inv1", type: "MILESTONE", invoiceNumber: "INV-1", organizationId: "org1",
+      project: { id: "p1", title: "T", currency: "IDR", taxRate: null, termsAcceptedAt: null, client: { email: "c@x.com", name: "C" } },
+    });
+    // $transaction runs the callback with the mock prisma
+    (prisma.$transaction as jest.Mock).mockImplementation(async (cb) => cb(prisma));
+
+    const { POST } = require("@/app/api/webhooks/mayar/route");
+    const body = JSON.stringify({ event: "payment.received", data: { reference_id: "inv1", id: "pay1" } });
+    const req = new Request("http://localhost/api/webhooks/mayar", { method: "POST", body, headers: { "x-callback-token": "valid" } });
+    // verifyMayarWebhook is mocked at the top level (returns true)
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(prisma.invoice.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: "inv1", status: "UNPAID" }),
+    }));
+    expect(prisma.paymentMilestone.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ invoiceId: "inv1", status: "INVOICED" }),
+      data: expect.objectContaining({ status: "PAID" }),
+    }));
+  });
+
+  test("duplicate webhook → count 0 → no milestone update (idempotent)", async () => {
+    (prisma.invoice.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
+    (prisma.$transaction as jest.Mock).mockImplementation(async (cb) => cb(prisma));
+    const { POST } = require("@/app/api/webhooks/mayar/route");
+    const body = JSON.stringify({ event: "payment.received", data: { reference_id: "inv1" } });
+    const req = new Request("http://localhost/api/webhooks/mayar", { method: "POST", body, headers: { "x-callback-token": "valid" } });
+    await POST(req);
+    expect(prisma.paymentMilestone.updateMany).not.toHaveBeenCalled();
   });
 });

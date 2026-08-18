@@ -6,6 +6,7 @@ import { sendPaymentSuccessEmail } from "@/lib/email";
 import { formatMoney } from "@/lib/currency";
 import { RateLimiter } from "@/lib/rate-limit";
 import { createNotification } from "@/lib/notifications";
+import { createAuditLog } from "@/lib/audit-logger";
 import { getBaseUrl } from "@/lib/utils";
 
 // Allow 20 webhook requests per minute per IP to prevent spam/abuse
@@ -54,21 +55,26 @@ export async function POST(request: Request) {
       }
 
       if (invoiceId) {
-        // Atomic Update: Only update if status is still 'UNPAID'.
-        // If two webhooks fire instantly, only one transaction matches "UNPAID".
-        const updateResult = await prisma.invoice.updateMany({
-          where: {
-            id: invoiceId,
-            status: "UNPAID",
-          },
-          data: {
-            status: "PAID",
-            paidAt: new Date(),
-            paymentId: data.data?.id || data.transaction_id || data.id,
-          },
+        // Atomic: invoice PAID + milestone PAID commit together (no drift). The
+        // milestone updateMany is a no-op for non-milestone invoices (0 rows match).
+        // Audit is created AFTER the tx (see note below) — AuditLog.organizationId
+        // has a FK to Organization, so it cannot be "" (unknown inside the tx).
+        const paymentId = data.data?.id || data.transaction_id || data.id;
+        const count = await prisma.$transaction(async (tx) => {
+          const r = await tx.invoice.updateMany({
+            where: { id: invoiceId, status: "UNPAID" },
+            data: { status: "PAID", paidAt: new Date(), paymentId },
+          });
+          if (r.count > 0) {
+            await tx.paymentMilestone.updateMany({
+              where: { invoiceId, status: "INVOICED" },
+              data: { status: "PAID" },
+            });
+          }
+          return r.count;
         });
 
-        if (updateResult.count === 0) {
+        if (count === 0) {
           console.log(`[Webhook] Invoice ${invoiceId} is already paid or doesn't exist. Ignoring webhook deduplication.`);
           return NextResponse.json({ received: true, ignored: true }, { status: 200 });
         }
@@ -88,6 +94,16 @@ export async function POST(request: Request) {
         if (!updatedInvoice) {
           return NextResponse.json({ error: "Invoice not found post-update" }, { status: 500 });
         }
+
+        // Audit after the fetch: organizationId must be the real org id (FK to
+        // Organization). userId "system" is safe — AuditLog.userId has no FK.
+        await createAuditLog({
+          userId: "system",
+          organizationId: updatedInvoice.organizationId,
+          action: updatedInvoice.type === "MILESTONE" ? "milestone_paid" : "invoice_paid",
+          entityType: "Invoice",
+          entityId: invoiceId,
+        });
 
         // --- Trigger Notification ---
         await createNotification({
