@@ -48,6 +48,8 @@ import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import { CostEstimator } from "@/components/cost-estimator";
+import { MilestoneTimeline } from "@/components/milestone-timeline";
+import { MilestonePlanBuilder, type PlanRow } from "@/components/milestone-plan-builder";
 import {
   Tooltip,
   TooltipContent,
@@ -65,6 +67,17 @@ type ProjectItem = {
   rate?: string | number | null;
 };
 
+type Milestone = {
+  id: string;
+  name: string;
+  percentage: string;
+  amount: string;
+  order: number;
+  status: string;
+  invoiceId: string | null;
+  dueDate: string | null;
+};
+
 type Project = {
   id: string;
   title: string;
@@ -74,6 +87,8 @@ type Project = {
   deadline?: string | null;
   totalPrice: string;
   dpAmount: string | null;
+  billingMode: string;
+  milestones?: Milestone[];
   currency: string;
   language?: string;
   terms?: string | null;
@@ -109,6 +124,8 @@ export function ProjectsClient({
   const [clientId, setClientId] = useState("");
   const [totalPrice, setTotalPrice] = useState("");
   const [dpAmount, setDpAmount] = useState("");
+  const [billingMode, setBillingMode] = useState<"SIMPLE" | "MILESTONE">("SIMPLE");
+  const [milestoneRows, setMilestoneRows] = useState<PlanRow[]>([]);
   const [currency, setCurrency] = useState("IDR");
   const [language, setLanguage] = useState("id");
   const [deadline, setDeadline] = useState("");
@@ -171,6 +188,14 @@ export function ProjectsClient({
       setClientId(project.clientId);
       setTotalPrice(project.totalPrice);
       setDpAmount(project.dpAmount || "");
+      setBillingMode((project.billingMode as "SIMPLE" | "MILESTONE") ?? "SIMPLE");
+      setMilestoneRows(
+        project.milestones?.map((m) => ({
+          name: m.name,
+          percentage: Number(m.percentage),
+          order: m.order,
+        })) ?? [],
+      );
       setCurrency(project.currency || "IDR");
       setLanguage(project.language || "id");
       setDeadline(
@@ -212,6 +237,8 @@ export function ProjectsClient({
       setClientId("");
       setTotalPrice("");
       setDpAmount("");
+      setBillingMode("SIMPLE");
+      setMilestoneRows([]);
       setCurrency("IDR");
       setLanguage("id");
       setDeadline("");
@@ -294,11 +321,20 @@ export function ProjectsClient({
           .toString();
       }
 
+      if (billingMode === "MILESTONE") {
+        const sum = milestoneRows.reduce((acc, r) => acc + (Number(r.percentage) || 0), 0);
+        if (milestoneRows.length === 0 || sum !== 100) {
+          toast.error("Milestone percentages must sum to 100");
+          return;
+        }
+      }
+
       const payload = {
         title,
         clientId,
         totalPrice: finalTotalPrice,
-        dpAmount: dpAmount || null,
+        dpAmount: billingMode === "MILESTONE" ? null : dpAmount || null,
+        billingMode,
         currency,
         language,
         deadline: deadline || null,
@@ -318,6 +354,20 @@ export function ProjectsClient({
       });
 
       if (res.ok) {
+        // Persist the milestone plan right after the project (create or edit).
+        if (billingMode === "MILESTONE") {
+          const projectId = editingId
+            ? editingId
+            : ((await res.json()) as { id: string }).id;
+          const planRes = await fetch(`/api/projects/${projectId}/milestones`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ milestones: milestoneRows }),
+          });
+          if (!planRes.ok) {
+            toast.error("Project saved, but the milestone plan could not be saved");
+          }
+        }
         setIsDialogOpen(false);
         toast.success(editingId ? "Project updated" : "Project created");
         router.refresh();
@@ -543,6 +593,52 @@ export function ProjectsClient({
                   )}
                 </div>
 
+                <div className="space-y-2">
+                  <Label>Billing Mode</Label>
+                  <div className="flex gap-3">
+                    <label className={`flex items-center gap-2 cursor-pointer p-3 border rounded-lg hover:bg-muted/50 transition-colors ${billingMode === "SIMPLE" ? "border-primary" : ""}`}>
+                      <input
+                        type="radio"
+                        name="billingMode"
+                        value="SIMPLE"
+                        checked={billingMode === "SIMPLE"}
+                        onChange={() => setBillingMode("SIMPLE")}
+                        disabled={hasInvoices || isSowSigned}
+                        className="w-4 h-4"
+                      />
+                      <div className="text-sm">
+                        <div className="font-medium">Simple</div>
+                        <div className="text-xs text-muted-foreground">DP + full payment</div>
+                      </div>
+                    </label>
+                    <label className={`flex items-center gap-2 cursor-pointer p-3 border rounded-lg hover:bg-muted/50 transition-colors ${billingMode === "MILESTONE" ? "border-primary" : ""}`}>
+                      <input
+                        type="radio"
+                        name="billingMode"
+                        value="MILESTONE"
+                        checked={billingMode === "MILESTONE"}
+                        onChange={() => setBillingMode("MILESTONE")}
+                        disabled={hasInvoices || isSowSigned}
+                        className="w-4 h-4"
+                      />
+                      <div className="text-sm">
+                        <div className="font-medium">Milestone</div>
+                        <div className="text-xs text-muted-foreground">Per-stage invoicing</div>
+                      </div>
+                    </label>
+                  </div>
+                  {(hasInvoices || isSowSigned) && (
+                    <p className="text-[10px] text-amber-600 font-medium">
+                      Billing mode is locked because {isSowSigned ? "the SOW has been signed" : "invoices already exist"}.
+                    </p>
+                  )}
+                  {billingMode === "MILESTONE" && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Tip: define the full plan (sum = 100%) before tagging any milestone — the plan locks after the first invoice.
+                    </p>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {(hasInvoices || isSowSigned) && (
                     <div className="col-span-full p-3 bg-amber-50 text-amber-800 text-sm border border-amber-200 rounded-md">
@@ -614,6 +710,16 @@ export function ProjectsClient({
                       className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                     />
                   </div>
+                  {billingMode === "MILESTONE" ? (
+                    <div className="col-span-2 space-y-2">
+                      <MilestonePlanBuilder
+                        totalPrice={Number(totalPrice) || 0}
+                        currency={currency}
+                        initial={milestoneRows}
+                        onChange={setMilestoneRows}
+                      />
+                    </div>
+                  ) : (
                   <div className="space-y-2">
                     <Label htmlFor="dpAmount">DP Amount (Optional)</Label>
                     <NumericFormat
@@ -628,6 +734,7 @@ export function ProjectsClient({
                       className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                     />
                   </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -877,6 +984,29 @@ export function ProjectsClient({
                   Create an invoice for {invoiceProject?.title}.
                 </DialogDescription>
               </DialogHeader>
+              {invoiceProject && invoiceProject.billingMode === "MILESTONE" ? (
+                <div className="space-y-4">
+                  <MilestoneTimeline
+                    projectId={invoiceProject.id}
+                    milestones={invoiceProject.milestones ?? []}
+                    currency={invoiceProject.currency}
+                    totalPrice={Number(invoiceProject.totalPrice)}
+                    onChanged={() => {
+                      router.refresh();
+                      window.location.reload();
+                    }}
+                  />
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsInvoiceDialogOpen(false)}
+                    >
+                      Tutup
+                    </Button>
+                  </DialogFooter>
+                </div>
+              ) : (
               <form onSubmit={handleGenerateInvoice} className="space-y-4">
                 {invoiceProject &&
                   (() => {
@@ -976,6 +1106,7 @@ export function ProjectsClient({
                   </Button>
                 </DialogFooter>
               </form>
+              )}
             </DialogContent>
           </Dialog>
 

@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage() {
   const projectsRaw = await prisma.project.findMany({
-    include: { client: true, invoices: true, items: true },
+    include: { client: true, invoices: true, items: true, milestones: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -43,6 +43,17 @@ export default async function ProjectsPage() {
         price: i.price.toString(),
         quantity: i.quantity ? i.quantity.toNumber() : null,
         rate: i.rate ? i.rate.toString() : null,
+      })) || [],
+    milestones:
+      p.milestones?.map((m) => ({
+        id: m.id,
+        name: m.name,
+        percentage: m.percentage.toString(),
+        amount: m.amount.toString(),
+        order: m.order,
+        status: m.status,
+        invoiceId: m.invoiceId,
+        dueDate: m.dueDate ? m.dueDate.toISOString() : null,
       })) || [],
   }));
 
