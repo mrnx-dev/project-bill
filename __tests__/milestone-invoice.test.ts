@@ -3,7 +3,7 @@
 // the same mock object. The factory must be self-contained (jest hoists jest.mock
 // above module-scope consts, so a module-level mockPrisma would hit the TDZ).
 jest.mock("@/lib/prisma", () => {
-  const prisma = {
+  const prisma: any = {
     project: { findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
     paymentMilestone: {
       deleteMany: jest.fn(), createMany: jest.fn(), create: jest.fn(),
@@ -12,7 +12,7 @@ jest.mock("@/lib/prisma", () => {
     },
     invoice: { create: jest.fn(), updateMany: jest.fn(), findUnique: jest.fn() },
     auditLog: { create: jest.fn() },
-    $transaction: jest.fn(async (cb: (tx: typeof prisma) => Promise<unknown>) => cb(prisma)),
+    $transaction: jest.fn(async (cb: (tx: any) => Promise<unknown>) => cb(prisma)),
   };
   return { prisma };
 });
