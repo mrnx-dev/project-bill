@@ -3,7 +3,7 @@
 // the same mock object. The factory must be self-contained (jest hoists jest.mock
 // above module-scope consts, so a module-level mockPrisma would hit the TDZ).
 jest.mock("@/lib/prisma", () => {
-  const prisma: any = {
+  const prisma: any = { // eslint-disable-line @typescript-eslint/no-explicit-any
     project: { findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
     paymentMilestone: {
       deleteMany: jest.fn(), createMany: jest.fn(), create: jest.fn(),
@@ -12,7 +12,7 @@ jest.mock("@/lib/prisma", () => {
     },
     invoice: { create: jest.fn(), updateMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn() },
     auditLog: { create: jest.fn() },
-    $transaction: jest.fn(async (cb: (tx: any) => Promise<unknown>) => cb(prisma)),
+    $transaction: jest.fn(async (cb: (tx: any) => Promise<unknown>) => cb(prisma)), // eslint-disable-line @typescript-eslint/no-explicit-any
   };
   return { prisma };
 });
@@ -45,7 +45,7 @@ import { auth } from "@/auth";
 // `new NextResponse(body, { status })`, so the stub is constructible.
 class MockNextResponse {
   constructor(
-    public body: any,
+    public body: any, // eslint-disable-line @typescript-eslint/no-explicit-any
     public init: { status?: number } = {},
   ) {}
   get status() {
@@ -54,7 +54,7 @@ class MockNextResponse {
   async json() {
     return typeof this.body === "string" ? JSON.parse(this.body) : this.body;
   }
-  static json(body: any, init?: { status?: number }) {
+  static json(body: any, init?: { status?: number }) { // eslint-disable-line @typescript-eslint/no-explicit-any
     return new MockNextResponse(body, init);
   }
 }
@@ -92,9 +92,14 @@ class MockRequest {
     return this._body;
   }
 }
-global.Request = MockRequest as any;
+global.Request = MockRequest as unknown as typeof Request;
 
 jest.setTimeout(30000);
+
+// The route modules are require()d lazily inside tests (they pull in
+// @/lib/audit-logger -> ioredis, invoice-utils, etc.); static imports at the
+// top would also work but this keeps load order explicit.
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 describe("PUT /api/projects/[id]/milestones — save plan", () => {
   beforeEach(() => jest.clearAllMocks());
