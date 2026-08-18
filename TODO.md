@@ -169,14 +169,15 @@
 
 ### 3. 💳 Partial Payments & Milestone Billing — Sprint 17-18
 
-- [ ] Desain model `PaymentMilestone` (linked to `Project`)
-- [ ] Buat schema Prisma: `name`, `percentage`, `amount`, `status`, `dueDate`, `invoiceId`
-- [ ] Migrasi database
-- [ ] Buat UI timeline / progress bar di project detail
-- [ ] Implementasi logika auto-generate invoice saat milestone di-approve
-- [ ] Buat form untuk mendefinisikan milestone (misal: 30% Design → 40% Dev → 30% Launch)
-- [ ] Integrasi milestone status dengan payment flow
-- [ ] Testing partial payment flow
+- [x] Desain model `PaymentMilestone` (linked to `Project`) — spec `docs/superpowers/specs/2026-08-16-milestone-billing-design.md`
+- [x] Buat schema Prisma: `name`, `percentage`, `amount`, `status`, `dueDate`, `invoiceId` (+ `order`, `billingMode`)
+- [x] Migrasi database — `add_milestone_billing`
+- [x] Buat UI timeline / progress bar di project detail — `<MilestoneTimeline/>`
+- [x] Implementasi logika auto-generate invoice saat milestone di-approve — manual "Tagih" trigger (industry: bill completed/approved work, not calendar)
+- [x] Buat form untuk mendefinisikan milestone — `<MilestonePlanBuilder/>`
+- [x] Integrasi milestone status dengan payment flow — transactional webhook PAID sync
+- [x] Testing partial payment flow — unit + integration
+- [ ] **Deferred:** partial payment on a single invoice; credit notes; E2E; paid-amount verification — see spec §12.
 
 ### 4. ⏱️ Time Tracking & Hourly Billing — Sprint 18-19
 
