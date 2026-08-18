@@ -58,6 +58,7 @@ export async function PATCH(
         (updateData.clientId !== undefined && updateData.clientId !== existing.clientId) ||
         (updateData.totalPrice !== undefined && updateData.totalPrice !== Number(existing.totalPrice)) ||
         (updateData.dpAmount !== undefined && updateData.dpAmount !== (existing.dpAmount ? Number(existing.dpAmount) : null)) ||
+        (updateData.billingMode !== undefined && updateData.billingMode !== existing.billingMode) ||
         (updateData.currency !== undefined && updateData.currency !== existing.currency) ||
         (updateData.language !== undefined && updateData.language !== existing.language) ||
         (deadline !== undefined && (deadline ? new Date(deadline).getTime() : null) !== existing.deadline?.getTime()) ||
@@ -77,6 +78,7 @@ export async function PATCH(
       const isFinanciallyModified =
         (updateData.totalPrice !== undefined && updateData.totalPrice !== Number(existing.totalPrice)) ||
         (updateData.dpAmount !== undefined && updateData.dpAmount !== (existing.dpAmount ? Number(existing.dpAmount) : null)) ||
+        (updateData.billingMode !== undefined && updateData.billingMode !== existing.billingMode) ||
         (updateData.currency !== undefined && updateData.currency !== existing.currency) ||
         (updateData.taxName !== undefined && updateData.taxName !== existing.taxName) ||
         (updateData.taxRate !== undefined && updateData.taxRate !== (existing.taxRate ? Number(existing.taxRate) : null));
@@ -110,6 +112,43 @@ export async function PATCH(
           { error: "Cannot reactivate project. Active projects limit reached.", limitCheck },
           { status: 403 }
         );
+      }
+    }
+
+    // Billing mode switch (only reachable before locks: no invoices, SOW not signed)
+    if (updateData.billingMode && updateData.billingMode !== existing.billingMode) {
+      if (updateData.billingMode === "MILESTONE") {
+        // Simple -> Milestone: convert dpAmount into milestone #1, clear dpAmount
+        if (existing.dpAmount && Number(existing.dpAmount) > 0) {
+          const { convertDpToFirstMilestone } = await import("@/lib/milestone-utils");
+          const first = convertDpToFirstMilestone(Number(existing.dpAmount), Number(existing.totalPrice));
+          await prisma.paymentMilestone.create({
+            data: {
+              projectId: existing.id,
+              organizationId: existing.organizationId,
+              name: first.name,
+              percentage: first.percentage,
+              amount: first.amount,
+              order: first.order,
+              status: "PLANNED",
+            },
+          });
+        }
+        updateData.dpAmount = null;
+      } else if (updateData.billingMode === "SIMPLE") {
+        // Milestone -> Simple: take milestone #1 amount as dpAmount, delete milestones
+        const milestones = await prisma.paymentMilestone.findMany({
+          where: { projectId: existing.id },
+          orderBy: { order: "asc" },
+        });
+        if (milestones.length > 0 && milestones.some((m) => m.status !== "PLANNED")) {
+          return NextResponse.json(
+            { error: "Cannot switch to SIMPLE: a milestone is already invoiced." },
+            { status: 403 },
+          );
+        }
+        if (milestones[0]) updateData.dpAmount = Number(milestones[0].amount);
+        await prisma.paymentMilestone.deleteMany({ where: { projectId: existing.id } });
       }
     }
 
