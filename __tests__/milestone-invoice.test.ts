@@ -10,7 +10,7 @@ jest.mock("@/lib/prisma", () => {
       findFirst: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(),
       update: jest.fn(), updateMany: jest.fn(),
     },
-    invoice: { create: jest.fn(), updateMany: jest.fn(), findUnique: jest.fn() },
+    invoice: { create: jest.fn(), updateMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn() },
     auditLog: { create: jest.fn() },
     $transaction: jest.fn(async (cb: (tx: any) => Promise<unknown>) => cb(prisma)),
   };
@@ -144,5 +144,41 @@ describe("PUT /api/projects/[id]/milestones — save plan", () => {
     });
     const res = await PUT(req, { params: Promise.resolve({ id: "p1" }) });
     expect(res.status).toBe(403);
+  });
+});
+
+describe("POST .../milestones/[mid]/invoice — Tagih", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test("creates a MILESTONE invoice, links it, sets INVOICED, audits (tx)", async () => {
+    (auth as jest.Mock).mockResolvedValue({ user: { id: "u1", activeOrganizationId: "org1" } });
+    (prisma.paymentMilestone.findUnique as jest.Mock).mockResolvedValue({
+      id: "m1", projectId: "p1", organizationId: "org1", status: "PLANNED",
+      amount: 7500000, name: "Design",
+      project: { id: "p1", billingMode: "MILESTONE", totalPrice: 30000000, client: { email: "c@x.com" } },
+    });
+    (prisma.invoice.create as jest.Mock).mockResolvedValue({ id: "inv1", invoiceNumber: "INV-202608-0007" });
+    // subscription gate allowed — the top-level mock already returns { allowed: true }
+
+    const { POST } = require("@/app/api/projects/[id]/milestones/[mid]/invoice/route");
+    const req = new Request("http://localhost/api/projects/p1/milestones/m1/invoice", { method: "POST" });
+    const res = await POST(req, { params: Promise.resolve({ id: "p1", mid: "m1" }) });
+    expect(res.status).toBe(200);
+    expect(prisma.invoice.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ type: "MILESTONE", status: "UNPAID" }),
+    }));
+  });
+
+  test("rejects Tagih on an already-INVOICED milestone (idempotent)", async () => {
+    (auth as jest.Mock).mockResolvedValue({ user: { id: "u1", activeOrganizationId: "org1" } });
+    (prisma.paymentMilestone.findUnique as jest.Mock).mockResolvedValue({
+      id: "m1", status: "INVOICED", organizationId: "org1", projectId: "p1",
+      project: { billingMode: "MILESTONE" },
+    });
+    const { POST } = require("@/app/api/projects/[id]/milestones/[mid]/invoice/route");
+    const req = new Request("http://localhost/api/projects/p1/milestones/m1/invoice", { method: "POST" });
+    const res = await POST(req, { params: Promise.resolve({ id: "p1", mid: "m1" }) });
+    expect(res.status).toBe(409);
+    expect(prisma.invoice.create).not.toHaveBeenCalled();
   });
 });
