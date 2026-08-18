@@ -20,6 +20,10 @@ describe("RLS — Tenant Model Detection", () => {
   test("undefined is not a tenant model", () => {
     expect(isTenantModel(undefined)).toBe(false);
   });
+
+  test("PaymentMilestone is a tenant model (RLS auto-scopes)", () => {
+    expect(isTenantModel("PaymentMilestone")).toBe(true);
+  });
 });
 
 describe("Organization Invite Logic", () => {
