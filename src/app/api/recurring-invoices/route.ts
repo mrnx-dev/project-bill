@@ -76,6 +76,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Project not found" }, { status: 400 });
         }
 
+        if (project.billingMode === "MILESTONE") {
+            return NextResponse.json(
+                { error: "Recurring invoices are not available for MILESTONE-billing projects." },
+                { status: 400 },
+            );
+        }
+
         const start = new Date(data.startDate);
         start.setHours(0, 0, 0, 0);
         const today = new Date();
