@@ -94,6 +94,7 @@ export async function POST(request: Request) {
       clientId: data.clientId,
       totalPrice,
       dpAmount: data.dpAmount ?? null,
+      billingMode: data.billingMode ?? "SIMPLE",
       currency: data.currency,
       language: data.language,
       deadline: data.deadline ? new Date(data.deadline) : null,

@@ -5,6 +5,7 @@ export const projectSchema = z.object({
   clientId: z.string().min(1, "Client is required"),
   title: z.string().min(3, "Title must be at least 3 characters"),
   totalPrice: z.coerce.number().nonnegative("Total price must be non-negative"),
+  billingMode: z.enum(["SIMPLE", "MILESTONE"]).default("SIMPLE"),
   dpAmount: z.union([z.coerce.number().nonnegative(), z.null()]).optional(),
   currency: z.enum(CURRENCY_CODES).default("IDR"),
   language: z.enum(["id", "en"]).default("id"),
