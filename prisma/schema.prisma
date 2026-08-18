@@ -22,6 +22,7 @@ model Organization {
   projects            Project[]
   projectItems        ProjectItem[]
   invoices            Invoice[]
+  paymentMilestones   PaymentMilestone[]
   settings            Settings[]
   sowTemplates        SOWTemplate[]
   notifications       Notification[]
@@ -107,10 +108,12 @@ model Project {
   termsVersionId         Int?
   taxName                String?
   taxRate                Decimal?           @db.Decimal(19, 4)
+  billingMode            String             @default("SIMPLE")
   organizationId         String
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
   invoices               Invoice[]
+  milestones             PaymentMilestone[]
   client                 Client             @relation(fields: [clientId], references: [id])
   items                  ProjectItem[]
   recurringInvoices      RecurringInvoice[]
@@ -155,11 +158,34 @@ model Invoice {
   organizationId String
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  milestone      PaymentMilestone?
   project        Project      @relation(fields: [projectId], references: [id])
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([status])
   @@index([projectId])
+  @@index([organizationId])
+}
+
+model PaymentMilestone {
+  id             String   @id @default(uuid())
+  projectId      String
+  name           String
+  percentage     Decimal  @db.Decimal(5, 2)
+  amount         Decimal  @db.Decimal(19, 4)
+  dueDate        DateTime?
+  order          Int      @default(0)
+  status         String   @default("PLANNED")
+  invoiceId      String?  @unique
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  project       Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  invoice       Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  organization  Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([projectId, order])
   @@index([organizationId])
 }
 
