@@ -82,3 +82,44 @@ describe("convertDpToFirstMilestone", () => {
     expect(convertDpToFirstMilestone(500, 0).percentage).toBe(0);
   });
 });
+
+import { milestonePlanSchema, billingModeSchema } from "@/lib/validations/milestone";
+
+describe("billingModeSchema", () => {
+  test("accepts SIMPLE", () => {
+    expect(billingModeSchema.safeParse("SIMPLE").success).toBe(true);
+  });
+  test("accepts MILESTONE", () => {
+    expect(billingModeSchema.safeParse("MILESTONE").success).toBe(true);
+  });
+  test("rejects RECURRING (reserved)", () => {
+    expect(billingModeSchema.safeParse("RECURRING").success).toBe(false);
+  });
+  test("rejects unknown", () => {
+    expect(billingModeSchema.safeParse("WEEKLY").success).toBe(false);
+  });
+});
+
+describe("milestonePlanSchema", () => {
+  test("accepts a valid plan summing to 100", () => {
+    const r = milestonePlanSchema.safeParse([
+      { name: "Deposit", percentage: 30, order: 0 },
+      { name: "Dev", percentage: 70, order: 1 },
+    ]);
+    expect(r.success).toBe(true);
+  });
+  test("rejects plan not summing to 100", () => {
+    const r = milestonePlanSchema.safeParse([{ name: "A", percentage: 30, order: 0 }]);
+    expect(r.success).toBe(false);
+  });
+  test("rejects percentage out of (0,100]", () => {
+    const r = milestonePlanSchema.safeParse([{ name: "A", percentage: 0, order: 0 }]);
+    expect(r.success).toBe(false);
+  });
+  test("rejects empty name", () => {
+    const r = milestonePlanSchema.safeParse([
+      { name: "", percentage: 100, order: 0 },
+    ]);
+    expect(r.success).toBe(false);
+  });
+});
