@@ -1,0 +1,148 @@
+// Self-referential mock factory — NO jest.requireActual (the real @/lib/prisma
+// imports @/lib/env which throws without .env). The $transaction callback receives
+// the same mock object. The factory must be self-contained (jest hoists jest.mock
+// above module-scope consts, so a module-level mockPrisma would hit the TDZ).
+jest.mock("@/lib/prisma", () => {
+  const prisma = {
+    project: { findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
+    paymentMilestone: {
+      deleteMany: jest.fn(), createMany: jest.fn(), create: jest.fn(),
+      findFirst: jest.fn(), findUnique: jest.fn(), findMany: jest.fn(),
+      update: jest.fn(), updateMany: jest.fn(),
+    },
+    invoice: { create: jest.fn(), updateMany: jest.fn(), findUnique: jest.fn() },
+    auditLog: { create: jest.fn() },
+    $transaction: jest.fn(async (cb: (tx: typeof prisma) => Promise<unknown>) => cb(prisma)),
+  };
+  return { prisma };
+});
+jest.mock("@/auth", () => ({ auth: jest.fn() }));
+// Top-level mocks (NOT inside test bodies; NOT virtual — these are real modules).
+jest.mock("@/lib/billing/subscription", () => ({
+  checkOrgLimit: jest.fn().mockResolvedValue({ allowed: true }),
+  incrementOrgUsage: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock("@/lib/billing/mayar", () => ({ verifyMayarWebhook: jest.fn().mockResolvedValue(true) }));
+jest.mock("@/app/actions/send-invoice", () => ({ sendInvoiceEmail: jest.fn().mockResolvedValue({ success: true }) }));
+
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
+
+// Repo convention (see accept-terms.test.ts): mock next/server to bypass
+// Request/Response globals missing in jsdom. Routes also use
+// `new NextResponse(body, { status })`, so the stub is constructible.
+class MockNextResponse {
+  constructor(
+    public body: any,
+    public init: { status?: number } = {},
+  ) {}
+  get status() {
+    return this.init.status ?? 200;
+  }
+  async json() {
+    return typeof this.body === "string" ? JSON.parse(this.body) : this.body;
+  }
+  static json(body: any, init?: { status?: number }) {
+    return new MockNextResponse(body, init);
+  }
+}
+jest.mock("next/server", () => ({ NextResponse: MockNextResponse }));
+
+// jsdom lacks Request too — richer than the accept-terms stub because routes
+// call request.json()/text()/headers.get().
+class MockHeaders {
+  private h: Record<string, string>;
+  constructor(init?: Record<string, string>) {
+    this.h = { ...(init ?? {}) };
+  }
+  get(k: string) {
+    return this.h[k.toLowerCase()] ?? null;
+  }
+}
+class MockRequest {
+  url: string;
+  method: string;
+  headers: MockHeaders;
+  private _body: string;
+  constructor(
+    url: string,
+    init: { method?: string; body?: string; headers?: Record<string, string> } = {},
+  ) {
+    this.url = url;
+    this.method = init.method ?? "GET";
+    this.headers = new MockHeaders(init.headers);
+    this._body = init.body ?? "";
+  }
+  async json() {
+    return JSON.parse(this._body);
+  }
+  async text() {
+    return this._body;
+  }
+}
+global.Request = MockRequest as any;
+
+jest.setTimeout(30000);
+
+describe("PUT /api/projects/[id]/milestones — save plan", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test("saves a valid plan (sum=100) and computes amounts", async () => {
+    (auth as jest.Mock).mockResolvedValue({ user: { id: "u1", activeOrganizationId: "org1" } });
+    (prisma.project.findUnique as jest.Mock).mockResolvedValue({
+      id: "p1", billingMode: "MILESTONE", totalPrice: 10000000, organizationId: "org1",
+      milestones: [], invoices: [],
+    });
+    (prisma.paymentMilestone.findFirst as jest.Mock).mockResolvedValue(null); // no INVOICED
+
+    const { PUT } = require("@/app/api/projects/[id]/milestones/route");
+    const req = new Request("http://localhost/api/projects/p1/milestones", {
+      method: "PUT",
+      body: JSON.stringify({ milestones: [{ name: "A", percentage: 60, order: 0 }, { name: "B", percentage: 40, order: 1 }] }),
+    });
+    const res = await PUT(req, { params: Promise.resolve({ id: "p1" }) });
+    expect(res.status).toBe(200);
+    expect(prisma.paymentMilestone.deleteMany).toHaveBeenCalled();
+    expect(prisma.paymentMilestone.createMany).toHaveBeenCalled();
+  });
+
+  test("rejects plan not summing to 100", async () => {
+    (auth as jest.Mock).mockResolvedValue({ user: { id: "u1", activeOrganizationId: "org1" } });
+    const { PUT } = require("@/app/api/projects/[id]/milestones/route");
+    const req = new Request("http://localhost/api/projects/p1/milestones", {
+      method: "PUT",
+      body: JSON.stringify({ milestones: [{ name: "A", percentage: 30, order: 0 }] }),
+    });
+    const res = await PUT(req, { params: Promise.resolve({ id: "p1" }) });
+    expect(res.status).toBe(400);
+  });
+
+  test("rejects when project is not MILESTONE mode", async () => {
+    (auth as jest.Mock).mockResolvedValue({ user: { id: "u1", activeOrganizationId: "org1" } });
+    (prisma.project.findUnique as jest.Mock).mockResolvedValue({
+      id: "p1", billingMode: "SIMPLE", totalPrice: 1000, organizationId: "org1", milestones: [], invoices: [],
+    });
+    const { PUT } = require("@/app/api/projects/[id]/milestones/route");
+    const req = new Request("http://localhost/api/projects/p1/milestones", {
+      method: "PUT",
+      body: JSON.stringify({ milestones: [{ name: "A", percentage: 100, order: 0 }] }),
+    });
+    const res = await PUT(req, { params: Promise.resolve({ id: "p1" }) });
+    expect(res.status).toBe(400);
+  });
+
+  test("rejects plan edit after a milestone is INVOICED (plan lock)", async () => {
+    (auth as jest.Mock).mockResolvedValue({ user: { id: "u1", activeOrganizationId: "org1" } });
+    (prisma.project.findUnique as jest.Mock).mockResolvedValue({
+      id: "p1", billingMode: "MILESTONE", totalPrice: 1000, organizationId: "org1", milestones: [], invoices: [],
+    });
+    (prisma.paymentMilestone.findFirst as jest.Mock).mockResolvedValue({ id: "m1", status: "INVOICED" });
+    const { PUT } = require("@/app/api/projects/[id]/milestones/route");
+    const req = new Request("http://localhost/api/projects/p1/milestones", {
+      method: "PUT",
+      body: JSON.stringify({ milestones: [{ name: "A", percentage: 100, order: 0 }] }),
+    });
+    const res = await PUT(req, { params: Promise.resolve({ id: "p1" }) });
+    expect(res.status).toBe(403);
+  });
+});
