@@ -52,6 +52,12 @@ export function MilestoneTimeline({
           {formatMoney(paidAmount, currency)} / {formatMoney(totalPrice, currency)} — {pct}% lunas
         </p>
       </div>
+      {!milestones.some((m) => m.status === "INVOICED" || m.status === "PAID") &&
+        milestones.some((m) => m.status === "PLANNED") && (
+        <p className="text-xs text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-950/30 rounded p-2">
+          Tip: lengkapi seluruh milestone sebelum menagih — plan terkunci setelah invoice pertama diterbitkan.
+        </p>
+      )}
       <div className="space-y-2">
         {sorted.map((m) => (
           <div key={m.id} className="flex items-center justify-between border rounded p-3">

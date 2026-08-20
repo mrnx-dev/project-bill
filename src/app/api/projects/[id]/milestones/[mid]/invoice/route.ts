@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { generateInvoiceNumber } from "@/lib/invoice-utils";
-import { createAuditLog } from "@/lib/audit-logger";
 
 export async function POST(
   request: Request,
