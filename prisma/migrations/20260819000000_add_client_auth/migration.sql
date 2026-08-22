@@ -1,3 +1,8 @@
+-- The live DB still holds the abandoned older ClientAuth design (columns
+-- email/token/tokenExpiresAt, from a prior experiment). Drop it before
+-- creating the new schema so this migration is idempotent against that drift.
+DROP TABLE IF EXISTS "ClientAuth" CASCADE;
+
 -- CreateTable
 CREATE TABLE "ClientAuth" (
     "id" TEXT NOT NULL,
@@ -27,4 +32,3 @@ ALTER TABLE "ClientAuth" ADD CONSTRAINT "ClientAuth_clientId_fkey" FOREIGN KEY (
 
 -- AddForeignKey
 ALTER TABLE "ClientAuth" ADD CONSTRAINT "ClientAuth_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
