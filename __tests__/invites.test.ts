@@ -27,6 +27,7 @@ describe("Invite Schema Validation", () => {
   test("defaults role to MEMBER", () => {
     const result = inviteMemberSchema.safeParse({ email: "a@b.com" });
     expect(result.success).toBe(true);
+    if (!result.success) throw new Error("expected success");
     expect(result.data.role).toBe("MEMBER");
   });
 });

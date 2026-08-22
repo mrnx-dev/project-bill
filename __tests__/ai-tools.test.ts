@@ -16,7 +16,11 @@ jest.mock("../src/lib/prisma", () => ({
   },
 }));
 
-const mockPrisma = prisma as jest.Mocked<typeof prisma>;
+const mockPrisma = prisma as unknown as {
+  invoice: { findMany: jest.Mock; aggregate: jest.Mock };
+  project: { findMany: jest.Mock };
+  client: { findMany: jest.Mock };
+};
 
 describe("AI Tools", () => {
   beforeEach(() => {
@@ -159,12 +163,14 @@ describe("AI Tools", () => {
       mockPrisma.invoice.aggregate.mockResolvedValue({ _sum: { amount: 0 }, _count: 0 });
       const result = await executeTool("analyze_cashflow", {});
       expect(result.success).toBe(true);
-      expect(result.data.totalPaid).toBe(0);
+      if (!("data" in result)) throw new Error("expected data");
+      expect((result.data as { totalPaid: number }).totalPaid).toBe(0);
     });
 
     it("returns error for unknown tool", async () => {
       const result = await executeTool("unknown_tool", {});
       expect(result.success).toBe(false);
+      if (!("error" in result)) throw new Error("expected error");
       expect(result.error).toContain("Unknown tool: unknown_tool");
     });
   });

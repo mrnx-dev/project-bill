@@ -30,6 +30,7 @@ model Organization {
   recurringInvoices   RecurringInvoice[]
   agentConversations  AgentConversation[]
   agentMemories       AgentMemory[]
+  clientAuths         ClientAuth[]
 }
 
 model OrganizationMember {
@@ -86,9 +87,28 @@ model Client {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   projects       Project[]
+  auth           ClientAuth?
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
+}
+
+model ClientAuth {
+  id                  String    @id @default(uuid())
+  clientId            String    @unique
+  magicLinkTokenHash  String?
+  magicLinkExpiresAt  DateTime?
+  magicLinkUsedAt     DateTime?
+  sessionVersion      Int       @default(0)
+  organizationId      String
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  client       Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([magicLinkTokenHash])
 }
 
 model Project {

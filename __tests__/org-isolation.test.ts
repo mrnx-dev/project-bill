@@ -24,6 +24,10 @@ describe("RLS — Tenant Model Detection", () => {
   test("PaymentMilestone is a tenant model (RLS auto-scopes)", () => {
     expect(isTenantModel("PaymentMilestone")).toBe(true);
   });
+
+  test("ClientAuth is a tenant model (RLS auto-scopes)", () => {
+    expect(isTenantModel("ClientAuth")).toBe(true);
+  });
 });
 
 describe("Organization Invite Logic", () => {
