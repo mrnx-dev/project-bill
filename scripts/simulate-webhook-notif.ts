@@ -5,13 +5,17 @@ import crypto from "crypto";
 async function runSimulation() {
   console.log("Starting Webhook Notification Simulation...");
 
+  // Pastikan ada organisasi untuk mengaitkan data tenant
+  const org = await prisma.organization.findFirst()
+    ?? await prisma.organization.create({ data: { name: "Seed Org", slug: "seed-org" } });
+
   // 1. Create a dummy client and project
   const client = await prisma.client.create({
-    data: { name: "Test Client QA", email: "qa@example.com" }
+    data: { name: "Test Client QA", email: "qa@example.com", organizationId: org.id }
   });
 
   const project = await prisma.project.create({
-    data: { clientId: client.id, title: "QA Webhook Notif Project", totalPrice: 1000 }
+    data: { clientId: client.id, title: "QA Webhook Notif Project", totalPrice: 1000, organizationId: org.id }
   });
 
   // 2. Create an unpaid invoice
@@ -21,6 +25,7 @@ async function runSimulation() {
       amount: 1000,
       type: "full_payment",
       status: "unpaid",
+      organizationId: org.id,
     }
   });
 

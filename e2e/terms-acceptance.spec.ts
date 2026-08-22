@@ -7,6 +7,10 @@ test.describe("Terms of Service Acceptance Flow", () => {
   let testInvoice: { id: string } | null = null;
 
   test.beforeAll(async () => {
+    // Pastikan ada organisasi untuk mengaitkan data tenant
+    const org = await prisma.organization.findFirst()
+      ?? await prisma.organization.create({ data: { name: "Seed Org", slug: "seed-org" } });
+
     // Find the test client (seeded from core-journey.spec.ts or seed-test-user.ts)
     let client = await prisma.client.findFirst({
       where: { email: "e2e@example.com" },
@@ -17,6 +21,7 @@ test.describe("Terms of Service Acceptance Flow", () => {
         data: {
           name: "E2E Client",
           email: "e2e@example.com",
+          organizationId: org.id,
         },
       });
     }
@@ -31,8 +36,9 @@ test.describe("Terms of Service Acceptance Flow", () => {
         dpAmount: 5000000,
         currency: "IDR",
         terms: "1. No revisions.\n2. Payment non-refundable.",
+        organizationId: org.id,
         items: {
-          create: [{ description: "Terms Test Item 1", price: 10000000 }],
+          create: [{ description: "Terms Test Item 1", price: 10000000, organizationId: org.id }],
         },
       },
     });
@@ -46,6 +52,7 @@ test.describe("Terms of Service Acceptance Flow", () => {
         type: "dp",
         paymentId: "fake-link-id",
         paymentLink: "https://pay.mayar.id/fake",
+        organizationId: org.id,
       },
     });
   });

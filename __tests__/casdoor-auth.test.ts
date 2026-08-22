@@ -77,7 +77,7 @@ describe("Casdoor Auth — Conditional Provider Logic", () => {
     });
 
     it("maps Casdoor non-admin role to projectbill staff", () => {
-      const casdoorRole = "user";
+      const casdoorRole: string = "user";
       const mappedRole = casdoorRole === "admin" ? "admin" : "staff";
       expect(mappedRole).toBe("staff");
     });
