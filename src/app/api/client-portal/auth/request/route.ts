@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   // findMany by email across orgs (no session → no RLS context → unscoped, intentional)
   const clients = await prisma.client.findMany({
     where: { email, isArchived: false },
-    select: { id: true, name: true, email: true, organizationId: true, organization: { select: { name: true } } },
+    select: { id: true, name: true, email: true, isArchived: true, organizationId: true, organization: { select: { name: true } } },
   }).catch(() => []);
 
   const eligible = clients.filter((c) => c.email && !c.isArchived);
