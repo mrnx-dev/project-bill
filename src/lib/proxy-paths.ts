@@ -43,3 +43,17 @@ export function isPublicApi(pathname: string): boolean {
   if (/^\/api\/projects\/[^/]+\/public-sow$/.test(pathname)) return true;
   return false;
 }
+
+// --- Client portal predicates (pure; proxy-safe) ---
+export function isPortalPublic(pathname: string): boolean {
+  return (
+    pathname === "/portal/login" ||
+    pathname === "/api/client-portal/auth/request" ||
+    pathname === "/api/client-portal/auth/verify"
+  );
+}
+
+export function portalNeedsSession(pathname: string): boolean {
+  if (!pathname.startsWith("/portal/") && !pathname.startsWith("/api/client-portal/")) return false;
+  return !isPortalPublic(pathname);
+}

@@ -226,3 +226,25 @@ describe("getClientSession (authoritative, with DB)", () => {
     expect(await getClientSession()).toBeNull();
   });
 });
+
+// The proxy branch delegates to verifySessionCookie; test the branch decision by
+// importing a pure helper extracted into proxy-paths.ts.
+import { isPortalPublic, portalNeedsSession } from "@/lib/proxy-paths";
+
+describe("proxy portal branch predicates", () => {
+  test("login/verify/request are portal-public", () => {
+    expect(isPortalPublic("/portal/login")).toBe(true);
+    expect(isPortalPublic("/api/client-portal/auth/request")).toBe(true);
+    expect(isPortalPublic("/api/client-portal/auth/verify")).toBe(true);
+  });
+  test("other portal routes are not public", () => {
+    expect(isPortalPublic("/portal")).toBe(false);
+    expect(isPortalPublic("/portal/invoices")).toBe(false);
+    expect(isPortalPublic("/api/client-portal/invoices")).toBe(false);
+  });
+  test("portalNeedsSession: pages + api under portal need a session (except public)", () => {
+    expect(portalNeedsSession("/portal")).toBe(true);
+    expect(portalNeedsSession("/api/client-portal/invoices")).toBe(true);
+    expect(portalNeedsSession("/portal/login")).toBe(false);
+  });
+});
