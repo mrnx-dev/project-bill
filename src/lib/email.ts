@@ -415,6 +415,47 @@ export async function sendInviteEmail(params: { to: string; orgName: string; tok
   }
 }
 
+export async function sendMagicLinkEmail(params: {
+  to: string;
+  clientName: string;
+  links: { orgName: string; url: string }[];
+  organizationId: string; // first matching client's org (v1 single-org: the org; multi-org-managed: first org)
+}): Promise<{ success: boolean; mocked?: boolean }> {
+  const linkRows = params.links
+    .map(
+      (l) =>
+        `<p style="margin:8px 0"><a href="${l.url}" style="padding:10px 20px;background:#6366f1;color:white;text-decoration:none;border-radius:6px">${l.orgName} — Open Portal</a></p>`,
+    )
+    .join("");
+
+  const html = `<div style="font-family:sans-serif;padding:20px">
+    <h2>Client Portal Login</h2>
+    <p>Hi ${params.clientName},</p>
+    <p>Use the link below to access your portal. The link expires in 15 minutes and can be used once.</p>
+    ${linkRows}
+    <p style="color:#666;font-size:12px;margin-top:20px">If you did not request this, you can ignore this email.</p>
+  </div>`;
+
+  const settings = await getCompanySettings(params.organizationId);
+  if (!settings.resendApiKey) {
+    console.log(`[MOCK MAGIC LINK EMAIL] To: ${params.to} | Links: ${params.links.map((l) => l.url).join(", ")}`);
+    return { success: true, mocked: true };
+  }
+  try {
+    const resend = new Resend(settings.resendApiKey);
+    await resend.emails.send({
+      from: getSenderFrom(settings.companyName, settings.senderEmail),
+      to: [params.to],
+      subject: "Your Client Portal Login Link",
+      html,
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send magic link email:", error);
+    return { success: false };
+  }
+}
+
 export async function sendOrgDeletionEmail(params: { to: string; orgName: string; organizationId: string }) {
   const html = `<div style="font-family:sans-serif;padding:20px">
     <h2>Organization Deletion Notice</h2>
