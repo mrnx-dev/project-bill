@@ -186,3 +186,43 @@ describe("GET /api/client-portal/auth/verify (route handler)", () => {
     expect(cookieStore[COOKIE_NAME]).toBeUndefined();
   });
 });
+
+describe("POST /api/client-portal/auth/logout", () => {
+  beforeEach(() => { jest.clearAllMocks(); for (const k in cookieStore) delete cookieStore[k]; });
+
+  test("clears the session cookie", async () => {
+    cookieStore[COOKIE_NAME] = "old";
+    const { POST } = require("@/app/api/client-portal/auth/logout/route");
+    const res = await POST(new Request("http://localhost/api/client-portal/auth/logout", { method: "POST" }));
+    expect(res.status).toBe(200);
+    expect(cookieStore[COOKIE_NAME]).toBeUndefined();
+  });
+});
+
+describe("getClientSession (authoritative, with DB)", () => {
+  beforeEach(() => { jest.clearAllMocks(); for (const k in cookieStore) delete cookieStore[k]; });
+
+  test("valid cookie + sessionVersion match returns session", async () => {
+    cookieStore[COOKIE_NAME] = signSession({ clientId: "c1", exp: Date.now() + 60000, sessionVersion: 0 });
+    (prisma.clientAuth.findUnique as jest.Mock).mockResolvedValue({
+      clientId: "c1", sessionVersion: 0, client: { id: "c1", name: "Toko", organizationId: "org1" },
+    });
+    const { getClientSession } = require("@/lib/client-auth");
+    const s = await getClientSession();
+    expect(s).toEqual({ clientId: "c1", organizationId: "org1", clientName: "Toko" });
+  });
+
+  test("sessionVersion mismatch returns null (revocation)", async () => {
+    cookieStore[COOKIE_NAME] = signSession({ clientId: "c1", exp: Date.now() + 60000, sessionVersion: 0 });
+    (prisma.clientAuth.findUnique as jest.Mock).mockResolvedValue({
+      clientId: "c1", sessionVersion: 1, client: { id: "c1", name: "Toko", organizationId: "org1" },
+    });
+    const { getClientSession } = require("@/lib/client-auth");
+    expect(await getClientSession()).toBeNull();
+  });
+
+  test("no cookie returns null", async () => {
+    const { getClientSession } = require("@/lib/client-auth");
+    expect(await getClientSession()).toBeNull();
+  });
+});
