@@ -126,3 +126,63 @@ describe("POST /api/client-portal/auth/request", () => {
     expect(sendMagicLinkEmail).not.toHaveBeenCalled();
   });
 });
+
+describe("GET /api/client-portal/auth/verify (route handler)", () => {
+  beforeEach(() => { jest.clearAllMocks(); for (const k in cookieStore) delete cookieStore[k]; });
+
+  test("valid token → mark used + clear hash + set cookie + redirect /portal", async () => {
+    const token = generateToken();
+    (prisma.clientAuth.findFirst as jest.Mock).mockResolvedValue({
+      id: "ca1", clientId: "c1", organizationId: "org1",
+      magicLinkTokenHash: hashToken(token),
+      magicLinkExpiresAt: new Date(Date.now() + 60000),
+      magicLinkUsedAt: null,
+      sessionVersion: 0,
+    });
+    (prisma.clientAuth.update as jest.Mock).mockResolvedValue({});
+
+    const { GET } = require("@/app/api/client-portal/auth/verify/route");
+    const req = new Request("http://localhost/api/client-portal/auth/verify?t=" + token);
+    const res = await GET(req);
+    expect(res.status).toBe(307); // redirect
+    expect(prisma.clientAuth.update).toHaveBeenCalled(); // mark used + clear hash
+    expect(cookieStore[COOKIE_NAME]).toBeDefined(); // cookie set
+  });
+
+  test("expired token → redirect to /portal/login?error (no cookie set)", async () => {
+    const token = generateToken();
+    (prisma.clientAuth.findFirst as jest.Mock).mockResolvedValue({
+      clientId: "c1", magicLinkTokenHash: hashToken(token),
+      magicLinkExpiresAt: new Date(Date.now() - 1000), // expired
+      magicLinkUsedAt: null, sessionVersion: 0,
+    });
+    const { GET } = require("@/app/api/client-portal/auth/verify/route");
+    const req = new Request("http://localhost/api/client-portal/auth/verify?t=" + token);
+    const res = await GET(req);
+    expect(res.status).toBe(307);
+    expect((res.headers.get("location") || "").includes("/portal/login")).toBe(true);
+    expect(cookieStore[COOKIE_NAME]).toBeUndefined();
+  });
+
+  test("already-used token → redirect to login (reuse fail)", async () => {
+    const token = generateToken();
+    (prisma.clientAuth.findFirst as jest.Mock).mockResolvedValue({
+      clientId: "c1", magicLinkTokenHash: hashToken(token),
+      magicLinkExpiresAt: new Date(Date.now() + 60000),
+      magicLinkUsedAt: new Date(), // already used
+      sessionVersion: 0,
+    });
+    const { GET } = require("@/app/api/client-portal/auth/verify/route");
+    const res = await GET(new Request("http://localhost/api/client-portal/auth/verify?t=" + token));
+    expect(res.status).toBe(307);
+    expect(cookieStore[COOKIE_NAME]).toBeUndefined();
+  });
+
+  test("hash mismatch / unknown token → redirect to login", async () => {
+    (prisma.clientAuth.findFirst as jest.Mock).mockResolvedValue(null);
+    const { GET } = require("@/app/api/client-portal/auth/verify/route");
+    const res = await GET(new Request("http://localhost/api/client-portal/auth/verify?t=bogus"));
+    expect(res.status).toBe(307);
+    expect(cookieStore[COOKIE_NAME]).toBeUndefined();
+  });
+});
