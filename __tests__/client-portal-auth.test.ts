@@ -19,11 +19,11 @@ global.Request = MockRequest as unknown as typeof Request;
 // Extended MockNextResponse: supports static redirect() + a headers getter (the verify
 // route uses NextResponse.redirect and tests assert res.headers.get("location")).
 class MockNextResponse {
-  constructor(public body: any, public init: { status?: number; headers?: Record<string,string> } = {}) {}
+  constructor(public body: any, public init: { status?: number; headers?: Record<string,string> } = {}) {} // eslint-disable-line @typescript-eslint/no-explicit-any
   get status() { return this.init.status ?? 200; }
   get headers() { return new MockHeaders(this.init.headers ?? {}); }
   async json() { return typeof this.body === "string" ? JSON.parse(this.body) : this.body; }
-  static json(body: any, init?: { status?: number }) { return new MockNextResponse(body, init); }
+  static json(body: any, init?: { status?: number }) { return new MockNextResponse(body, init); } // eslint-disable-line @typescript-eslint/no-explicit-any
   static redirect(url: string | URL, status = 307) { return new MockNextResponse(null, { status, headers: { location: String(url) } }); }
 }
 jest.mock("next/server", () => ({ NextResponse: MockNextResponse }));
@@ -40,10 +40,10 @@ jest.mock("next/headers", () => ({
 
 // prisma (self-referential; no requireActual — real @/lib/prisma imports @/lib/env)
 jest.mock("@/lib/prisma", () => {
-  const prisma: any = {
+  const prisma: any = { // eslint-disable-line @typescript-eslint/no-explicit-any
     client: { findMany: jest.fn(), findFirst: jest.fn() },
     clientAuth: { upsert: jest.fn(), findUnique: jest.fn(), update: jest.fn(), findFirst: jest.fn() },
-    $transaction: jest.fn(async (cb: (tx: any) => Promise<unknown>) => cb(prisma)),
+    $transaction: jest.fn(async (cb: (tx: any) => Promise<unknown>) => cb(prisma)), // eslint-disable-line @typescript-eslint/no-explicit-any
   };
   return { prisma };
 });
@@ -55,6 +55,9 @@ jest.mock("@/lib/rate-limit", () => ({ RateLimiter: jest.fn().mockImplementation
 import { prisma } from "@/lib/prisma";
 import { sendMagicLinkEmail } from "@/lib/email";
 import { generateToken, hashToken, signSession, COOKIE_NAME } from "@/lib/client-auth";
+
+// Route modules are require()d lazily inside tests (they pull in next/server mocks).
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 describe("POST /api/client-portal/auth/request", () => {
   beforeEach(() => jest.clearAllMocks());

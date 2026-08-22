@@ -154,18 +154,17 @@
 - [ ] **E2E BOLA verification (deferred):** Playwright cross-tenant isolation case — user A gets 404 fetching user B's `agent/history?conversationId=<B>`, and SSE only delivers this-tenant events. The BOLA logic is unit-tested + contract-tested; the live two-user scenario was not run to avoid writing to the DB.
 
 #### Phase 1 — Client Portal Auth & Dashboard
-- [ ] Desain model `ClientAuth` (magic link ke email), terpisah dari model `User`
-- [ ] Buat schema Prisma untuk `ClientAuth`
-- [ ] Migrasi database
-- [ ] Setup route group `(client-portal)/` di App Router
-- [ ] Buat middleware auth khusus client portal (terpisah dari admin auth)
-- [ ] Buat halaman login client portal
-- [ ] Implementasi magic link / password auth flow
-- [ ] Buat dashboard klien — daftar invoice
-- [ ] Buat dashboard klien — status proyek
-- [ ] Buat dashboard klien — download SOW
-- [ ] Proteksi route client portal dengan middleware
-- [ ] Testing end-to-end client portal
+- [x] Desain model `ClientAuth` (magic link ke email), terpisah dari model `User` — spec `docs/superpowers/specs/2026-08-16-client-portal-auth-design.md`
+- [x] Buat schema Prisma untuk `ClientAuth` — `ClientAuth` (1:1 to Client) + `Client.auth` back-rel
+- [x] Migrasi database — `add_client_auth`
+- [x] Setup route group `/portal/` di App Router (real segment; `(client-portal)` route group is URL-less)
+- [x] Buat middleware auth khusus client portal (terpisah dari admin auth) — proxy branch + signed session cookie
+- [x] Buat halaman login client portal — `/portal/login`
+- [x] Implementasi magic link auth flow — request + verify route handler (single-use, HMAC cookie)
+- [x] Proteksi route client portal dengan proxy branch — `/portal/*` + `/api/client-portal/*`
+- [x] Testing — unit (client-auth) + integration (request/verify/logout/proxy) + tenant isolation
+- [ ] **Sub-project B (next spec):** Buat dashboard klien — daftar invoice, status proyek, download SOW
+- [ ] **Deferred:** password auth, multi-org post-login picker, admin "revoke all sessions" UI, bilingual portal, E2E
 
 ### 3. 💳 Partial Payments & Milestone Billing — Sprint 17-18
 
