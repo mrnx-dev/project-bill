@@ -54,6 +54,7 @@ export function isPortalPublic(pathname: string): boolean {
 }
 
 export function portalNeedsSession(pathname: string): boolean {
-  if (!pathname.startsWith("/portal/") && !pathname.startsWith("/api/client-portal/")) return false;
+  const isPortalPage = pathname === "/portal" || pathname.startsWith("/portal/");
+  if (!isPortalPage && !pathname.startsWith("/api/client-portal/")) return false;
   return !isPortalPublic(pathname);
 }
