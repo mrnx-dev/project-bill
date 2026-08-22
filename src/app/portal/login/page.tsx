@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 
-export default function ClientLoginPage() {
+function LoginForm() {
   const params = useSearchParams();
   const error = params.get("error");
   const [email, setEmail] = useState("");
@@ -52,5 +52,15 @@ export default function ClientLoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// useSearchParams() must be wrapped in a Suspense boundary so the page can be
+// statically prerendered (Next.js 16 build requirement).
+export default function ClientLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }
