@@ -2,9 +2,14 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyMayarWebhook } from "@/lib/billing/mayar";
+import { isSelfHosted } from "@/lib/billing/subscription";
 import { addMonths, addYears } from "date-fns";
 
 export async function POST(req: Request) {
+  // Self-hosted / internal builds process no subscription payments; accept and ignore.
+  if (isSelfHosted()) {
+    return new NextResponse("Subscription webhooks disabled in self-hosted mode", { status: 200 });
+  }
   try {
     const bodyText = await req.text();
     const headersList = await headers();

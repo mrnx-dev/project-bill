@@ -58,6 +58,8 @@ interface AppSidebarProps {
     companyName?: string | null;
     companyLogoUrl?: string | null;
   };
+  /** When true (self-hosted/internal builds) the Subscription nav entry is hidden. */
+  isSelfHosted?: boolean;
 }
 
 type NavItem = {
@@ -98,9 +100,18 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-export function AppSidebar({ user, company }: AppSidebarProps) {
+export function AppSidebar({ user, company, isSelfHosted }: AppSidebarProps) {
   const pathname = usePathname();
   const { setTheme } = useTheme();
+
+  // In self-hosted / internal / open-source builds there are no subscription
+  // transactions, so drop the Subscription entry from the sidebar.
+  const visibleNavGroups = isSelfHosted
+    ? navGroups.map((g) => ({
+        ...g,
+        items: g.items.filter((i) => i.url !== "/settings/subscription"),
+      }))
+    : navGroups;
 
   const companyName = company?.companyName || "ProjectBill";
   const companyLogo = company?.companyLogoUrl;
@@ -119,7 +130,7 @@ export function AppSidebar({ user, company }: AppSidebarProps) {
       </SidebarHeader>
 
       <SidebarContent>
-        {navGroups.map((group) => (
+        {visibleNavGroups.map((group) => (
           <SidebarGroup key={group.label}>
             <SidebarGroupLabel className="text-xs font-semibold text-sidebar-foreground/50 tracking-wide mb-1 px-4 mt-2 uppercase">
               {group.label}

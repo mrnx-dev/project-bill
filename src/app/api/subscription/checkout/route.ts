@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { PLAN_PRICING, getSubscription } from "@/lib/billing/subscription";
+import { PLAN_PRICING, getSubscription, isSelfHosted } from "@/lib/billing/subscription";
 import { createPaymentLink } from "@/lib/billing/mayar";
 
 export async function POST(request: Request) {
@@ -12,6 +12,12 @@ export async function POST(request: Request) {
     }
 
     const userId = session.user.id;
+
+    // Self-hosted / internal / open-source builds have no subscription transactions.
+    if (isSelfHosted()) {
+      return new NextResponse("Subscription checkout is disabled in self-hosted mode", { status: 404 });
+    }
+
     const body = await request.json();
     const { plan, billing } = body;
 

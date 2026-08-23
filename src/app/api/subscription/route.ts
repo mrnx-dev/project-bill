@@ -81,6 +81,11 @@ export async function PUT(request: Request) {
             return new NextResponse("Unauthorized", { status: 401 });
         }
 
+        // Self-hosted / internal builds have no subscription plans to change.
+        if (isSelfHosted()) {
+            return NextResponse.json({ error: "Subscription management is disabled in self-hosted mode" }, { status: 404 });
+        }
+
         // Only admin can update plans
         const currentUser = await prisma.user.findUnique({
             where: { id: session.user.id },

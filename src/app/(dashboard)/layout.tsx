@@ -10,6 +10,7 @@ import { SwipeSidebarHandler } from "@/components/swipe-sidebar-handler";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { isSelfHosted } from "@/lib/billing/subscription";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { OnboardingModal } from "@/components/onboarding-modal";
 import { AIFloatingChat } from "@/components/ai/ai-floating-chat";
@@ -54,7 +55,7 @@ export default async function DashboardLayout({
   return (
     <SidebarProvider>
       <SwipeSidebarHandler />
-      <AppSidebar user={dbUser || session.user} company={settings || undefined} />
+      <AppSidebar user={dbUser || session.user} company={settings || undefined} isSelfHosted={isSelfHosted()} />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center justify-between border-b px-4">
           <div className="flex items-center gap-2">

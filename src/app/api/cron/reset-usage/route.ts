@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { RateLimiter } from "@/lib/rate-limit";
-import { resetAllUsageCounters } from "@/lib/billing/subscription";
+import { resetAllUsageCounters, isSelfHosted } from "@/lib/billing/subscription";
 
 // Allow 2 cron requests per minute per IP to prevent abusive triggers
 const cronRateLimiter = new RateLimiter({ limit: 2, windowMs: 60 * 1000 });
@@ -20,6 +20,11 @@ export async function GET(request: Request) {
 
     if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // No usage counters to reset in self-hosted / internal builds (limits bypassed).
+    if (isSelfHosted()) {
+        return NextResponse.json({ success: true, message: "Self-hosted mode — usage counters disabled", count: 0 });
     }
 
     try {

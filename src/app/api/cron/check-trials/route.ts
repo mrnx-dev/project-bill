@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { downgradeExpiredTrials } from "@/lib/billing/subscription";
+import { downgradeExpiredTrials, isSelfHosted } from "@/lib/billing/subscription";
 
 import { RateLimiter } from "@/lib/rate-limit";
 
@@ -23,6 +23,11 @@ export async function GET(request: Request) {
 
     if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
       return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    // No trials to downgrade in self-hosted / internal builds.
+    if (isSelfHosted()) {
+      return NextResponse.json({ success: true, message: "Self-hosted mode — trials disabled", downgradedCount: 0 });
     }
 
     const result = await downgradeExpiredTrials();
