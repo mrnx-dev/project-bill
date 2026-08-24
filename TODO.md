@@ -163,8 +163,8 @@
 - [x] Implementasi magic link auth flow — request + verify route handler (single-use, HMAC cookie)
 - [x] Proteksi route client portal dengan proxy branch — `/portal/*` + `/api/client-portal/*`
 - [x] Testing — unit (client-auth) + integration (request/verify/logout/proxy) + tenant isolation
-- [ ] **Sub-project B (next spec):** Buat dashboard klien — daftar invoice, status proyek, download SOW
-- [ ] **Deferred:** password auth, multi-org post-login picker, admin "revoke all sessions" UI, bilingual portal, E2E
+- [x] **Sub-project B:** Buat dashboard klien — daftar invoice, status proyek (progress), download SOW — spec `docs/superpowers/specs/2026-08-22-client-portal-dashboard-design.md` (portal layout/overview/invoices/projects + scoped SOW view, reuse public invoice view)
+- [ ] **Deferred:** password auth, multi-org post-login picker, admin "revoke all sessions" UI, bilingual portal chrome, project detail with milestone timeline, native SOW PDF endpoint, E2E
 
 ### 3. 💳 Partial Payments & Milestone Billing — Sprint 17-18
 
