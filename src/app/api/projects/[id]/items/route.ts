@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export const POST = withTenantRls(async (request, ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    const orgId = session.user.activeOrganizationId!;
-    const { id: projectId } = await params;
+    const tenant = getTenantCtx()!;
+    const orgId = tenant.organizationId;
+    const projectId = (await ctx.params).id as string;
     const json = await request.json();
     const { description, price } = json;
 
@@ -32,7 +27,7 @@ export async function POST(
     }
 
     // 1. Check if the project exists
-    const project = await prisma.project.findFirst({
+    const project = await tx.project.findFirst({
       where: { id: projectId, organizationId: orgId },
       include: { invoices: true },
     });
@@ -50,27 +45,24 @@ export async function POST(
       );
     }
 
-    // 2. Insert the item and update the project's totally tracked price atomically
-    const [newItem, updatedProject] = await prisma.$transaction([
-      prisma.projectItem.create({
-        data: {
-          organizationId: orgId,
-          projectId,
-          description,
-          price: numericPrice,
-          ...(parsedQuantity !== null ? { quantity: parsedQuantity } : {}),
-          ...(parsedRate !== null ? { rate: parsedRate } : {})
-        },
-      }),
-      prisma.project.update({
+    // 2. Insert the item and update the project's tracked price atomically
+    // (atomic via the withTenantRls request transaction)
+    const newItem = await tx.projectItem.create({
+      data: {
+        organizationId: orgId,
+        projectId,
+        description,
+        price: numericPrice,
+        ...(parsedQuantity !== null ? { quantity: parsedQuantity } : {}),
+        ...(parsedRate !== null ? { rate: parsedRate } : {}),
+      },
+    });
+    const updatedProject = await tx.project.update({
       where: { id: projectId, organizationId: orgId },
-        data: {
-          totalPrice: {
-            increment: numericPrice,
-          },
-        },
-      }),
-    ]);
+      data: {
+        totalPrice: { increment: numericPrice },
+      },
+    });
 
     return NextResponse.json(
       { item: newItem, projectTotal: updatedProject.totalPrice },
@@ -83,4 +75,4 @@ export async function POST(
       { status: 500 },
     );
   }
-}
+});

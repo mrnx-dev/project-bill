@@ -1,18 +1,14 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { auth } from "@/auth";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { createAuditLog } from "@/lib/audit-logger";
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export const PATCH = withTenantRls(async (request, ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    const resolvedParams = await params;
-    const id = resolvedParams.id;
+    const tenant = getTenantCtx()!;
+    const orgId = tenant.organizationId;
+    const userId = tenant.userId;
+    const id = (await ctx.params).id as string;
     const json = await request.json();
     const {
       title,
@@ -28,8 +24,6 @@ export async function PATCH(
       taxRate,
     } = json;
 
-    const orgId = session.user.activeOrganizationId!;
-
     const updateData: Prisma.ProjectUncheckedUpdateInput = {};
     if (title !== undefined) updateData.title = title;
     if (clientId !== undefined) updateData.clientId = clientId;
@@ -43,7 +37,7 @@ export async function PATCH(
     if (taxName !== undefined) updateData.taxName = taxName ? taxName : null;
     if (taxRate !== undefined) updateData.taxRate = taxRate !== null ? parseFloat(taxRate) : null;
 
-    const existing = await prisma.project.findFirst({
+    const existing = await tx.project.findFirst({
       where: { id, organizationId: orgId },
       include: { invoices: true },
     });
@@ -122,7 +116,7 @@ export async function PATCH(
         if (existing.dpAmount && Number(existing.dpAmount) > 0) {
           const { convertDpToFirstMilestone } = await import("@/lib/milestone-utils");
           const first = convertDpToFirstMilestone(Number(existing.dpAmount), Number(existing.totalPrice));
-          await prisma.paymentMilestone.create({
+          await tx.paymentMilestone.create({
             data: {
               projectId: existing.id,
               organizationId: existing.organizationId,
@@ -137,7 +131,7 @@ export async function PATCH(
         updateData.dpAmount = null;
       } else if (updateData.billingMode === "SIMPLE") {
         // Milestone -> Simple: take milestone #1 amount as dpAmount, delete milestones
-        const milestones = await prisma.paymentMilestone.findMany({
+        const milestones = await tx.paymentMilestone.findMany({
           where: { projectId: existing.id },
           orderBy: { order: "asc" },
         });
@@ -148,18 +142,18 @@ export async function PATCH(
           );
         }
         if (milestones[0]) updateData.dpAmount = Number(milestones[0].amount);
-        await prisma.paymentMilestone.deleteMany({ where: { projectId: existing.id } });
+        await tx.paymentMilestone.deleteMany({ where: { projectId: existing.id } });
       }
     }
 
-    const project = await prisma.project.update({
+    const project = await tx.project.update({
       where: { id, organizationId: orgId },
       data: updateData,
       include: { client: true, invoices: true },
     });
 
     await createAuditLog({
-      userId: session.user.id,
+      userId,
       action: "project.update",
       entityType: "PROJECT",
       entityId: id,
@@ -176,20 +170,16 @@ export async function PATCH(
       { status: 500 },
     );
   }
-}
+});
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export const DELETE = withTenantRls(async (request, ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    const resolvedParams = await params;
-    const id = resolvedParams.id;
-    const orgId = session.user.activeOrganizationId!;
+    const tenant = getTenantCtx()!;
+    const orgId = tenant.organizationId;
+    const userId = tenant.userId;
+    const id = (await ctx.params).id as string;
 
-    const project = await prisma.project.findFirst({
+    const project = await tx.project.findFirst({
       where: { id, organizationId: orgId },
       include: { invoices: true },
     });
@@ -208,13 +198,12 @@ export async function DELETE(
       );
     }
 
-    await prisma.$transaction([
-      prisma.invoice.deleteMany({ where: { projectId: id, organizationId: orgId } }),
-      prisma.project.delete({ where: { id, organizationId: orgId } }),
-    ]);
+    // Atomic via the withTenantRls request transaction (no inner $transaction needed).
+    await tx.invoice.deleteMany({ where: { projectId: id, organizationId: orgId } });
+    await tx.project.delete({ where: { id, organizationId: orgId } });
 
     await createAuditLog({
-      userId: session.user.id,
+      userId,
       action: "project.delete",
       entityType: "PROJECT",
       entityId: id,
@@ -230,4 +219,4 @@ export async function DELETE(
       { status: 500 },
     );
   }
-}
+});

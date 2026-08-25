@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string; itemId: string }> },
-) {
+export const DELETE = withTenantRls(async (request, ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    const orgId = session.user.activeOrganizationId!;
-    const { id: projectId, itemId } = await params;
+    const tenant = getTenantCtx()!;
+    const orgId = tenant.organizationId;
+    const { id: projectId, itemId } = await ctx.params as { id: string; itemId: string };
 
-    const item = await prisma.projectItem.findUnique({
+    const item = await tx.projectItem.findUnique({
       where: { id: itemId, organizationId: orgId },
     });
 
@@ -27,7 +22,7 @@ export async function DELETE(
       );
     }
 
-    const project = await prisma.project.findUnique({
+    const project = await tx.project.findUnique({
       where: { id: projectId, organizationId: orgId },
       include: { invoices: true },
     });
@@ -41,20 +36,12 @@ export async function DELETE(
       );
     }
 
-    // Attempt to delete and subtract from total price
-    const [, updatedProject] = await prisma.$transaction([
-      prisma.projectItem.delete({
-        where: { id: itemId },
-      }),
-      prisma.project.update({
-        where: { id: projectId },
-        data: {
-          totalPrice: {
-            decrement: item.price,
-          },
-        },
-      }),
-    ]);
+    // Atomic via the withTenantRls request transaction.
+    await tx.projectItem.delete({ where: { id: itemId } });
+    const updatedProject = await tx.project.update({
+      where: { id: projectId, organizationId: orgId },
+      data: { totalPrice: { decrement: item.price } },
+    });
 
     return NextResponse.json(
       { success: true, projectTotal: updatedProject.totalPrice },
@@ -67,4 +54,4 @@ export async function DELETE(
       { status: 500 },
     );
   }
-}
+});

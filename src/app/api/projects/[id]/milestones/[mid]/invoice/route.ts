@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { generateInvoiceNumber } from "@/lib/invoice-utils";
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string; mid: string }> },
-) {
+export const POST = withTenantRls(async (request, ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    const orgId = session.user.activeOrganizationId!;
-    const { id: projectId, mid: milestoneId } = await params;
+    const tenant = getTenantCtx()!;
+    const orgId = tenant.organizationId;
+    const userId = tenant.userId;
+    const { id: projectId, mid: milestoneId } = await ctx.params as { id: string; mid: string };
 
-    const milestone = await prisma.paymentMilestone.findUnique({
+    const milestone = await tx.paymentMilestone.findUnique({
       where: { id: milestoneId },
       include: { project: { include: { client: true } } },
     });
@@ -37,34 +33,33 @@ export async function POST(
     dueDate.setDate(dueDate.getDate() + 7);
     const invoiceNumber = await generateInvoiceNumber(orgId);
 
-    const invoice = await prisma.$transaction(async (tx) => {
-      const inv = await tx.invoice.create({
-        data: {
-          organizationId: orgId,
-          invoiceNumber,
-          projectId,
-          type: "MILESTONE",
-          amount: milestone.amount,
-          notes: `Milestone: ${milestone.name}`,
-          status: "UNPAID",
-          dueDate,
-        },
-      });
-      await tx.paymentMilestone.update({
-        where: { id: milestoneId },
-        data: { invoiceId: inv.id, status: "INVOICED" },
-      });
-      await tx.auditLog.create({
-        data: {
-          userId: session.user.id,
-          organizationId: orgId,
-          action: "milestone_invoiced",
-          entityType: "PaymentMilestone",
-          entityId: milestoneId,
-          newValue: inv.id,
-        },
-      });
-      return inv;
+    // Atomic via the withTenantRls request transaction (GUC set → DB-RLS scopes
+    // the invoice/milestone/auditLog writes to this org; data carries organizationId = GUC).
+    const inv = await tx.invoice.create({
+      data: {
+        organizationId: orgId,
+        invoiceNumber,
+        projectId,
+        type: "MILESTONE",
+        amount: milestone.amount,
+        notes: `Milestone: ${milestone.name}`,
+        status: "UNPAID",
+        dueDate,
+      },
+    });
+    await tx.paymentMilestone.update({
+      where: { id: milestoneId },
+      data: { invoiceId: inv.id, status: "INVOICED" },
+    });
+    await tx.auditLog.create({
+      data: {
+        userId,
+        organizationId: orgId,
+        action: "milestone_invoiced",
+        entityType: "PaymentMilestone",
+        entityId: milestoneId,
+        newValue: inv.id,
+      },
     });
 
     await incrementOrgUsage(orgId, "invoicesCreated");
@@ -73,15 +68,15 @@ export async function POST(
     if (milestone.project.client?.email) {
       try {
         const { sendInvoiceEmail } = await import("@/app/actions/send-invoice");
-        await sendInvoiceEmail(invoice.id, true);
+        await sendInvoiceEmail(inv.id, true);
       } catch (err) {
         console.error("Milestone invoice email failed non-fatally", err);
       }
     }
 
-    return NextResponse.json({ invoice, milestone: { ...milestone, status: "INVOICED", invoiceId: invoice.id } });
+    return NextResponse.json({ invoice: inv, milestone: { ...milestone, status: "INVOICED", invoiceId: inv.id } });
   } catch (error) {
     console.error("Failed to tagih milestone:", error);
     return NextResponse.json({ error: "Failed to create milestone invoice" }, { status: 500 });
   }
-}
+});

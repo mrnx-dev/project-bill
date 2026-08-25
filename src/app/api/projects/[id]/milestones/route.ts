@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { milestonePlanSchema } from "@/lib/validations/milestone";
 import { computeMilestoneAmounts } from "@/lib/milestone-utils";
 import { createAuditLog } from "@/lib/audit-logger";
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export const PUT = withTenantRls(async (request, ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    const orgId = session.user.activeOrganizationId!;
-    const { id: projectId } = await params;
+    const tenant = getTenantCtx()!;
+    const orgId = tenant.organizationId;
+    const userId = tenant.userId;
+    const projectId = (await ctx.params).id as string;
 
     const json = await request.json();
     const parsed = milestonePlanSchema.safeParse(json.milestones);
@@ -24,7 +20,7 @@ export async function PUT(
       );
     }
 
-    const project = await prisma.project.findUnique({
+    const project = await tx.project.findUnique({
       where: { id: projectId, organizationId: orgId },
       include: { milestones: true, invoices: true },
     });
@@ -34,7 +30,7 @@ export async function PUT(
     }
 
     // Plan lock: cannot edit once any milestone is INVOICED.
-    const invoiced = await prisma.paymentMilestone.findFirst({
+    const invoiced = await tx.paymentMilestone.findFirst({
       where: { projectId, status: "INVOICED" },
       select: { id: true },
     });
@@ -47,24 +43,23 @@ export async function PUT(
 
     const computed = computeMilestoneAmounts(parsed.data, Number(project.totalPrice));
 
-    await prisma.$transaction(async (tx) => {
-      await tx.paymentMilestone.deleteMany({ where: { projectId } });
-      await tx.paymentMilestone.createMany({
-        data: computed.map((m, i) => ({
-          projectId,
-          organizationId: orgId,
-          name: m.name,
-          percentage: m.percentage,
-          amount: m.amount,
-          dueDate: m.dueDate ? new Date(m.dueDate) : null,
-          order: m.order ?? i,
-          status: "PLANNED",
-        })),
-      });
+    // Atomic via the withTenantRls request transaction.
+    await tx.paymentMilestone.deleteMany({ where: { projectId } });
+    await tx.paymentMilestone.createMany({
+      data: computed.map((m, i) => ({
+        projectId,
+        organizationId: orgId,
+        name: m.name,
+        percentage: m.percentage,
+        amount: m.amount,
+        dueDate: m.dueDate ? new Date(m.dueDate) : null,
+        order: m.order ?? i,
+        status: "PLANNED",
+      })),
     });
 
     await createAuditLog({
-      userId: session.user.id,
+      userId,
       organizationId: orgId,
       action: "milestone_plan_created",
       entityType: "Project",
@@ -76,4 +71,4 @@ export async function PUT(
     console.error("Failed to save milestone plan:", error);
     return NextResponse.json({ error: "Failed to save plan" }, { status: 500 });
   }
-}
+});

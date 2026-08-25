@@ -13,6 +13,7 @@ jest.mock("@/lib/prisma", () => {
     invoice: { create: jest.fn(), updateMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn() },
     auditLog: { create: jest.fn() },
     $transaction: jest.fn(async (cb: (tx: any) => Promise<unknown>) => cb(prisma)), // eslint-disable-line @typescript-eslint/no-explicit-any
+    $executeRaw: jest.fn().mockResolvedValue(0), // withTenantRls: SET LOCAL app.current_tenant_id
   };
   return { prisma };
 });
