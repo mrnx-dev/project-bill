@@ -1,23 +1,18 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { createAuditLog } from "@/lib/audit-logger";
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export const PATCH = withTenantRls(async (request, ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    const resolvedParams = await params;
-    const id = resolvedParams.id;
+    const tenant = getTenantCtx()!;
+    const orgId = tenant.organizationId;
+    const userId = tenant.userId;
+    const resolvedParams = await ctx.params;
+    const id = resolvedParams.id as string;
     const json = await request.json();
     const { name, email, phone } = json;
 
-    const orgId = session.user.activeOrganizationId!;
-
-    const existing = await prisma.client.findFirst({
+    const existing = await tx.client.findFirst({
       where: { id, organizationId: orgId },
     });
 
@@ -25,13 +20,13 @@ export async function PATCH(
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
-    const client = await prisma.client.update({
+    const client = await tx.client.update({
       where: { id, organizationId: orgId },
       data: { name, email, phone },
     });
 
     await createAuditLog({
-      userId: session.user.id,
+      userId,
       action: "client.update",
       entityType: "CLIENT",
       entityId: id,
@@ -48,21 +43,17 @@ export async function PATCH(
       { status: 500 },
     );
   }
-}
+});
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export const DELETE = withTenantRls(async (request, ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    const resolvedParams = await params;
-    const id = resolvedParams.id;
+    const tenant = getTenantCtx()!;
+    const orgId = tenant.organizationId;
+    const userId = tenant.userId;
+    const resolvedParams = await ctx.params;
+    const id = resolvedParams.id as string;
 
-    const orgId = session.user.activeOrganizationId!;
-
-    const clientWithInvoices = await prisma.client.findFirst({
+    const clientWithInvoices = await tx.client.findFirst({
       where: { id, organizationId: orgId },
       include: {
         projects: {
@@ -80,18 +71,18 @@ export async function DELETE(
     );
 
     if (hasPaidInvoices) {
-      await prisma.client.update({
+      await tx.client.update({
         where: { id, organizationId: orgId },
         data: { isArchived: true },
       });
     } else {
-      await prisma.client.delete({
+      await tx.client.delete({
         where: { id, organizationId: orgId },
       });
     }
 
     await createAuditLog({
-      userId: session.user.id,
+      userId,
       action: hasPaidInvoices ? "client.archive" : "client.delete",
       entityType: "CLIENT",
       entityId: id,
@@ -107,4 +98,4 @@ export async function DELETE(
       { status: 500 },
     );
   }
-}
+});

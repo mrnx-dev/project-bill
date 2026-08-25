@@ -1,22 +1,17 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { createAuditLog } from "@/lib/audit-logger";
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export const PATCH = withTenantRls(async (request, ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    const resolvedParams = await params;
-    const id = resolvedParams.id;
+    const tenant = getTenantCtx()!;
+    const orgId = tenant.organizationId;
+    const resolvedParams = await ctx.params;
+    const id = resolvedParams.id as string;
     const json = await request.json();
     const { status, cancelAtPeriodEnd } = json;
-    const orgId = session.user.activeOrganizationId!;
 
-    const invoice = await prisma.invoice.findFirst({
+    const invoice = await tx.invoice.findFirst({
       where: { id, organizationId: orgId },
       include: { project: { include: { client: true } } },
     });
@@ -29,7 +24,7 @@ export async function PATCH(
     if (status !== undefined) updateData.status = status;
     if (cancelAtPeriodEnd !== undefined) updateData.cancelAtPeriodEnd = cancelAtPeriodEnd;
 
-    const updated = await prisma.invoice.update({
+    const updated = await tx.invoice.update({
       where: { id, organizationId: orgId },
       data: updateData,
       include: { project: { include: { client: true } } },
@@ -40,20 +35,17 @@ export async function PATCH(
     console.error("Failed to update invoice:", error);
     return NextResponse.json({ error: "Failed to update invoice" }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export const DELETE = withTenantRls(async (request, ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    const resolvedParams = await params;
-    const id = resolvedParams.id;
-    const orgId = session.user.activeOrganizationId!;
+    const tenant = getTenantCtx()!;
+    const orgId = tenant.organizationId;
+    const userId = tenant.userId;
+    const resolvedParams = await ctx.params;
+    const id = resolvedParams.id as string;
 
-    const invoice = await prisma.invoice.findFirst({
+    const invoice = await tx.invoice.findFirst({
       where: { id, organizationId: orgId },
     });
 
@@ -61,10 +53,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    await prisma.invoice.delete({ where: { id, organizationId: orgId } });
+    await tx.invoice.delete({ where: { id, organizationId: orgId } });
 
     await createAuditLog({
-      userId: session.user.id,
+      userId,
       action: "invoice.delete",
       entityType: "INVOICE",
       entityId: id,
@@ -77,4 +69,4 @@ export async function DELETE(
     console.error("Failed to delete invoice:", error);
     return NextResponse.json({ error: "Failed to delete invoice" }, { status: 500 });
   }
-}
+});
