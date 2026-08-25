@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "npx prisma migrate deploy && next start",
+    "setup:db": "node scripts/setup-db.cjs",
     "start:next": "next start",
     "lint": "eslint",
     "test": "jest",
