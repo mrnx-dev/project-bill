@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { z } from "zod";
 
 const querySchema = z.object({
@@ -10,14 +9,10 @@ const querySchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(20),
 });
 
-export async function GET(request: Request) {
+export const GET = withTenantRls(async (request, _ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
-
-    const orgId = session.user.activeOrganizationId!;
+    const ctx = getTenantCtx()!;
+    const orgId = ctx.organizationId;
 
     const { searchParams } = new URL(request.url);
     const parsed = querySchema.safeParse({
@@ -42,12 +37,12 @@ export async function GET(request: Request) {
     if (entityId) where.entityId = entityId;
 
     const [logs, total] = await Promise.all([
-      prisma.auditLog.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: limit }),
-      prisma.auditLog.count({ where }),
+      tx.auditLog.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: limit }),
+      tx.auditLog.count({ where }),
     ]);
 
     const userIds = [...new Set(logs.map((l) => l.userId))];
-    const users = await prisma.user.findMany({
+    const users = await tx.user.findMany({
       where: { id: { in: userIds } },
       select: { id: true, name: true, email: true },
     });
@@ -79,4 +74,4 @@ export async function GET(request: Request) {
     console.error("[ACTIVITY_GET]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
-}
+});

@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { createAuditLog } from "@/lib/audit-logger";
 
-export async function GET() {
+export const GET = withTenantRls(async (_req, _ctx, tx) => {
     try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return new NextResponse("Unauthorized", { status: 401 });
-        }
+        const ctx = getTenantCtx()!;
+        const orgId = ctx.organizationId;
 
-        const orgId = session.user.activeOrganizationId!;
-
-        const templates = await prisma.sOWTemplate.findMany({
+        const templates = await tx.sOWTemplate.findMany({
             where: { organizationId: orgId },
             orderBy: { createdAt: "desc" },
         });
@@ -22,16 +17,13 @@ export async function GET() {
         console.error("[SOW_TEMPLATES_GET]", error);
         return new NextResponse("Internal Error", { status: 500 });
     }
-}
+});
 
-export async function POST(req: Request) {
+export const POST = withTenantRls(async (req, _ctx, tx) => {
     try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return new NextResponse("Unauthorized", { status: 401 });
-        }
-
-        const orgId = session.user.activeOrganizationId!;
+        const ctx = getTenantCtx()!;
+        const orgId = ctx.organizationId;
+        const userId = ctx.userId;
         const body = await req.json();
         const { name, content } = body;
 
@@ -48,12 +40,12 @@ export async function POST(req: Request) {
             );
         }
 
-        const template = await prisma.sOWTemplate.create({
+        const template = await tx.sOWTemplate.create({
             data: { name, content, organizationId: orgId },
         });
 
         await createAuditLog({
-            userId: session.user.id,
+            userId,
             action: "sow_template.create",
             entityType: "SOW_TEMPLATE",
             entityId: template.id,
@@ -66,4 +58,4 @@ export async function POST(req: Request) {
         console.error("[SOW_TEMPLATES_POST]", error);
         return new NextResponse("Internal Error", { status: 500 });
     }
-}
+});

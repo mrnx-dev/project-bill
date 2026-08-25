@@ -1,15 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { NextResponse } from "next/server";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 
-export async function GET(req: NextRequest) {
+export const GET = withTenantRls(async (req, _ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const orgId = session.user.activeOrganizationId!;
+    const ctx = getTenantCtx()!;
+    const orgId = ctx.organizationId;
 
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -17,14 +12,14 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
 
     const [notifications, total, unreadCount] = await Promise.all([
-      prisma.notification.findMany({
+      tx.notification.findMany({
         where: { organizationId: orgId },
         orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),
-      prisma.notification.count({ where: { organizationId: orgId } }),
-      prisma.notification.count({ where: { isRead: false, organizationId: orgId } }),
+      tx.notification.count({ where: { organizationId: orgId } }),
+      tx.notification.count({ where: { isRead: false, organizationId: orgId } }),
     ]);
 
     return NextResponse.json({
@@ -36,22 +31,18 @@ export async function GET(req: NextRequest) {
     console.error("[NOTIFICATIONS_GET_ERROR]", error);
     return NextResponse.json({ error: "Failed to fetch notifications" }, { status: 500 });
   }
-}
+});
 
-export async function PATCH(req: NextRequest) {
+export const PATCH = withTenantRls(async (req, _ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const orgId = session.user.activeOrganizationId!;
+    const ctx = getTenantCtx()!;
+    const orgId = ctx.organizationId;
 
     const body = await req.json();
     const { id, markAll } = body;
 
     if (markAll) {
-      await prisma.notification.updateMany({
+      await tx.notification.updateMany({
         where: { isRead: false, organizationId: orgId },
         data: { isRead: true },
       });
@@ -62,7 +53,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Missing notification ID" }, { status: 400 });
     }
 
-    const notification = await prisma.notification.update({
+    const notification = await tx.notification.update({
       where: { id, organizationId: orgId },
       data: { isRead: true },
     });
@@ -72,4 +63,4 @@ export async function PATCH(req: NextRequest) {
     console.error("[NOTIFICATIONS_PATCH_ERROR]", error);
     return NextResponse.json({ error: "Failed to update notification" }, { status: 500 });
   }
-}
+});
