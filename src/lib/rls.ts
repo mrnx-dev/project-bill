@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "async_hooks";
+import type { Prisma } from "@prisma/client";
 
 export type TenantStore = { organizationId: string; userId: string };
 
@@ -67,14 +68,46 @@ export function withTenant(handler: RouteHandler): RouteHandler {
     const session = await auth();
     const orgId = session?.user?.activeOrganizationId;
     if (!session?.user || !orgId) {
-      // Plain Response (not NextResponse) keeps this lib free of next/server,
-      // which breaks the jest jsdom env at module load. Response is valid in
-      // route handlers (NextResponse is a subclass).
       return new Response("Unauthorized", { status: 401 });
     }
     return rlsContext.run(
       { organizationId: orgId, userId: session.user.id },
       () => handler(req, ctx),
+    );
+  };
+}
+
+/**
+ * Like withTenant, but also enforces PostgreSQL Row-Level Security for the
+ * request: runs the handler inside a Prisma transaction and sets the
+ * `app.current_tenant_id` GUC (transaction-local via set_config), so the DB
+ * itself rejects any tenant-table row whose organizationId ≠ the request tenant.
+ * The handler receives the transactional `tx` client and MUST use it (not the
+ * global prisma) for its tenant queries, so they run on the GUC-scoped connection.
+ *
+ * Use withTenantRls for tenant-data routes (normal request/response). Do NOT use
+ * it for SSE/long-lived streams (withTenant) — a transaction cannot be held open
+ * for the stream lifetime.
+ */
+export function withTenantRls(
+  handler: (req: Request, ctx: RouteCtx, tx: Prisma.TransactionClient) => Promise<Response>,
+): RouteHandler {
+  return async (req, ctx) => {
+    const { auth } = await import("@/auth");
+    const session = await auth();
+    const orgId = session?.user?.activeOrganizationId;
+    if (!session?.user || !orgId) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    const { prisma } = await import("./prisma");
+    return rlsContext.run(
+      { organizationId: orgId, userId: session.user.id },
+      async () =>
+        prisma.$transaction(async (tx) => {
+          // set_config(name, value, is_local=true) == SET LOCAL (transaction-scoped).
+          await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${orgId}, true)`;
+          return handler(req, ctx, tx);
+        }),
     );
   };
 }
