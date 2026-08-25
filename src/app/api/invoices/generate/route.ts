@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { sendInvoiceEmail } from "@/app/actions/send-invoice";
-import { auth } from "@/auth";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { generateInvoiceNumber } from "@/lib/invoice-utils";
 import { getBaseUrl } from "@/lib/utils";
 
-export async function POST(request: Request) {
+export const POST = withTenantRls(async (request, _ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    const orgId = session.user.activeOrganizationId!;
+    const ctx = getTenantCtx()!;
+    const orgId = ctx.organizationId;
     const json = await request.json();
     const { projectId } = json;
 
@@ -17,7 +15,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing projectId" }, { status: 400 });
     }
 
-    const project = await prisma.project.findUnique({
+    const project = await tx.project.findUnique({
       where: { id: projectId, organizationId: orgId },
       include: { client: true, invoices: true, items: true },
     });
@@ -57,7 +55,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // --- Subscription Gate Check ---
+    // --- Subscription Gate Check (self-hosted: bypassed) ---
     const { checkOrgLimit, incrementOrgUsage } = await import("@/lib/billing/subscription");
     const limitCheck = await checkOrgLimit(orgId, "invoicesPerMonth");
     if (!limitCheck.allowed) {
@@ -68,8 +66,7 @@ export async function POST(request: Request) {
     }
     // -------------------------------
 
-    // Payment link generation is fully deferred to the "Pay Now" button
-    // To ensure users always see the Invoice Detail first and payment links don't expire prematurely.
+    // Payment link generation is fully deferred to the "Pay Now" button.
     const paymentLinkRes = null as { link?: string; id?: string } | null;
 
     const dueDate = new Date();
@@ -77,7 +74,7 @@ export async function POST(request: Request) {
 
     const invoiceNumber = await generateInvoiceNumber(orgId);
 
-    const newInvoice = await prisma.invoice.create({
+    const newInvoice = await tx.invoice.create({
       data: {
         organizationId: orgId,
         invoiceNumber,
@@ -92,7 +89,7 @@ export async function POST(request: Request) {
       },
     });
 
-    // --- Subscription Usage Increment ---
+    // --- Subscription Usage Increment (self-hosted: no-op) ---
     await incrementOrgUsage(orgId, "invoicesCreated");
     // ------------------------------------
 
@@ -103,7 +100,7 @@ export async function POST(request: Request) {
     let emailSent = false;
     let manual = false;
     let mailtoData: { to: string; subject: string; body: string } | undefined;
-    
+
     if (project.client.email) {
       try {
         const emailRes = await sendInvoiceEmail(newInvoice.id, true);
@@ -119,9 +116,9 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      invoice: newInvoice, 
+    return NextResponse.json({
+      success: true,
+      invoice: newInvoice,
       emailSent,
       manual,
       mailtoData: mailtoData
@@ -135,4 +132,4 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-}
+});

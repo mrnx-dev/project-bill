@@ -1,21 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
 import { sendInvoiceEmail } from "@/app/actions/send-invoice";
-import { auth } from "@/auth";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 
-export async function POST(
-  request: Request,
-  context: { params: Promise<{ id: string }> },
-) {
+export const POST = withTenantRls(async (request, ctx, tx) => {
   try {
-    const { id } = await context.params;
-    const session = await auth();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const orgId = session.user.activeOrganizationId!;
+    const tenant = getTenantCtx()!;
+    const orgId = tenant.organizationId;
+    const id = (await ctx.params).id as string;
 
-    const invoice = await prisma.invoice.findUnique({
+    const invoice = await tx.invoice.findUnique({
       where: { id, organizationId: orgId },
       include: {
          project: {
@@ -39,9 +32,9 @@ export async function POST(
     } else {
        return NextResponse.json({ error: res.error }, { status: 500 });
     }
-    
+
   } catch (error) {
     console.error("Retry Email API Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
-}
+});
