@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { auth } from "@/auth";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { createAuditLog } from "@/lib/audit-logger";
+import { invoiceSchema } from "@/lib/validations";
+import { generateInvoiceNumber } from "@/lib/invoice-utils";
 
-export async function GET(request: Request) {
+export const GET = withTenantRls(async (request: Request, _ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    const orgId = session.user.activeOrganizationId!;
+    const ctx = getTenantCtx()!;
+    const orgId = ctx.organizationId;
 
     const { searchParams } = new URL(request.url);
     const limitParam = searchParams.get("limit");
@@ -26,8 +26,8 @@ export async function GET(request: Request) {
       args.skip = (page - 1) * limit;
       args.take = limit;
 
-      const total = await prisma.invoice.count({ where: { organizationId: orgId } });
-      const invoices = await prisma.invoice.findMany(args);
+      const total = await tx.invoice.count({ where: { organizationId: orgId } });
+      const invoices = await tx.invoice.findMany(args);
 
       return NextResponse.json({
         data: invoices,
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const invoices = await prisma.invoice.findMany(args);
+    const invoices = await tx.invoice.findMany(args);
     return NextResponse.json(invoices);
   } catch (error) {
     console.error("Failed to fetch invoices:", error);
@@ -44,15 +44,13 @@ export async function GET(request: Request) {
       { status: 500 },
     );
   }
-}
+});
 
-import { invoiceSchema } from "@/lib/validations";
-import { generateInvoiceNumber } from "@/lib/invoice-utils";
-
-export async function POST(request: Request) {
+export const POST = withTenantRls(async (request: Request, _ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    const ctx = getTenantCtx()!;
+    const orgId = ctx.organizationId;
+    const userId = ctx.userId;
 
     let json;
     try {
@@ -70,7 +68,6 @@ export async function POST(request: Request) {
     }
 
     const data = validation.data;
-    const orgId = session.user.activeOrganizationId!;
 
     const { checkOrgLimit, incrementOrgUsage } = await import("@/lib/billing/subscription");
     const limitCheck = await checkOrgLimit(orgId, "invoicesPerMonth");
@@ -86,7 +83,7 @@ export async function POST(request: Request) {
     const defaultDueDate = new Date();
     defaultDueDate.setDate(defaultDueDate.getDate() + 7);
 
-    const invoice = await prisma.invoice.create({
+    const invoice = await tx.invoice.create({
       data: {
         invoiceNumber,
         projectId: data.projectId,
@@ -103,17 +100,15 @@ export async function POST(request: Request) {
     await incrementOrgUsage(orgId, "invoicesCreated");
 
     try {
-      if (session?.user?.id) {
-        await createAuditLog({
-          userId: session.user.id,
-          action: "CREATE_INVOICE",
-          title: `${invoice.invoiceNumber} (${invoice.project.title})`,
-          entityType: "INVOICE",
-          entityId: invoice.id,
-          newValue: JSON.stringify({ amount: invoice.amount.toString(), type: invoice.type }),
-          organizationId: orgId,
-        });
-      }
+      await createAuditLog({
+        userId,
+        action: "CREATE_INVOICE",
+        title: `${invoice.invoiceNumber} (${invoice.project.title})`,
+        entityType: "INVOICE",
+        entityId: invoice.id,
+        newValue: JSON.stringify({ amount: invoice.amount.toString(), type: invoice.type }),
+        organizationId: orgId,
+      });
     } catch (e) {
       console.error(e);
     }
@@ -126,4 +121,4 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-}
+});

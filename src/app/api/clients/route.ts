@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { auth } from "@/auth";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { createAuditLog } from "@/lib/audit-logger";
 
-export async function GET(request: Request) {
+export const GET = withTenantRls(async (request: Request, _ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-
-    const orgId = session.user.activeOrganizationId!;
+    const ctx = getTenantCtx()!;
+    const orgId = ctx.organizationId;
 
     const { searchParams } = new URL(request.url);
     const limitParam = searchParams.get("limit");
@@ -26,10 +23,10 @@ export async function GET(request: Request) {
       args.skip = (page - 1) * limit;
       args.take = limit;
 
-      const total = await prisma.client.count({
+      const total = await tx.client.count({
         where: { isArchived: false, organizationId: orgId },
       });
-      const clients = await prisma.client.findMany(args);
+      const clients = await tx.client.findMany(args);
 
       return NextResponse.json({
         data: clients,
@@ -37,7 +34,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const clients = await prisma.client.findMany(args);
+    const clients = await tx.client.findMany(args);
     return NextResponse.json(clients);
   } catch (error) {
     console.error("Failed to sequence clients:", error);
@@ -46,20 +43,20 @@ export async function GET(request: Request) {
       { status: 500 },
     );
   }
-}
+});
 
-export async function POST(request: Request) {
+export const POST = withTenantRls(async (request: Request, _ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    const ctx = getTenantCtx()!;
+    const orgId = ctx.organizationId;
+    const userId = ctx.userId;
+
     const json = await request.json();
     const { name, email, phone } = json;
 
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
-
-    const orgId = session.user.activeOrganizationId!;
 
     const { checkOrgLimit } = await import("@/lib/billing/subscription");
     const limitCheck = await checkOrgLimit(orgId, "clients");
@@ -70,12 +67,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const client = await prisma.client.create({
+    const client = await tx.client.create({
       data: { name, email, phone, organizationId: orgId },
     });
 
     await createAuditLog({
-      userId: session.user.id,
+      userId,
       action: "client.create",
       entityType: "CLIENT",
       entityId: client.id,
@@ -91,4 +88,4 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-}
+});

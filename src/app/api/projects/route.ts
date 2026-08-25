@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { auth } from "@/auth";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { createAuditLog } from "@/lib/audit-logger";
+import { projectSchema } from "@/lib/validations";
 
-export async function GET(request: Request) {
+export const GET = withTenantRls(async (request: Request, _ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-
-    const orgId = session.user.activeOrganizationId!;
+    const ctx = getTenantCtx()!;
+    const orgId = ctx.organizationId;
 
     const { searchParams } = new URL(request.url);
     const limitParam = searchParams.get("limit");
@@ -27,8 +25,8 @@ export async function GET(request: Request) {
       args.skip = (page - 1) * limit;
       args.take = limit;
 
-      const total = await prisma.project.count({ where: { organizationId: orgId } });
-      const projects = await prisma.project.findMany(args);
+      const total = await tx.project.count({ where: { organizationId: orgId } });
+      const projects = await tx.project.findMany(args);
 
       return NextResponse.json({
         data: projects,
@@ -36,7 +34,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const projects = await prisma.project.findMany(args);
+    const projects = await tx.project.findMany(args);
     return NextResponse.json(projects);
   } catch (error) {
     console.error("Failed to fetch projects:", error);
@@ -45,14 +43,13 @@ export async function GET(request: Request) {
       { status: 500 },
     );
   }
-}
+});
 
-import { projectSchema } from "@/lib/validations";
-
-export async function POST(request: Request) {
+export const POST = withTenantRls(async (request: Request, _ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
+    const ctx = getTenantCtx()!;
+    const orgId = ctx.organizationId;
+    const userId = ctx.userId;
 
     let json;
     try {
@@ -73,7 +70,6 @@ export async function POST(request: Request) {
     }
 
     const data = validation.data;
-    const orgId = session.user.activeOrganizationId!;
 
     const { checkOrgLimit } = await import("@/lib/billing/subscription");
     const limitCheck = await checkOrgLimit(orgId, "activeProjects");
@@ -118,13 +114,13 @@ export async function POST(request: Request) {
       };
     }
 
-    const project = await prisma.project.create({
+    const project = await tx.project.create({
       data: projectData,
       include: { client: true, invoices: true, items: true },
     });
 
     await createAuditLog({
-      userId: session.user.id,
+      userId,
       action: "project.create",
       entityType: "PROJECT",
       entityId: project.id,
@@ -140,4 +136,4 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-}
+});
