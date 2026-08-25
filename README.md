@@ -166,11 +166,18 @@ Create a `.env` file at the project root with the variables listed above. Update
 DATABASE_URL="postgresql://user:password@localhost:5432/projectbill_db"
 ```
 
-**3. Initialize the database**
+**3. Initialize the database (schema + row-level security)**
+
+ProjectBill enforces multi-tenant isolation with PostgreSQL Row-Level Security. RLS is **bypassed by superusers**, so the app must connect as a **non-superuser** role for it to actually work. A one-command script sets this up correctly (creates the role, runs the baseline migration which includes the schema **and** the RLS policies, all owned by that role):
 
 ```bash
-npx prisma db push
+# Run once against a fresh/empty DB, using a SUPERUSER URL:
+ADMIN_DATABASE_URL="postgresql://<superuser>:<password>@localhost:5432/projectbill_db" npm run setup:db
 ```
+
+The script prints a `DATABASE_URL` line — paste it into your `.env` (it uses the non-superuser `projectbill_app` role so RLS is enforced at runtime). The baseline migration is the source of truth; `npm start` runs `prisma migrate deploy` (a no-op once applied) instead of `db push`, so the RLS policies survive resets/redeploys.
+
+> Existing/dev DB already initialized? Skip this — it only runs against a fresh database.
 
 **4. Start the development server**
 
@@ -205,7 +212,8 @@ Navigate to [http://localhost:3000/setup](http://localhost:3000/setup) to create
 |---|---|
 | `npm run dev` | Start development server |
 | `npm run build` | Build for production |
-| `npm start` | Start production server (auto-runs `prisma db push`) |
+| `npm start` | Start production server (auto-runs `prisma migrate deploy`) |
+| `npm run setup:db` | One-command fresh-DB setup: creates the non-superuser app role + runs the baseline migration (schema + RLS). Run with `ADMIN_DATABASE_URL` set. |
 | `npm test` | Run Jest unit tests |
 | `npm run test:e2e` | Run Playwright end-to-end tests |
 | `npm run test:seed` | Seed test user for E2E tests |
