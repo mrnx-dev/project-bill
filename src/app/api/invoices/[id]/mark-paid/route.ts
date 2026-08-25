@@ -1,29 +1,19 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { createAuditLog } from "@/lib/audit-logger";
 import { createNotification } from "@/lib/notifications";
 import { formatMoney } from "@/lib/currency";
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const POST = withTenantRls(async (request, ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    const orgId = session.user.activeOrganizationId!;
-    
-    // Only admins or authorized staff should mark invoices as paid manually
-    if (session.user.role !== "ADMIN") {
-      return new NextResponse("Forbidden", { status: 403 });
-    }
-
-    const resolvedParams = await params;
-    const id = resolvedParams.id;
+    const tenant = getTenantCtx()!;
+    if (tenant.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+    const orgId = tenant.organizationId;
+    const userId = tenant.userId;
+    const id = (await ctx.params).id as string;
 
     // Check if invoice exists and is unpaid
-    const existingInvoice = await prisma.invoice.findUnique({
+    const existingInvoice = await tx.invoice.findUnique({
       where: { id, organizationId: orgId },
       include: {
         project: { include: { client: true } },
@@ -44,7 +34,7 @@ export async function POST(
     const amountStr = formatMoney(Number(existingInvoice.amount), project.currency || "IDR");
 
     // Update the invoice
-    const updatedInvoice = await prisma.invoice.update({
+    const updatedInvoice = await tx.invoice.update({
       where: { id },
       data: {
         status: "PAID",
@@ -52,21 +42,19 @@ export async function POST(
       },
     });
 
-    // Create Audit Log
-    if (session?.user?.id) {
-      await createAuditLog({
-        userId: session.user.id,
-        organizationId: orgId,
-        action: "INVOICE_MARKED_PAID_MANUALLY",
-        title: `${existingInvoice.invoiceNumber} (${project.title})`,
-        entityType: "INVOICE",
-        entityId: id,
-        oldValue: "UNPAID",
-        newValue: "PAID",
-      }).catch(console.error);
-    }
+    // Create Audit Log (global prisma helper — app-layer scoped via rlsContext)
+    await createAuditLog({
+      userId,
+      organizationId: orgId,
+      action: "INVOICE_MARKED_PAID_MANUALLY",
+      title: `${existingInvoice.invoiceNumber} (${project.title})`,
+      entityType: "INVOICE",
+      entityId: id,
+      oldValue: "UNPAID",
+      newValue: "PAID",
+    }).catch(console.error);
 
-    // Create Notification
+    // Create Notification (global prisma helper)
     await createNotification({
       title: `Invoice Paid (Manual)`,
       message: `Manual payment received for invoice ${existingInvoice.invoiceNumber} (${client.name} - ${project.title}) amounting to ${amountStr}.`,
@@ -83,4 +71,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+});

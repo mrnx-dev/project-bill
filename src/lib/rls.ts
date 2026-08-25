@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from "async_hooks";
 import type { Prisma } from "@prisma/client";
 
-export type TenantStore = { organizationId: string; userId: string };
+export type TenantStore = { organizationId: string; userId: string; role?: string };
 
 export const rlsContext = new AsyncLocalStorage<TenantStore>();
 
@@ -71,7 +71,7 @@ export function withTenant(handler: RouteHandler): RouteHandler {
       return new Response("Unauthorized", { status: 401 });
     }
     return rlsContext.run(
-      { organizationId: orgId, userId: session.user.id },
+      { organizationId: orgId, userId: session.user.id, role: session.user.role },
       () => handler(req, ctx),
     );
   };
@@ -101,7 +101,7 @@ export function withTenantRls(
     }
     const { prisma } = await import("./prisma");
     return rlsContext.run(
-      { organizationId: orgId, userId: session.user.id },
+      { organizationId: orgId, userId: session.user.id, role: session.user.role },
       async () =>
         prisma.$transaction(async (tx) => {
           // set_config(name, value, is_local=true) == SET LOCAL (transaction-scoped).

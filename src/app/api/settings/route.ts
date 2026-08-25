@@ -1,25 +1,21 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { createAuditLog } from "@/lib/audit-logger";
 import { encrypt, decrypt, maskSecret, isMaskedValue } from "@/lib/crypto";
 
 const SENSITIVE_FIELDS = ["resendApiKey", "mayarApiKey", "mayarWebhookSecret"] as const;
 
-export async function GET() {
+export const GET = withTenantRls(async (_req, _ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    if (session.user.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
-
-    const orgId = session.user.activeOrganizationId!;
-
-    let settings = await prisma.settings.findFirst({
+    const tenant = getTenantCtx()!;
+    if (tenant.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+    const orgId = tenant.organizationId;
+    let settings = await tx.settings.findFirst({
       where: { organizationId: orgId },
     });
 
     if (!settings) {
-      settings = await prisma.settings.create({
+      settings = await tx.settings.create({
         data: { companyName: "ProjectBill", organizationId: orgId },
       });
     }
@@ -36,18 +32,17 @@ export async function GET() {
     console.error("Failed to fetch settings:", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
   }
-}
+});
 
-export async function PUT(req: Request) {
+export const PUT = withTenantRls(async (req, _ctx, tx) => {
   try {
-    const session = await auth();
-    if (!session) return new NextResponse("Unauthorized", { status: 401 });
-    if (session.user.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
-
-    const orgId = session.user.activeOrganizationId!;
+    const tenant = getTenantCtx()!;
+    if (tenant.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+    const orgId = tenant.organizationId;
+    const userId = tenant.userId;
     const body = await req.json();
 
-    const currentSettings = await prisma.settings.findFirst({
+    const currentSettings = await tx.settings.findFirst({
       where: { organizationId: orgId },
     });
 
@@ -91,12 +86,12 @@ export async function PUT(req: Request) {
 
     let settings: any;
     if (currentSettings?.id) {
-      settings = await prisma.settings.update({
+      settings = await tx.settings.update({
         where: { id: currentSettings.id },
         data: dataToUpdate,
       });
     } else {
-      settings = await prisma.settings.create({
+      settings = await tx.settings.create({
         data: {
           ...dataToUpdate,
           companyName: (dataToUpdate.companyName as string) || "ProjectBill",
@@ -105,10 +100,7 @@ export async function PUT(req: Request) {
       });
     }
 
-    const userId = session.user?.id || session.user?.email || "unknown";
-
     if (auditEntries.length > 0) {
-      const { createAuditLog } = await import("@/lib/audit-logger");
       for (const entry of auditEntries) {
         await createAuditLog({
           userId,
@@ -135,4 +127,4 @@ export async function PUT(req: Request) {
     console.error("Failed to update settings:", error);
     return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
   }
-}
+});
