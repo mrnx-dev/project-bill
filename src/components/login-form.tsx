@@ -12,14 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useActionState } from "react";
 import { loginAction } from "@/app/(auth)/login/actions";
-import { env } from "@/lib/env";
 import { signIn } from "next-auth/react";
 import { LogIn } from "lucide-react";
 
-export function LoginForm() {
+export function LoginForm({ isManagedMode = false }: { isManagedMode?: boolean }) {
   const [state, formAction, isPending] = useActionState(loginAction, undefined);
-
-  const isManagedMode = env.DEPLOYMENT_MODE === "managed";
 
   return (
     <Card>
