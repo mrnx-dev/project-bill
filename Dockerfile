@@ -26,6 +26,16 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Build the project
 RUN npm run build
 
+# The Prisma CLI is not self-contained anymore: since v7 it loads @prisma/dev, which pulls
+# ~17 transitive packages (valibot, hono, remeda, ...). The Next.js standalone output ships no
+# node_modules/.bin and only traced packages, so installing the CLI there is impossible.
+# Install it (plus dotenv, needed by prisma.config.ts) in an isolated prefix instead.
+FROM base AS prisma-cli
+RUN apk add --no-cache openssl
+WORKDIR /cli
+RUN printf '{"name":"prisma-cli","private":true}' > package.json \
+ && npm install prisma@7.5.0 dotenv@17.3.1 --no-fund --no-audit --no-package-lock
+
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
@@ -55,9 +65,19 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # IMPORTANT: Copy the Prisma schema and migrations so we can run `db push` or migrations in production
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-# Prisma CLI + engines are NOT part of standalone output — needed by entrypoint to run migrations
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+# App runtime Prisma packages (generated client, adapter-pg, engines) — Next traces some of these,
+# but the builder copy is the authoritative generated output.
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+# Prisma 7 reads the datasource URL from prisma.config.ts — it is NOT part of the standalone output
+COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
+# Migration CLI lives in its own prefix (see prisma-cli stage). prisma.config.ts does
+# `import "prisma/config"` and `import "dotenv/config"`, which resolve from /app — so expose those
+# two packages through symlinks. Node resolves the realpath, so the CLI's own deps still come
+# from .prisma-cli/node_modules instead of the (incomplete) standalone tree.
+COPY --from=prisma-cli /cli/node_modules /app/.prisma-cli/node_modules
+RUN rm -rf ./node_modules/prisma \
+ && ln -s /app/.prisma-cli/node_modules/prisma ./node_modules/prisma \
+ && ln -s /app/.prisma-cli/node_modules/dotenv ./node_modules/dotenv
 # We also need the entrypoint script
 COPY --from=builder --chown=nextjs:nodejs /app/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
