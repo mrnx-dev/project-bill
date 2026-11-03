@@ -34,7 +34,15 @@ FROM base AS prisma-cli
 RUN apk add --no-cache openssl
 WORKDIR /cli
 RUN printf '{"name":"prisma-cli","private":true}' > package.json \
- && npm install prisma@7.5.0 dotenv@17.3.1 --no-fund --no-audit --no-package-lock
+ && npm install prisma@7.5.0 dotenv@17.3.1 --no-fund --no-audit --no-package-lock \
+ && rm -rf node_modules/@electric-sql node_modules/@prisma/studio-core \
+           node_modules/react-dom node_modules/react node_modules/lodash \
+           node_modules/hono node_modules/chevrotain
+# ^ This image only ever runs `prisma migrate deploy` / `migrate status`. Those never touch the local
+#   pglite dev server (@electric-sql), Prisma Studio and its react tree, lodash, hono or chevrotain —
+#   dropping them saves ~80MB. Do NOT remove fast-check or effect: @prisma/dev requires them at load
+#   time and the CLI dies with "Cannot find module" without them. Re-verify with migrate deploy on a
+#   throwaway database before pruning anything else.
 
 # Production image, copy all the files and run next
 FROM base AS runner
