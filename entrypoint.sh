@@ -1,10 +1,13 @@
 #!/bin/sh
 
-# This script is used as the entrypoint for the Docker container.
-# It ensures that the database schema is synchronized before starting the Next.js app.
+# Applies schema AND the baseline migration's RLS policies before starting the app.
+# Fail fast: an app without tables (or without RLS) must not start.
 
-echo "Running Prisma DB Push..."
-npx prisma db push --schema=prisma/schema.prisma --accept-data-loss
+echo "Running Prisma Migrate Deploy..."
+if ! npx prisma migrate deploy --schema=prisma/schema.prisma; then
+  echo "FATAL: prisma migrate deploy failed — check DATABASE_URL / network from container"
+  exit 1
+fi
 
 echo "Starting Next.js..."
 exec node server.js

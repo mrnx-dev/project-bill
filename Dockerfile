@@ -55,6 +55,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # IMPORTANT: Copy the Prisma schema and migrations so we can run `db push` or migrations in production
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+# Prisma CLI + engines are NOT part of standalone output — needed by entrypoint to run migrations
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 # We also need the entrypoint script
 COPY --from=builder --chown=nextjs:nodejs /app/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
