@@ -1,9 +1,10 @@
 import crypto from "crypto";
 import { prisma } from "../prisma";
 import { decrypt } from "../crypto";
+import { env } from "../env";
 
 // Mayar API V1 was deprecated 2026-10-01; V2 required. Docs: docs.mayar.id/api-reference-v2
-const MAYAR_API_URL = "https://api.mayar.id/hl/v2";
+const MAYAR_API_URL = env.MAYAR_API_URL ?? "https://api.mayar.id/hl/v2";
 
 export interface CreatePaymentLinkParams {
   amount: number;

@@ -18,6 +18,8 @@ const envSchema = z.object({
   AI_API_KEY: z.string().optional(),
   AI_MODEL: z.string().default("anthropic/claude-sonnet-4-20250514"),
   AI_BASE_URL: z.string().optional(),
+  // Mayar payment gateway (default: production). Sandbox: https://api.mayar.club/hl/v2
+  MAYAR_API_URL: z.string().optional(),
 });
 
 // Validate `process.env` against our schema
