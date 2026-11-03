@@ -8,6 +8,8 @@ import { env } from "@/lib/env";
 const { ...restConfig } = authConfig;
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  // App runs behind Dokploy/proxy domains — always trust the request host.
+  trustHost: true,
   ...restConfig,
   callbacks: {
     ...authConfig.callbacks,
