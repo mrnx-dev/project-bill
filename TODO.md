@@ -243,6 +243,8 @@
 
 ### 9. 🌍 Multi-Currency & Stripe Integration — Sprint 21
 
+**Mayar API V2 migration: ✅ Complete (2026-11-04)** — V1 deprecated 2026-10-01 and dead; migrated `src/lib/billing/mayar.ts` to `/hl/v2/payments/create` + body-`statusCode` error check. Webhook verification unchanged.
+
 **Multi-Currency: ✅ Complete** — 8 currencies (IDR, USD, EUR, GBP, SGD, MYR, JPY, AUD), centralized `src/lib/currency.ts`, dynamic UI, per-currency dashboard aggregation.
 
 **Stripe: ⏳ Next**

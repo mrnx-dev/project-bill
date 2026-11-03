@@ -66,13 +66,9 @@ describe('LoginForm Rendering Logic', () => {
   });
 
   it('renders Casdoor button in managed mode', async () => {
-    // Change mock for this test
-    const { env } = require('../src/lib/env');
-    env.DEPLOYMENT_MODE = 'managed';
-
     await act(async () => {
       root = createRoot(container!);
-      root.render(<LoginForm />);
+      root.render(<LoginForm isManagedMode />);
     });
 
     const casdoorButton = container?.querySelector('button');

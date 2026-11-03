@@ -2,7 +2,8 @@ import crypto from "crypto";
 import { prisma } from "../prisma";
 import { decrypt } from "../crypto";
 
-const MAYAR_API_URL = "https://api.mayar.id/hl/v1";
+// Mayar API V1 was deprecated 2026-10-01; V2 required. Docs: docs.mayar.id/api-reference-v2
+const MAYAR_API_URL = "https://api.mayar.id/hl/v2";
 
 export interface CreatePaymentLinkParams {
   amount: number;
@@ -31,12 +32,12 @@ export async function createPaymentLink(
   if (!apiKey) {
     console.warn("No mayarApiKey provided. Using simulated payment link.");
     return {
-      link: `https://api.mayar.id/hl/v1/pay/mock-${crypto.randomBytes(4).toString("hex")}`,
+      link: `https://api.mayar.id/hl/v2/pay/mock-${crypto.randomBytes(4).toString("hex")}`,
       id: crypto.randomBytes(8).toString("hex"),
     };
   }
 
-  const response = await fetch(`${MAYAR_API_URL}/payment/create`, {
+  const response = await fetch(`${MAYAR_API_URL}/payments/create`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -60,8 +61,13 @@ export async function createPaymentLink(
 
   const data = await response.json();
 
+  // V2 returns HTTP 200 with a non-200 body statusCode on business errors — body wins.
+  if (data.statusCode && data.statusCode !== 200) {
+    throw new Error(`Mayar API Error: ${data.statusCode} ${data.messages}`);
+  }
+
   return {
-    link: data.data?.link || data.link || "https://api.mayar.id/hl/v1/pay/mock",
+    link: data.data?.link || data.link || "https://api.mayar.id/hl/v2/pay/mock",
     id: data.data?.id || data.id,
   };
 }
