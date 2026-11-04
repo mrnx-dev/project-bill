@@ -1,3 +1,4 @@
+import nodemailer from "nodemailer";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { prisma } from "@/lib/prisma";
@@ -14,6 +15,10 @@ export type { ReminderType };
 export interface CompanySettings extends CompanyInfo {
   resendApiKey?: string;
   senderEmail?: string | null;
+  smtpHost?: string | null;
+  smtpPort?: string | null;
+  smtpUser?: string | null;
+  smtpPass?: string | null;
 }
 
 export async function getCompanySettings(organizationId: string): Promise<CompanySettings> {
@@ -28,6 +33,10 @@ export async function getCompanySettings(organizationId: string): Promise<Compan
       companyAddress: settings?.companyAddress || null,
       senderEmail: settings?.senderEmail || null,
       resendApiKey: settings?.resendApiKey ? (decrypt(settings.resendApiKey) || undefined) : undefined,
+      smtpHost: settings?.smtpHost || null,
+      smtpPort: settings?.smtpPort || null,
+      smtpUser: settings?.smtpUser || null,
+      smtpPass: settings?.smtpPass ? (decrypt(settings.smtpPass) || null) : null,
     };
   } catch {
     return {
@@ -37,6 +46,10 @@ export async function getCompanySettings(organizationId: string): Promise<Compan
       companyAddress: null,
       senderEmail: null,
       resendApiKey: undefined,
+      smtpHost: null,
+      smtpPort: null,
+      smtpUser: null,
+      smtpPass: null,
     };
   }
 }
@@ -46,6 +59,37 @@ function getSenderFrom(companyName: string, senderEmail?: string | null): string
     return `${companyName} <${senderEmail.trim()}>`;
   }
   return `${companyName} <noreply@projectbill.mrndev.me>`;
+}
+
+async function sendMail(
+  settings: CompanySettings,
+  mail: { to: string; subject: string; html: string; attachments?: { filename: string; content: Buffer }[] },
+): Promise<{ success: boolean; mocked?: boolean; data?: { messageId: string }; error?: string }> {
+  if (!settings.smtpHost || !settings.smtpUser || !settings.smtpPass) {
+    return { success: true, mocked: true };
+  }
+  // shortcut: TLS mode derived from port; add an smtpSecure column if a tenant needs implicit TLS off 465.
+  const port = Number(settings.smtpPort) || 587;
+  // shortcut: a transport per send, no pooling; cache one if SMTP handshake latency ever matters.
+  const transport = nodemailer.createTransport({
+    host: settings.smtpHost,
+    port,
+    secure: port === 465,
+    auth: { user: settings.smtpUser, pass: settings.smtpPass },
+  });
+  try {
+    const info = await transport.sendMail({
+      from: getSenderFrom(settings.companyName, settings.senderEmail),
+      to: mail.to,
+      subject: mail.subject,
+      html: mail.html,
+      attachments: mail.attachments,
+    });
+    return { success: true, data: { messageId: info.messageId } };
+  } catch (error) {
+    console.error("[SMTP] Send failed:", error);
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 export interface SendInvoiceEmailParams {
@@ -437,23 +481,15 @@ export async function sendMagicLinkEmail(params: {
   </div>`;
 
   const settings = await getCompanySettings(params.organizationId);
-  if (!settings.resendApiKey) {
+  const result = await sendMail(settings, {
+    to: params.to,
+    subject: "Your Client Portal Login Link",
+    html,
+  });
+  if (result.mocked) {
     console.log(`[MOCK MAGIC LINK EMAIL] To: ${params.to} | Links: ${params.links.map((l) => l.url).join(", ")}`);
-    return { success: true, mocked: true };
   }
-  try {
-    const resend = new Resend(settings.resendApiKey);
-    await resend.emails.send({
-      from: getSenderFrom(settings.companyName, settings.senderEmail),
-      to: [params.to],
-      subject: "Your Client Portal Login Link",
-      html,
-    });
-    return { success: true };
-  } catch (error) {
-    console.error("Failed to send magic link email:", error);
-    return { success: false };
-  }
+  return { success: result.success, mocked: result.mocked };
 }
 
 export async function sendOrgDeletionEmail(params: { to: string; orgName: string; organizationId: string }) {
