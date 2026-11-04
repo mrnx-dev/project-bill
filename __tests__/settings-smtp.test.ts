@@ -68,3 +68,18 @@ describe("integrationsSchema — SMTP", () => {
     expect(integrationsSchema.parse({ resendApiKey: "re_x" })).toEqual({});
   });
 });
+
+describe("GET /api/settings — smtpPass never leaks", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test("stored smtpPass is masked in the response", async () => {
+    (prisma.settings.findFirst as jest.Mock).mockResolvedValue({ id: "s1", smtpPass: "enc(real-secret)" });
+
+    const { GET } = await import("@/app/api/settings/route");
+    const res = await GET({} as never, {} as never);
+    const body = (res as any).body;
+
+    expect(body.smtpPass).toMatch(/^\*\*/);
+    expect(JSON.stringify(body)).not.toContain("real-secret");
+  });
+});
