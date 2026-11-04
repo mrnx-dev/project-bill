@@ -22,7 +22,6 @@ export const GET = withTenantRls(async (_req, _ctx, tx) => {
 
     const response = {
       ...settings,
-      resendApiKey: maskSecret(settings.resendApiKey ? decrypt(settings.resendApiKey) : null),
       smtpPass: maskSecret(settings.smtpPass ? decrypt(settings.smtpPass) : null),
       mayarApiKey: maskSecret(settings.mayarApiKey ? decrypt(settings.mayarApiKey) : null),
       mayarWebhookSecret: maskSecret(settings.mayarWebhookSecret ? decrypt(settings.mayarWebhookSecret) : null),
@@ -121,7 +120,6 @@ export const PUT = withTenantRls(async (req, _ctx, tx) => {
 
     const response = {
       ...settings,
-      resendApiKey: maskSecret(settings.resendApiKey ? decrypt(settings.resendApiKey) : null),
       smtpPass: maskSecret(settings.smtpPass ? decrypt(settings.smtpPass) : null),
       mayarApiKey: maskSecret(settings.mayarApiKey ? decrypt(settings.mayarApiKey) : null),
       mayarWebhookSecret: maskSecret(settings.mayarWebhookSecret ? decrypt(settings.mayarWebhookSecret) : null),

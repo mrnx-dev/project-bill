@@ -231,7 +231,6 @@ model Settings {
   senderEmail        String?
   companyLogoUrl     String?
   companyWhatsApp    String?
-  resendApiKey       String?
   smtpHost           String?
   smtpPort           String?
   smtpUser           String?
