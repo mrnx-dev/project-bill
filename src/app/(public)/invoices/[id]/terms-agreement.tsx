@@ -60,6 +60,7 @@ const TRANSLATIONS: Record<string, Record<TranslationKey, string>> = {
 
 interface TermsAgreementProps {
   projectId: string;
+  invoiceId: string;
   terms: string;
   termsAcceptedAt: string | null;
   language?: "en" | "id";
@@ -68,6 +69,7 @@ interface TermsAgreementProps {
 
 export function TermsAgreement({
   projectId,
+  invoiceId,
   terms,
   termsAcceptedAt,
   language = "en",
@@ -112,6 +114,8 @@ export function TermsAgreement({
     try {
       const res = await fetch(`/api/projects/${projectId}/accept-terms`, {
         method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId }),
       });
       const data = await res.json();
 
@@ -174,12 +178,12 @@ export function TermsAgreement({
           </div>
           <div className="ml-auto flex items-center gap-3">
             <a
-              href={`/invoices/${projectId}/sow/print`}
+              href={`/invoices/${invoiceId}/sow/print`}
               target="_blank"
               onClick={(e) => {
                 // Prevent default navigation initially, use window.open
                 e.preventDefault();
-                window.open(`/invoices/${projectId}/sow/print`, '_blank');
+                window.open(`/invoices/${invoiceId}/sow/print`, '_blank');
               }}
               className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:pointer-events-none disabled:opacity-50 bg-white border border-emerald-200 hover:bg-emerald-50 text-emerald-700 h-8 px-3 py-1 shadow-sm"
             >

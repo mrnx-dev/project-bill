@@ -481,6 +481,7 @@ export default async function InvoiceViewPage(props: {
             ) : invoice.project.terms ? (
               <TermsAgreement
                 projectId={invoice.project.id}
+                invoiceId={invoice.id}
                 terms={invoice.project.terms}
                 termsAcceptedAt={
                   invoice.project.termsAcceptedAt?.toISOString() ?? null
