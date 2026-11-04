@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createAuditLog } from "@/lib/audit-logger";
 import { createNotification } from "@/lib/notifications";
+import { RateLimiter } from "@/lib/rate-limit";
+
+const limiter = new RateLimiter({ limit: 60, windowMs: 60_000 });
 
 export async function PATCH(
   request: Request,
@@ -13,6 +16,24 @@ export async function PATCH(
 
     // This is a public endpoint deliberately accessible without auth,
     // intended for the client viewing their invoice link.
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anonymous";
+    if (!limiter.check(ip).success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
+    const { invoiceId } = await request.json().catch(() => ({}));
+    if (!invoiceId) {
+      return NextResponse.json({ error: "invoiceId is required" }, { status: 400 });
+    }
+    // The invoice UUID is the link that was actually shared; the project id alone must not
+    // be enough to sign (old links, exports, screenshots).
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      select: { projectId: true },
+    });
+    if (!invoice || invoice.projectId !== id) {
+      return NextResponse.json({ error: "Invoice does not match project" }, { status: 403 });
+    }
 
     const project = await prisma.project.findUnique({
       where: { id },

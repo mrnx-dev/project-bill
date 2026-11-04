@@ -1,6 +1,15 @@
 import { isPublicPath } from "@/lib/proxy-paths";
 
 describe("isPublicPath", () => {
+  test("accept-terms is public (the client signs from an anonymous invoice page)", () => {
+    expect(isPublicPath("/api/projects/abc/accept-terms")).toBe(true);
+  });
+  test("nothing else under /api/projects became public", () => {
+    expect(isPublicPath("/api/projects/abc")).toBe(false);
+    expect(isPublicPath("/api/projects/abc/items")).toBe(false);
+    expect(isPublicPath("/api/projects/abc/milestones")).toBe(false);
+  });
+
   test("login is public", () => {
     expect(isPublicPath("/login")).toBe(true);
   });
@@ -34,9 +43,8 @@ describe("isPublicPath", () => {
   test("setup api is public", () => {
     expect(isPublicPath("/api/setup")).toBe(true);
   });
-  test("public-sow api is public", () => {
+  test("accept-terms api is public (proxy)", () => {
     expect(isPublicPath("/api/invoices/abc/public-sow")).toBe(true);
-    expect(isPublicPath("/api/projects/abc/public-sow")).toBe(true);
   });
   test("pay api is public", () => {
     expect(isPublicPath("/api/invoices/abc/pay")).toBe(true);
