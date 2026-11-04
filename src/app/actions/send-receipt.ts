@@ -84,7 +84,7 @@ export async function sendReceiptEmail(invoiceId: string) {
           mailtoData
         }
     } catch (emailError: any) {
-        console.error("Failed to send receipt email via Resend:", emailError);
+        console.error("Failed to send receipt email via SMTP:", emailError);
         return { success: false, error: emailError?.message || "Failed to send receipt email" }
     }
   } catch (error) {

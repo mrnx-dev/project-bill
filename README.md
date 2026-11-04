@@ -35,7 +35,7 @@
 ### Documents & Communication
 - **PDF Generation** — Print-ready A4 invoices via CSS `@media print`
 - **Digital Contracts (SOW)** — Markdown-based terms with mandatory scroll-to-bottom acceptance, digital signature audit trails
-- **Email System** — Beautiful bilingual React Email templates (ID/EN) via [Resend](https://resend.com)
+- **Email System** — Beautiful bilingual React Email templates (ID/EN) via SMTP (Nodemailer)
 - **In-App Notifications** — Bell icon with real-time polling, full notification history page
 
 ### Security & Administration
@@ -77,7 +77,7 @@ graph LR
     A[Admin Dashboard] -->|Server Actions / REST| B(Next.js App Router)
     C[Public Invoice View] -->|Server Actions| B
     B --> D[PostgreSQL via Prisma]
-    B --> E[Resend Email API]
+    B --> E[SMTP Server]
     B --> F[Mayar.id Payments]
     F -->|Webhook| B
     G[External Cron] -->|Daily Trigger| B
@@ -134,7 +134,7 @@ POSTGRES_DB="projectbill_db"
 REDIS_URL="redis://localhost:6379"            # Required ONLY if deploying to Serverless (e.g. Vercel) for multi-instance realtime updates
 ```
 
-> **Note:** API keys for Resend (email) and Mayar (payments) are configured in-app via the Settings page after setup.
+> **Note:** SMTP credentials (email) and Mayar keys (payments) are configured in-app via the Settings page after setup.
 
 **3. Start the application**
 
@@ -287,7 +287,7 @@ npm run test:e2e
 | **Database** | [PostgreSQL 18](https://www.postgresql.org) |
 | **ORM** | [Prisma 7](https://www.prisma.io) |
 | **Auth** | [Auth.js (NextAuth v5)](https://authjs.dev) |
-| **Email** | [React Email](https://react.email) + [Resend](https://resend.com) |
+| **Email** | [React Email](https://react.email) + SMTP (Nodemailer) |
 | **Payments** | [Mayar.id](https://mayar.id) Headless API |
 | **Charts** | [Recharts](https://recharts.org) via Shadcn UI Charts |
 | **Error Tracking** | [Sentry](https://sentry.io) / [GlitchTip](https://glitchtip.com) (opt-in) |

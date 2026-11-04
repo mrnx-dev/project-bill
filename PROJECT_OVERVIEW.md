@@ -7,7 +7,7 @@ ProjectBill is a web-based, self-hosted invoicing and project tracking applicati
 - **Styling:** Tailwind CSS + Shadcn UI components (including modern Charts)
 - **Database:** PostgreSQL (Containerized via Docker Compose)
 - **ORM:** Prisma
-- **Email:** React Email + Resend
+- **Email:** React Email + SMTP (Nodemailer)
 - **Language:** TypeScript
 
 ## Current State: V1.5 Complete
@@ -37,7 +37,7 @@ The full MVP through V1.5 features have been successfully implemented:
    - Implemented webhook receiver (`/api/webhook/payment`) with HMAC SHA256 Signature verification for automated `paid` status updates.
 
 5. **Email / Communication System (Phase 7):**
-   - Integrated email sending functionality via **Resend** and **React Email**.
+   - Integrated email sending functionality via **SMTP** and **React Email**.
    - Added a "Send" button to the Invoice Management table.
    - Built a Server Action (`send-invoice.ts`) that triggers a clean, professional React Email template to the client containing their invoice URL.
 
@@ -122,7 +122,7 @@ The full MVP through V1.5 features have been successfully implemented:
     - **Zero-Cost DB Polling:** Utilized Next.js Server Actions with lightweight Prisma queries (`select: { status: true }`) and `count()` functions to monitor database changes.
     - **Client-Side Poller Components:** Mounted invisible `<RealtimeInvoicePoller />` on unpaid invoices and `<GlobalInvoicePoller />` on admin dashboard lists to refresh the UI (`router.refresh()`) the exact second a successful webhook lands.
     - **Cache Revalidation:** Tied Next.js edge-caching (`revalidatePath()`) cleanly into the backend `api/webhooks/mayar/route.ts` architecture for 1-millisecond synchronization.
-    - **Automated SOW Delivery:** Integrated Puppeteer to run a headless browser upon receiving a `payment.success` webhook. It captures a pixel-perfect Print PDF of the digital SOW and instantly attaches it to a "Payment Successful" receipt email via Resend natively inside Serverless logic.
+    - **Automated SOW Delivery:** Integrated Puppeteer to run a headless browser upon receiving a `payment.success` webhook. It captures a pixel-perfect Print PDF of the digital SOW and instantly attaches it to a "Payment Successful" receipt email over SMTP inside the webhook handler.
 
 19. **Mobile UI/UX Responsiveness (Sprint 10 Patch):**
     - **Swipeable Sidebar:** Implemented a native-feeling gesture allowing users to seamlessly swipe right from the left edge of their mobile screens to open the sidebar, bypassing the top navbar hamburger menu.
@@ -258,10 +258,11 @@ The full MVP through V1.5 features have been successfully implemented:
 
  37. **Core Reliability & Visual Consistency Patches (Sprint 16 Patch 3):**
      - **URL Generator Robustness:** Centralized all absolute URL generation across PDF rendering and Email links into a safe `getBaseUrl()` utility, robustly handling `APP_URL`, `VERCEL_URL`, and `localhost` fallbacks while sanitizing trailing slashes to prevent `ERR_INVALID_URL` crashes during automated background tasks.
-     - **Custom Email Identity:** Integrated the dynamic `companyName` and `companyEmail` from global settings directly into the Resend `from:` field, ensuring clients receive communications from a matching branded sender identity instead of a generic default.
+     - **Custom Email Identity:** Integrated the dynamic `companyName` and `companyEmail` from global settings directly into the SMTP `From:` header, ensuring clients receive communications from a matching branded sender identity instead of a generic default.
      - **Skeleton UI Standardization:** Synchronized loading state skeletons across the entire dashboard (`/`, `/clients`, `/invoices`, `/projects`, `/board`) to exactly match the rendered components' layouts, eliminating jarring layout shifts (Cumulative Layout Shift) during data fetching.
      - **Notification Routing Fix:** Corrected the `linkUrl` for manual "Mark as Paid" notifications to use the immutable database UUID instead of the display invoice number, preventing 404 errors when admins click the notification bell alert.
- 38. **Invoice Custom Notes Feature (Sprint 16 Patch 4):**
+
+ 38. **Invoice Custom Notes Feature (Sprint 16 Patch 4):**
      - **Database & Validation:** Added an optional `notes` field (String) to the `Invoice` model and updated `invoiceSchema` to support personalized remarks on individual invoices.
      - **Hybrid Input Flow:** Admins can insert custom notes when generating invoices from the project board or creating them manually. Features intelligent auto-fill generation rules based on invoice type with full manual override capabilities.
      - **Public Invoice UI:** Rendered a professional "Notes" section gracefully at the bottom of the public invoice view (`/invoices/[id]`) and its associated print layout. Uses a flat, modern design with appropriate typography mapping to user locales.
