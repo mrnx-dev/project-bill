@@ -27,7 +27,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         });
 
         const casdoorProfile = profile as any;
-        const role = casdoorProfile?.role === "admin" ? "admin" : "staff";
+        const role = casdoorProfile?.role === "admin" ? "ADMIN" : "STAFF";
 
           if (!existingUser) {
             const createdUser = await prisma.user.create({

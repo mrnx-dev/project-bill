@@ -15,22 +15,22 @@ model Organization {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  members             OrganizationMember[]
-  invites             OrganizationInvite[]
-  exportJobs          ExportJob[]
-  clients             Client[]
-  projects            Project[]
-  projectItems        ProjectItem[]
-  invoices            Invoice[]
-  paymentMilestones   PaymentMilestone[]
-  settings            Settings[]
-  sowTemplates        SOWTemplate[]
-  notifications       Notification[]
-  auditLogs           AuditLog[]
-  recurringInvoices   RecurringInvoice[]
-  agentConversations  AgentConversation[]
-  agentMemories       AgentMemory[]
-  clientAuths         ClientAuth[]
+  members            OrganizationMember[]
+  invites            OrganizationInvite[]
+  exportJobs         ExportJob[]
+  clients            Client[]
+  projects           Project[]
+  projectItems       ProjectItem[]
+  invoices           Invoice[]
+  paymentMilestones  PaymentMilestone[]
+  settings           Settings[]
+  sowTemplates       SOWTemplate[]
+  notifications      Notification[]
+  auditLogs          AuditLog[]
+  recurringInvoices  RecurringInvoice[]
+  agentConversations AgentConversation[]
+  agentMemories      AgentMemory[]
+  clientAuths        ClientAuth[]
 }
 
 model OrganizationMember {
@@ -94,15 +94,15 @@ model Client {
 }
 
 model ClientAuth {
-  id                  String    @id @default(uuid())
-  clientId            String    @unique
-  magicLinkTokenHash  String?
-  magicLinkExpiresAt  DateTime?
-  magicLinkUsedAt     DateTime?
-  sessionVersion      Int       @default(0)
-  organizationId      String
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                 String    @id @default(uuid())
+  clientId           String    @unique
+  magicLinkTokenHash String?
+  magicLinkExpiresAt DateTime?
+  magicLinkUsedAt    DateTime?
+  sessionVersion     Int       @default(0)
+  organizationId     String
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   client       Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id])
@@ -137,7 +137,7 @@ model Project {
   client                 Client             @relation(fields: [clientId], references: [id])
   items                  ProjectItem[]
   recurringInvoices      RecurringInvoice[]
-  organization           Organization      @relation(fields: [organizationId], references: [id])
+  organization           Organization       @relation(fields: [organizationId], references: [id])
 
   @@index([status])
   @@index([clientId])
@@ -161,26 +161,26 @@ model ProjectItem {
 }
 
 model Invoice {
-  id             String       @id @default(uuid())
-  invoiceNumber  String       @unique @default(uuid())
+  id             String            @id @default(uuid())
+  invoiceNumber  String            @unique @default(uuid())
   projectId      String
   type           String
   notes          String?
-  amount         Decimal      @db.Decimal(19, 4)
-  status         String       @default("unpaid")
-  emailStatus    String       @default("pending")
+  amount         Decimal           @db.Decimal(19, 4)
+  status         String            @default("unpaid")
+  emailStatus    String            @default("pending")
   dueDate        DateTime?
   paymentLink    String?
   paymentId      String?
   paidAt         DateTime?
   lastReminderAt DateTime?
-  lateFeeApplied Boolean      @default(false)
+  lateFeeApplied Boolean           @default(false)
   organizationId String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
   milestone      PaymentMilestone?
-  project        Project      @relation(fields: [projectId], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  project        Project           @relation(fields: [projectId], references: [id])
+  organization   Organization      @relation(fields: [organizationId], references: [id])
 
   @@index([status])
   @@index([projectId])
@@ -188,39 +188,39 @@ model Invoice {
 }
 
 model PaymentMilestone {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   projectId      String
   name           String
-  percentage     Decimal  @db.Decimal(5, 2)
-  amount         Decimal  @db.Decimal(19, 4)
+  percentage     Decimal   @db.Decimal(5, 2)
+  amount         Decimal   @db.Decimal(19, 4)
   dueDate        DateTime?
-  order          Int      @default(0)
-  status         String   @default("PLANNED")
-  invoiceId      String?  @unique
+  order          Int       @default(0)
+  status         String    @default("PLANNED")
+  invoiceId      String?   @unique
   organizationId String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  project       Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  invoice       Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
-  organization  Organization @relation(fields: [organizationId], references: [id])
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  invoice      Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id])
 
   @@index([projectId, order])
   @@index([organizationId])
 }
 
 model User {
-  id                     String                @id @default(uuid())
-  email                  String                @unique
-  password               String
-  name                   String
-  role                   String                @default("admin")
-  onboardingCompleted    Boolean               @default(false)
-  defaultOrganizationId  String?
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
-  subscription           Subscription?
-  organizationMembers    OrganizationMember[]
+  id                    String               @id @default(uuid())
+  email                 String               @unique
+  password              String
+  name                  String
+  role                  String               @default("ADMIN")
+  onboardingCompleted   Boolean              @default(false)
+  defaultOrganizationId String?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  subscription          Subscription?
+  organizationMembers   OrganizationMember[]
 }
 
 model Settings {
@@ -341,14 +341,14 @@ model Subscription {
 }
 
 model AgentConversation {
-  id             String       @id @default(uuid())
-  title          String       @default("New Conversation")
+  id             String         @id @default(uuid())
+  title          String         @default("New Conversation")
   organizationId String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
   userId         String
   messages       AgentMessage[]
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  organization   Organization   @relation(fields: [organizationId], references: [id])
 
   @@index([userId, createdAt])
   @@index([userId])
@@ -356,12 +356,12 @@ model AgentConversation {
 }
 
 model AgentMessage {
-  id             String   @id @default(uuid())
+  id             String            @id @default(uuid())
   conversationId String
-  role           String   // "user" | "assistant" | "system" | "tool"
-  content        String   @db.Text
+  role           String // "user" | "assistant" | "system" | "tool"
+  content        String            @db.Text
   metadata       Json?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime          @default(now())
   conversation   AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
@@ -385,15 +385,15 @@ model AgentMemory {
 }
 
 model AgentConfig {
-  id             String   @id @default(uuid())
-  userId         String   @unique
-  provider       String   @default("openrouter")
-  model          String   @default("anthropic/claude-sonnet-4-20250514")
-  temperature    Float    @default(0.7)
-  proactiveMode  Boolean  @default(true)
-  locale         String   @default("id")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  provider      String   @default("openrouter")
+  model         String   @default("anthropic/claude-sonnet-4-20250514")
+  temperature   Float    @default(0.7)
+  proactiveMode Boolean  @default(true)
+  locale        String   @default("id")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([userId])
 }
