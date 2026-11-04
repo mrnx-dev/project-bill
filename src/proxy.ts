@@ -6,6 +6,15 @@ import { verifySessionCookie } from "@/lib/client-auth";
 
 export { isPublicPath };
 
+// Auth.js names the session cookie `__Secure-authjs.session-token` on HTTPS but
+// `authjs.session-token` on HTTP. getToken() derives both the cookie name AND
+// the HKDF salt from it, so we must pass the name matching the request scheme —
+// otherwise every API call 401s on HTTPS deployments.
+const sessionCookieName = (req: NextRequest) =>
+  req.nextUrl.protocol === "https:"
+    ? "__Secure-authjs.session-token"
+    : "authjs.session-token";
+
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -13,7 +22,7 @@ export async function proxy(req: NextRequest) {
   // BEFORE the public-path pass-through below: /login is public, so checking
   // it after the short-circuit would be dead code.
   if (pathname === "/login") {
-    const token = await getToken({ req, secret: env.AUTH_SECRET });
+    const token = await getToken({ req, secret: env.AUTH_SECRET, cookieName: sessionCookieName(req) });
     if (token) return NextResponse.redirect(new URL("/board", req.url));
   }
 
@@ -41,7 +50,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = await getToken({ req, secret: env.AUTH_SECRET });
+  const token = await getToken({ req, secret: env.AUTH_SECRET, cookieName: sessionCookieName(req) });
 
   if (!token) {
     if (pathname.startsWith("/api/")) {
