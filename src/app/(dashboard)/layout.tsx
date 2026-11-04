@@ -84,7 +84,10 @@ export default async function DashboardLayout({
             bankName: settings.bankName || "",
             bankAccountName: settings.bankAccountName || "",
             bankAccountNumber: settings.bankAccountNumber || "",
-            resendApiKey: settings.resendApiKey || "",
+            smtpHost: settings.smtpHost || "",
+            smtpPort: settings.smtpPort || "",
+            smtpUser: settings.smtpUser || "",
+            smtpPass: settings.smtpPass || "",
             mayarApiKey: settings.mayarApiKey || "",
             mayarWebhookSecret: settings.mayarWebhookSecret || "",
           } : undefined}

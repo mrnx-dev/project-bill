@@ -62,7 +62,10 @@ export type SettingsData = {
   bankName: string;
   bankAccountName: string;
   bankAccountNumber: string;
-  resendApiKey: string;
+  smtpHost: string;
+  smtpPort: string;
+  smtpUser: string;
+  smtpPass: string;
   mayarApiKey: string;
   mayarWebhookSecret: string;
 };
@@ -124,7 +127,10 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
   const integrationsForm = useForm<IntegrationsFormValues>({
     resolver: zodResolver(integrationsSchema),
     defaultValues: {
-      resendApiKey: existingSettings?.resendApiKey || "",
+      smtpHost: existingSettings?.smtpHost || "",
+      smtpPort: existingSettings?.smtpPort || "",
+      smtpUser: existingSettings?.smtpUser || "",
+      smtpPass: existingSettings?.smtpPass || "",
       mayarApiKey: existingSettings?.mayarApiKey || "",
       mayarWebhookSecret: existingSettings?.mayarWebhookSecret || "",
     }
@@ -198,7 +204,10 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
   const handleNextIntegrations = async (values: IntegrationsFormValues) => {
     // Only pass non-empty strings, ignore undefined
     const payload: Record<string, string> = {};
-    if (values.resendApiKey) payload.resendApiKey = values.resendApiKey;
+    if (values.smtpHost) payload.smtpHost = values.smtpHost;
+    if (values.smtpPort) payload.smtpPort = values.smtpPort;
+    if (values.smtpUser) payload.smtpUser = values.smtpUser;
+    if (values.smtpPass) payload.smtpPass = values.smtpPass;
     if (values.mayarApiKey) payload.mayarApiKey = values.mayarApiKey;
     if (values.mayarWebhookSecret) payload.mayarWebhookSecret = values.mayarWebhookSecret;
 

@@ -74,13 +74,68 @@ export function IntegrationsFields({ form }: IntegrationsFieldsProps) {
 
       <FormField
         control={form.control}
-        name="resendApiKey"
+        name="smtpHost"
         render={({ field }) => (
-          <FormItem className="md:col-span-2">
-            <FormLabel>Resend API Key</FormLabel>
+          <FormItem className="md:col-span-1">
+            <FormLabel>SMTP Host</FormLabel>
             <FormControl>
               <Input
-                placeholder="re_xxxxxxxxxxxxxxxxx"
+                placeholder="smtp.yourdomain.com"
+                className="bg-slate-50 dark:bg-slate-900 border-slate-200 font-mono text-sm"
+                {...field}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="smtpPort"
+        render={({ field }) => (
+          <FormItem className="md:col-span-1">
+            <FormLabel>SMTP Port</FormLabel>
+            <FormControl>
+              <Input
+                placeholder="587"
+                inputMode="numeric"
+                className="bg-slate-50 dark:bg-slate-900 border-slate-200 font-mono text-sm"
+                {...field}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="smtpUser"
+        render={({ field }) => (
+          <FormItem className="md:col-span-2">
+            <FormLabel>SMTP Username</FormLabel>
+            <FormControl>
+              <Input
+                placeholder="billing@yourdomain.com"
+                className="bg-slate-50 dark:bg-slate-900 border-slate-200 font-mono text-sm"
+                {...field}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="smtpPass"
+        render={({ field }) => (
+          <FormItem className="md:col-span-2">
+            <FormLabel>SMTP Password</FormLabel>
+            <FormControl>
+              <Input
+                placeholder="••••••••"
                 type="password"
                 className="bg-slate-50 dark:bg-slate-900 border-slate-200 font-mono text-sm"
                 {...field}
@@ -92,7 +147,7 @@ export function IntegrationsFields({ form }: IntegrationsFieldsProps) {
               />
             </FormControl>
             <FormDescription className="text-xs">
-              {field.value?.startsWith("****") ? "🔒 Key is set. Clear to replace." : ""}
+              {field.value?.startsWith("****") ? "🔒 Password is set. Clear to replace." : ""}
             </FormDescription>
             <FormMessage />
           </FormItem>

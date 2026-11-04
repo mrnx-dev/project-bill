@@ -51,7 +51,10 @@ export function SettingsFormClient() {
               senderEmail: data.senderEmail || "",
               companyLogoUrl: data.companyLogoUrl || "",
               companyWhatsApp: data.companyWhatsApp || "",
-              resendApiKey: data.resendApiKey || "",
+              smtpHost: data.smtpHost || "",
+              smtpPort: data.smtpPort || "",
+              smtpUser: data.smtpUser || "",
+              smtpPass: data.smtpPass || "",
               mayarApiKey: data.mayarApiKey || "",
               mayarWebhookSecret: data.mayarWebhookSecret || "",
               bankName: data.bankName || "",
@@ -132,7 +135,7 @@ export function SettingsFormClient() {
                 Integrations
               </CardTitle>
               <CardDescription>
-                Configure external services like Payment Gateway (Mayar) and Email Delivery (Resend). Keys are encrypted at rest.
+                Configure external services like Payment Gateway (Mayar) and Email Delivery (SMTP). Credentials are encrypted at rest.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">

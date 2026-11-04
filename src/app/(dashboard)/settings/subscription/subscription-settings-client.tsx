@@ -89,7 +89,7 @@ export function SubscriptionSettingsClient({ isSelfHosted }: { isSelfHosted: boo
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-foreground">
-            Because you are hosting this application on your own infrastructure and managing your own API keys (Resend, Mayar, etc.), all features and resources are completely unrestricted.
+            Because you are hosting this application on your own infrastructure and managing your own API keys (SMTP, Mayar, etc.), all features and resources are completely unrestricted.
           </p>
           <div className="grid grid-cols-2 gap-4 mt-6">
             <div className="flex items-center gap-2">

@@ -52,3 +52,19 @@ describe("PUT /api/settings — SMTP fields", () => {
     expect(data).not.toHaveProperty("smtpPass");
   });
 });
+import { integrationsSchema } from "@/lib/validations/settings";
+
+describe("integrationsSchema — SMTP", () => {
+  test("all four SMTP fields are optional strings", () => {
+    expect(integrationsSchema.parse({})).toEqual({});
+  });
+  test("accepts a full SMTP payload and keeps values verbatim", () => {
+    const parsed = integrationsSchema.parse({
+      smtpHost: "mail.acme.test", smtpPort: "465", smtpUser: "u@acme.test", smtpPass: "hunter2",
+    });
+    expect(parsed.smtpPort).toBe("465");
+  });
+  test("no longer accepts resendApiKey", () => {
+    expect(integrationsSchema.parse({ resendApiKey: "re_x" })).toEqual({});
+  });
+});
