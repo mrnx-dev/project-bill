@@ -1,0 +1,28 @@
+# NOTE: `.env` is deliberately NOT ignored here. Dokploy materialises the app's environment into
+# `.env` inside the build context and `src/lib/env.ts` validates DATABASE_URL / AUTH_SECRET /
+# ENCRYPTION_KEY at module load, so `next build` fails without it. The secret is instead stripped
+# from the runtime image (see the `rm -f .env` step in the runner stage).
+
+# --- VCS / editor / CI ---
+.git
+.gitignore
+.github
+.vscode
+.idea
+
+# --- Dependencies and build output (installed/produced inside the image) ---
+node_modules
+.next
+out
+dist
+coverage
+.turbo
+
+# --- Logs and local junk ---
+*.log
+npm-debug.log*
+.DS_Store
+
+# --- Docs are not needed to build the app ---
+docs
+README.md

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { localEmitter, redisSub } from '@/lib/event-emitter';
+import { localEmitter, getRedisSub } from '@/lib/event-emitter';
 import { withTenant, getTenantCtx } from '@/lib/rls';
 
 // Force dynamic and use nodejs to support EventEmitter
@@ -46,8 +46,8 @@ export const GET = withTenant(async (req: Request) => {
         }
       };
 
-      if (redisSub) {
-        const rs = redisSub;
+      const rs = getRedisSub();
+      if (rs) {
         rs.subscribe('system_events', (err) => {
           if (err) console.error("Redis Subscribe Error:", err);
         });
