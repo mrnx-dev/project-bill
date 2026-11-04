@@ -41,6 +41,57 @@
 
 ---
 
+### 🔐 Fix Role System + Restrict Settings to OWNER Only (2026-05-15)
+
+- [x] Tambah `activeOrganizationRole` ke NextAuth Session type declaration
+- [x] Update JWT + session callbacks untuk propagate `activeOrganizationRole`
+- [x] Fix `authorize()` di auth.ts — inject org-level role dari OrganizationMember
+- [x] Update org-switch endpoint return `activeOrganizationRole`
+- [x] Restrict settings API routes ke OWNER only (2 lokasi)
+- [x] Restrict settings page ke OWNER only
+- [x] Update invoice mark-paid ke OWNER or ADMIN (org-level role)
+- [x] Update subscription route ke OWNER or ADMIN (org-level role)
+- [x] Update notifications page ke OWNER or ADMIN (org-level role)
+- [x] Fix client-side org-switch code update session dengan `activeOrganizationRole`
+
+---
+
+### 📧 Pluggable Email Provider System (2026-05-15)
+
+- [x] Prisma migration: `EmailProviderConfig` table + `emailProvider` field
+- [x] 9 provider files: types, base-provider, registry, resend/brevo/smtp (manifest+provider)
+- [x] `lib/email.ts` refactor: `loadProviderConfig` + 7 functions → factory pattern
+- [x] `send-link/route.ts` refactor: dynamic import → factory pattern
+- [x] Settings API: GET nested `providerConfig`, PUT upsert + audit log, POST test-email
+- [x] Settings UI: email-provider-card.tsx, client-registry.ts, schema, dropdown, test button
+- [x] Cleanup: deprecated comment in schema, orphan SQL maintenance note
+- [x] Build verified pass (1 pre-existing recharts dep warning)
+- [x] 8 clean commits by concern
+
+---
+
+### 🔒 Organization RBAC & Security (2026-05-18)
+
+- [x] **Phase 0 (11 task):** Schema foundation — voidedAt, notification userId, INVOICE_STATUS constants, VALID_TRANSITIONS, org-rbac (AuthError, requireOrgRole, getAuthContext), org-scoping (orgQuery), PERMISSIONS config (23 permissions), HMAC sign/verify, email utility extraction (sendInvoice, sendReceipt)
+- [x] **Phase 1 (6 task):** System context fix — cron recurring-invoices → pure utility, cron reminders → orgId filter + logging, Mayar webhook → org-scope + isValidTransition, invoice status normalization migration (MIG-1), countUnpaidInvoices auth + org-scope, checkInvoiceStatus auth mandatory
+- [x] **Phase 2 (27 task):** RBAC deploy — requireOrgRole di 27+ endpoint (sendInvoice, sendReceipt, invoices PATCH/DELETE, mark-paid, settings, test-email, subscription GET/PUT/checkout/check, org export/status, org update, milestones approve/unapprove/mark-paid, recurring invoices, SOW templates, audit-logs, agent config, org members)
+- [x] **Phase 3 (8 task):** Critical fixes
+- [x] **Phase 4 (9 task):** Org/UI enhancements
+- [x] **Phase 5 (3 task):** Notifications scoping
+- [x] Additional fixes: SMTP STARTTLS fallback, Zod resolver type cast, poller type fixes, onboarding modal resendApiKey cleanup, session null checks
+
+---
+
+### 🏢 Organisasi Maturity — Multi-Tenant Production Readiness (2026-05-18)
+
+- [x] **Phase 1 (Task 1-12):** Subscription org-scoped — add nullable organizationId, backfill script, switch unique constraint dari userId ke organizationId, refaktor getSubscriptionByOrg, checkOrgLimit (direct orgId query + limit-deny logging), incrementOrgUsage (direct update), remove dead code (checkLimit, incrementUsage, getOrgOwnerId, old getSubscription)
+- [x] **Phase 2 (Task 13-14):** Dashboard/settings data isolation — fix cross-org data leak
+- [x] **Phase 3 (Task 15a-18):** OrgSwitcher enhancements — role badges, keyboard navigation, unsaved form warning
+- [x] **Phase 4 (Task 19-23b):** Observability + polish
+- [x] Total: 23 task, 19 commits
+
+---
+
 ## 🤖 AI Financial Co-Pilot — Sprint 17
 
 > An AI-powered assistant that proactively analyzes business data, answers natural language queries, and provides actionable financial insights. The first of its kind in the Indonesian invoicing market.
@@ -161,7 +212,6 @@
 - [x] Proteksi route client portal dengan middleware (JWT verification)
 - [x] API routes: `/api/client-portal/auth/*`, `/api/client-portal/invoices`, `/api/client-portal/projects`, `/api/client-portal/settings`
 - [x] Multi-org support — satu email bisa akses beberapa organisasi
-
 
 ### 3. 💳 Partial Payments & Milestone Billing — Sprint 17-18
 
