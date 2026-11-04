@@ -36,6 +36,15 @@ export const DELETE = withTenantRls(async (request, ctx, tx) => {
       );
     }
 
+    // Signed contract: scope is frozen. `project?.` — the lookup is nullable (unreachable in
+    // practice, the item was matched to it), but tsc needs the safe access.
+    if (project?.termsAcceptedAt) {
+      return NextResponse.json(
+        { error: "Cannot modify the contract after it has been signed." },
+        { status: 403 },
+      );
+    }
+
     // Atomic via the withTenantRls request transaction.
     await tx.projectItem.delete({ where: { id: itemId } });
     const updatedProject = await tx.project.update({

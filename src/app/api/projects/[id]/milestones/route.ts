@@ -25,6 +25,16 @@ export const PUT = withTenantRls(async (request, ctx, tx) => {
       include: { milestones: true, invoices: true },
     });
     if (!project) return new NextResponse("Not Found", { status: 404 });
+
+    // Signed contract: payment plan is frozen. Before the billingMode guard — a signed SIMPLE
+    // project should report "signed", not "not in MILESTONE mode".
+    if (project.termsAcceptedAt) {
+      return NextResponse.json(
+        { error: "Cannot modify the contract after it has been signed." },
+        { status: 403 },
+      );
+    }
+
     if (project.billingMode !== "MILESTONE") {
       return NextResponse.json({ error: "Project is not in MILESTONE billing mode" }, { status: 400 });
     }

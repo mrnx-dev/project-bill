@@ -188,6 +188,15 @@ export const DELETE = withTenantRls(async (request, ctx, tx) => {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
+    // Signed contract: the signature attests to items/milestones/terms — deleting the project
+    // would cascade them away. Today's code only refuses on unpaid invoices.
+    if (project.termsAcceptedAt) {
+      return NextResponse.json(
+        { error: "Cannot modify the contract after it has been signed." },
+        { status: 403 },
+      );
+    }
+
     const hasUnpaidInvoices = project.invoices.some(
       (inv) => inv.status === "UNPAID",
     );
