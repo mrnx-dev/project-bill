@@ -8,7 +8,9 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
-COPY package.json package-lock.json* ./
+# .npmrc (legacy-peer-deps=true) must ship with the lockfile or npm ci enforces
+# next-auth's nodemailer ^7 peer against our nodemailer@10 and hard-fails.
+COPY package.json package-lock.json* .npmrc ./
 RUN npm ci
 
 # Rebuild the source code only when needed
