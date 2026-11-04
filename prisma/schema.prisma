@@ -232,6 +232,10 @@ model Settings {
   companyLogoUrl     String?
   companyWhatsApp    String?
   resendApiKey       String?
+  smtpHost           String?
+  smtpPort           String?
+  smtpUser           String?
+  smtpPass           String?
   mayarApiKey        String?
   mayarWebhookSecret String?
   bankName           String?
