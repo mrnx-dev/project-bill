@@ -31,6 +31,26 @@ export async function generateContractNumber(
   return `${prefix}${String(nextSequence).padStart(4, "0")}`;
 }
 
+/**
+ * Wrapper for project creation: re-derives the number once if a pre-existing duplicate
+ * (e.g. from a concurrent deploy outside the advisory lock) makes the insert fail with P2002.
+ */
+export async function withContractNumberRetry(
+  organizationId: string,
+  tx: Prisma.TransactionClient,
+  insert: (contractNumber: string) => Promise<unknown>,
+): Promise<void> {
+  try {
+    await insert(await generateContractNumber(organizationId, tx));
+  } catch (e) {
+    if ((e as { code?: string }).code === "P2002") {
+      await insert(await generateContractNumber(organizationId, tx));
+      return;
+    }
+    throw e;
+  }
+}
+
 export async function generateInvoiceNumber(organizationId: string): Promise<string> {
   const today = new Date();
   const yearMonth = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}`;

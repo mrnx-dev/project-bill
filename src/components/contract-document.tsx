@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import rehypeSanitize from "rehype-sanitize";
-import { formatMoney } from "@/lib/currency";
+import { formatMoney, getCurrency } from "@/lib/currency";
 
 export type ContractDocumentProps = {
   language: string;                 // normalized internally: anything but "en" renders Indonesian
@@ -35,6 +35,9 @@ export function ContractDocument(props: ContractDocumentProps) {
   const dateLocale = lang === "id" ? localeId : localeEn;
   const dateFormat = lang === "id" ? "d MMM yyyy" : "MMM d, yyyy";
   const money = (n: number) => formatMoney(n, props.currency);
+  // Round to the currency's minor units: plain Math.round kills the cents on USD/EUR tax.
+  const roundedMoney = (n: number) =>
+    formatMoney(Number(Math.round((n + Number.EPSILON) * 10 ** getCurrency(props.currency).decimals)) / 10 ** getCurrency(props.currency).decimals, props.currency);
 
   const labels = lang === "id"
     ? {
@@ -215,7 +218,7 @@ export function ContractDocument(props: ContractDocumentProps) {
             {props.taxRate !== null && (
               <p className="flex justify-between border-b border-slate-200 pb-2 break-inside-avoid">
                 <span>{props.taxName || labels.tax} ({props.taxRate}%)</span>
-                <span className="whitespace-nowrap">{money(Math.round(props.totalPrice * props.taxRate / 100))}</span>
+                <span className="whitespace-nowrap">{roundedMoney(props.totalPrice * props.taxRate / 100)}</span>
               </p>
             )}
             {props.billingMode !== "MILESTONE" && props.dpAmount !== null && props.dpAmount > 0 && (

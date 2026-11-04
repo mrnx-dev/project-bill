@@ -64,14 +64,27 @@ export async function PATCH(
     // Calculate next version
     const nextVersion = (project.termsVersionId || 0) + 1;
 
-    const updatedProject = await prisma.project.update({
-      where: { id },
+    // Atomic claim: guarded on termsAcceptedAt being null so a double-submit cannot bump the
+    // version twice. count 0 = another request accepted first.
+    const claimed = await prisma.project.updateMany({
+      where: { id, termsAcceptedAt: null },
       data: {
         termsAcceptedAt: new Date(),
         termsAcceptedUserAgent: userAgent,
         termsAcceptedSessionId: sessionId,
         termsVersionId: nextVersion,
       },
+    });
+    if (claimed.count === 0) {
+      return NextResponse.json(
+        { error: "Terms have already been accepted" },
+        { status: 400 },
+      );
+    }
+
+    const updatedProject = await prisma.project.findUnique({
+      where: { id },
+      select: { termsAcceptedAt: true },
     });
 
     try {
@@ -99,7 +112,7 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      termsAcceptedAt: updatedProject.termsAcceptedAt,
+      termsAcceptedAt: updatedProject?.termsAcceptedAt ?? null,
     });
   } catch (error) {
     console.error("Failed to accept project terms:", error);

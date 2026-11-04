@@ -46,6 +46,7 @@ jest.mock("@/lib/prisma", () => ({
     project: {
       findUnique: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     invoice: {
       findUnique: jest.fn(),
@@ -77,7 +78,7 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
 
     expect(response.status).toBe(400);
     expect(data.error).toBe("invoiceId is required");
-    expect(prisma.project.update).not.toHaveBeenCalled();
+    expect(prisma.project.updateMany).not.toHaveBeenCalled();
   });
 
   it("should return 403 when the invoice belongs to a different project", async () => {
@@ -95,7 +96,7 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
 
     expect(response.status).toBe(403);
     expect(data.error).toBe("Invoice does not match project");
-    expect(prisma.project.update).not.toHaveBeenCalled();
+    expect(prisma.project.updateMany).not.toHaveBeenCalled();
   });
 
   it("should return 403 when the invoice does not exist", async () => {
@@ -111,7 +112,7 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
     });
 
     expect(response.status).toBe(403);
-    expect(prisma.project.update).not.toHaveBeenCalled();
+    expect(prisma.project.updateMany).not.toHaveBeenCalled();
   });
 
   it("should return 404 if project is not found", async () => {
@@ -184,16 +185,21 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
       }
     });
 
-    (prisma.project.findUnique as jest.Mock).mockResolvedValue({
-      terms: "Some terms",
-      termsAcceptedAt: null,
-      termsVersionId: 0,
-      updatedAt: new Date("2026-03-01T00:00:00Z"),
-    });
+    (prisma.project.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
 
-    (prisma.project.update as jest.Mock).mockResolvedValue({
-      termsAcceptedAt: fakeDate,
-    });
+    (prisma.project.findUnique as jest.Mock).mockImplementation(async (args: {
+      where: { id: string };
+      select?: Record<string, unknown>;
+    }) =>
+      args.select && "termsAcceptedAt" in args.select && Object.keys(args.select).length === 1
+        ? { termsAcceptedAt: fakeDate }
+        : {
+            terms: "Some terms",
+            termsAcceptedAt: null,
+            termsVersionId: 0,
+            updatedAt: new Date("2026-03-01T00:00:00Z"),
+          },
+    );
 
     const request = new MockRequest(
       "http://localhost:3000/api/projects/1/accept-terms",
@@ -211,8 +217,8 @@ describe("PATCH /api/projects/[id]/accept-terms", () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(prisma.project.update).toHaveBeenCalledWith({
-      where: { id: "1" },
+    expect(prisma.project.updateMany).toHaveBeenCalledWith({
+      where: { id: "1", termsAcceptedAt: null },
       data: {
         termsAcceptedAt: expect.any(Date),
         termsAcceptedUserAgent: "Test Browser",
