@@ -71,6 +71,12 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# SECURITY: the build context contains the `.env` Dokploy generates (needed by `next build`,
+# see .dockerignore), and Next copies it into the standalone output. Runtime configuration comes
+# from the container environment, so the file must not ship: otherwise AUTH_SECRET, ENCRYPTION_KEY,
+# database credentials and API keys end up baked into every image that is built or pushed.
+RUN rm -f .env .env.local .env.production .env.development .env.test
+
 # IMPORTANT: Copy the Prisma schema and migrations so we can run `db push` or migrations in production
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # App runtime Prisma packages (generated client, adapter-pg, engines) — Next traces some of these,
