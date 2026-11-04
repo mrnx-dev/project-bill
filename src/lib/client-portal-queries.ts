@@ -1,3 +1,6 @@
+import { toContractDocumentProps, type ProjectWithRelations } from "./contract-document-mapper";
+import type { ContractDocumentProps } from "@/components/contract-document";
+
 export type ClientSession = { clientId: string; organizationId: string; clientName: string };
 
 const TERMINAL_PROJECT_STATUSES = new Set(["done", "completed", "cancelled"]);
@@ -86,26 +89,41 @@ export async function getClientOverview(session: ClientSession) {
 }
 
 /** Scoped SOW for a project (null if not the client's or no terms). */
-export async function getClientProjectSow(session: ClientSession, projectId: string) {
+export async function getClientProjectSow(
+  session: ClientSession,
+  projectId: string,
+): Promise<ContractDocumentProps | null> {
   const { prisma } = await import("./prisma");
   const p = await prisma.project.findUnique({
     where: { id: projectId, clientId: session.clientId, organizationId: session.organizationId },
-    select: {
-      title: true,
-      terms: true,
-      language: true,
-      termsAcceptedAt: true,
-      termsAcceptedUserAgent: true,
-      client: { select: { name: true } },
+    include: {
+      items: { select: { description: true, quantity: true, rate: true, price: true } },
+      milestones: {
+        orderBy: { order: "asc" },
+        select: { name: true, percentage: true, amount: true, dueDate: true },
+      },
+      client: { select: { name: true, email: true, phone: true } },
     },
   });
   if (!p || !p.terms) return null;
-  return {
-    title: p.title,
-    terms: p.terms,
-    language: p.language,
-    termsAcceptedAt: p.termsAcceptedAt,
-    termsAcceptedUserAgent: p.termsAcceptedUserAgent,
-    clientName: p.client.name,
-  };
+
+  const settings = await prisma.settings.findFirst({
+    where: { organizationId: session.organizationId },
+    select: {
+      companyName: true,
+      companyAddress: true,
+      companyEmail: true,
+      companyWhatsApp: true,
+    },
+  });
+
+  return toContractDocumentProps({
+    project: p as ProjectWithRelations, // terms guard above proves terms is non-null
+    provider: settings ?? {
+      companyName: null,
+      companyAddress: null,
+      companyEmail: null,
+      companyWhatsApp: null,
+    },
+  });
 }

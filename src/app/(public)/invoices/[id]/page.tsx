@@ -6,6 +6,8 @@ import { PrintButton } from "./print-button";
 import { CompanyLogo } from "@/components/company-logo";
 import { ManualPaymentInstructions } from "./manual-payment";
 import { TermsAgreement } from "./terms-agreement";
+import { toContractDocumentProps } from "@/lib/contract-document-mapper";
+import { isMayarSupported } from "@/lib/currency";
 import { RealtimeInvoicePoller } from "@/components/realtime-invoice-poller";
 import { format } from "date-fns";
 import { id as localeId, enUS as localeEn } from "date-fns/locale";
@@ -78,7 +80,7 @@ export default async function InvoiceViewPage(props: {
     where: { id: params.id },
     include: {
       project: {
-        include: { client: true, items: true },
+        include: { client: true, items: true, milestones: { orderBy: { order: "asc" } } },
       },
     },
   });
@@ -469,26 +471,22 @@ export default async function InvoiceViewPage(props: {
         {/* Footer Section */}
         <div className="mt-auto pt-16 relative z-10 bg-white print:bg-transparent">
           {invoice.status !== "PAID" &&
-            (invoice.project.currency !== "IDR" ? (
-              /* Non-IDR: Mayar not supported — always show manual payment */
-              <ManualPaymentInstructions
-                bankName={settings.bankName}
-                bankAccountName={settings.bankAccountName}
-                bankAccountNumber={settings.bankAccountNumber}
-                invoiceNumber={invoice.invoiceNumber}
-                lang={lang as "id" | "en"}
-              />
-            ) : invoice.project.terms ? (
+            (invoice.project.terms ? (
               <TermsAgreement
                 projectId={invoice.project.id}
                 invoiceId={invoice.id}
-                terms={invoice.project.terms}
+                document={toContractDocumentProps({
+                  // After the terms ternary guard, terms is non-null; keep TS quiet.
+                  project: { ...invoice.project, terms: invoice.project.terms! },
+                  provider: settings,
+                })}
                 termsAcceptedAt={
                   invoice.project.termsAcceptedAt?.toISOString() ?? null
                 }
                 language={lang as "en" | "id"}
               >
-                {!hasMayar ? (
+                {/* Same gate as POST /api/invoices/[id]/pay: must match isMayarSupported there */}
+                {!isMayarSupported(invoice.project.currency) || !hasMayar ? (
                   <ManualPaymentInstructions
                     bankName={settings.bankName}
                     bankAccountName={settings.bankAccountName}
@@ -504,7 +502,7 @@ export default async function InvoiceViewPage(props: {
                   />
                 )}
               </TermsAgreement>
-            ) : !hasMayar ? (
+            ) : !isMayarSupported(invoice.project.currency) || !hasMayar ? (
               <ManualPaymentInstructions
                 bankName={settings.bankName}
                 bankAccountName={settings.bankAccountName}

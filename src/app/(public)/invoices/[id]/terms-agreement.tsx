@@ -3,12 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, ShieldCheck, FileCheck2, CheckCircle2, Download } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
-import remarkGfm from "remark-gfm";
-import remarkBreaks from "remark-breaks";
 import { format } from "date-fns";
 import { id as localeId, enUS as localeEn } from "date-fns/locale";
+import { ContractDocument, type ContractDocumentProps } from "@/components/contract-document";
 import {
   Dialog,
   DialogContent,
@@ -61,7 +58,8 @@ const TRANSLATIONS: Record<string, Record<TranslationKey, string>> = {
 interface TermsAgreementProps {
   projectId: string;
   invoiceId: string;
-  terms: string;
+  // Required, not optional: optional would let the signed text and the printed text drift apart.
+  document: ContractDocumentProps;
   termsAcceptedAt: string | null;
   language?: "en" | "id";
   children: React.ReactNode;
@@ -70,7 +68,7 @@ interface TermsAgreementProps {
 export function TermsAgreement({
   projectId,
   invoiceId,
-  terms,
+  document,
   termsAcceptedAt,
   language = "en",
   children,
@@ -241,11 +239,8 @@ export function TermsAgreement({
             ref={scrollContainerRef}
           >
             <div className="bg-white border rounded-lg shadow-sm min-h-[400px]">
-              <div className="p-6 md:p-8 prose prose-sm md:prose-base max-w-none text-slate-700 leading-relaxed text-justify">
-                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} rehypePlugins={[rehypeSanitize]}>
-                  {terms}
-                </ReactMarkdown>
-              </div>
+              {/* Scroll gate: this outer div is the scrolling element — stay that way, or the checkbox locks */}
+              <ContractDocument {...document} />
             </div>
           </div>
 
