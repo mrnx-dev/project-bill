@@ -16,7 +16,10 @@ export const bankDetailsSchema = z.object({
 });
 
 export const integrationsSchema = z.object({
-  resendApiKey: z.string().optional().or(z.literal("")),
+  smtpHost: z.string().optional().or(z.literal("")),
+  smtpPort: z.string().optional().or(z.literal("")),
+  smtpUser: z.string().optional().or(z.literal("")),
+  smtpPass: z.string().optional().or(z.literal("")),
   mayarApiKey: z.string().optional().or(z.literal("")),
   mayarWebhookSecret: z.string().optional().or(z.literal("")),
 });

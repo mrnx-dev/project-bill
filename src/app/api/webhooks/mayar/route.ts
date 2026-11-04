@@ -142,6 +142,7 @@ export async function POST(request: Request) {
               invoiceNumber: updatedInvoice.invoiceNumber,
               amountStr,
               invoiceLink: invoiceDetailUrl,
+              organizationId: updatedInvoice.organizationId,
               sowPdfBuffer,
               invoicePdfBuffer,
               lang: project.language as "id" | "en",

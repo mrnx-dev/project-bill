@@ -126,7 +126,7 @@ export async function sendInvoiceEmail(
           mailtoData
         }
     } catch (emailError: any) {
-        console.error("Failed to send email via Resend:", emailError);
+        console.error("Failed to send email via SMTP:", emailError);
         await prisma.invoice.update({
           where: { id: invoiceId, organizationId: orgId },
           data: { emailStatus: 'FAILED' }

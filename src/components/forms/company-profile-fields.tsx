@@ -107,7 +107,7 @@ export function CompanyProfileFields({ form }: CompanyProfileFieldsProps) {
                   {...field}
                 />
               </FormControl>
-              <FormDescription className="text-[11px] leading-tight">Must be a verified domain in Resend.</FormDescription>
+              <FormDescription className="text-[11px] leading-tight">Must be a mailbox your SMTP server is allowed to send from.</FormDescription>
               <FormMessage />
             </FormItem>
           )}

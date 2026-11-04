@@ -21,7 +21,7 @@ async function main() {
     const client = await prisma.client.create({
         data: {
             name: "Dummy Client (Cron Test)",
-            // GANTI EMAIL INI dengan email Anda sendiri jika ingin menerima tes email dari Resend
+            // GANTI EMAIL INI dengan email Anda sendiri jika ingin menerima tes email dari SMTP
             email: "dummy-cron-test@example.com",
             organizationId: org.id,
         },

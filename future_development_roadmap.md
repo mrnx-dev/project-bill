@@ -14,7 +14,7 @@ ProjectBill sudah memiliki fondasi yang **sangat kuat** sebagai self-hosted invo
 | Kanban Board | ✅ Complete |
 | Invoice (DP, Full, Recurring) | ✅ Complete |
 | Payment Gateway (Mayar.id) | ✅ Complete |
-| Email System (React Email + Resend) | ✅ Complete |
+| Email System (React Email + SMTP) | ✅ Complete |
 | Authentication (NextAuth v5) | ✅ Complete |
 | SOW / Digital Contract | ✅ Complete |
 | Dashboard & Analytics | ✅ Complete |

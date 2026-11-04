@@ -1,7 +1,7 @@
 ## Architecture Spec: ProjectBill Core System
 
 ### System Overview
-ProjectBill is a self-hosted B2B invoicing and project tracking application. The system follows a monolithic architecture built completely on the Next.js framework (App Router) to simplify deployment and integrate full-stack logic tightly. The backend relies on Next.js Server Actions and API routes, directly connected to a PostgreSQL database via Prisma ORM. Core external integrations include Mayar.id for payment processing (via async webhooks) and Resend for transactional emails.
+ProjectBill is a self-hosted B2B invoicing and project tracking application. The system follows a monolithic architecture built completely on the Next.js framework (App Router) to simplify deployment and integrate full-stack logic tightly. The backend relies on Next.js Server Actions and API routes, directly connected to a PostgreSQL database via Prisma ORM. Core external integrations include Mayar.id for payment processing (via async webhooks) and any SMTP server for transactional emails.
 
 ### Component Architecture Diagram
 ```mermaid
@@ -23,7 +23,7 @@ graph TD
     B --> E[(PostgreSQL DB)]:::theDatabase
     E -->|Prisma ORM| B
     
-    B --> F[Resend API]:::externalAPI
+    B --> F[SMTP Server]:::externalAPI
     B --> G[Mayar.id API]:::externalAPI
     G -->|Webhook| B
     
@@ -35,7 +35,7 @@ graph TD
 - **Backend**: Next.js 15+ (App Router API & Server Actions)
 - **Database**: PostgreSQL (Containerized via Docker) with Prisma ORM v7
 - **Authentication**: Auth.js (NextAuth v5)
-- **Emails**: React Email + Resend API
+- **Emails**: React Email + SMTP (Nodemailer)
 - **Payments**: Mayar.id Headless API 
 
 ### Database Schema (Core ERD)
@@ -92,7 +92,7 @@ src/
 │   ├── (public)/      # Client-facing static/dynamic views (e.g., /invoices/[id])
 │   ├── api/           # Backend REST endpoints, Cron Jobs, Webhook receivers
 ├── components/        # UI building blocks (Shadcn UI, Radix primitives, custom widgets)
-├── emails/            # React Email templates (.tsx) compiled to HTML via Resend
+├── emails/            # React Email templates (.tsx) rendered to HTML before SMTP delivery
 └── lib/               # Utility libraries (Crypto, Auth, Prisma Client, Math)
 prisma/                # Database schema, migrations, and seed scripts
 ```
@@ -103,7 +103,7 @@ prisma/                # Database schema, migrations, and seed scripts
 - **Backup**: Ships with a ready-to-use Docker sidecar (`prodrigestivill/postgres-backup-local`) to automate daily cron `.sql.gz` backups.
 
 ### Security & Scaling Notes
-- **API Key Storage**: Sensitive keys (Resend, Mayar) are symmetrically encrypted at rest (AES-256-GCM) via a custom `crypto.ts` module.
+- **API Key Storage**: Sensitive keys (SMTP password, Mayar) are symmetrically encrypted at rest (AES-256-GCM) via a custom `crypto.ts` module.
 - **XSS Prevention**: Markdown rendering (Terms, projects) uses `rehype-sanitize` to strip script tags.
 - **Rate Limiting**: Custom IP-based rate limiting on Cron/Webhook endpoints.
 - **Cache Strategy**: Heavy utilisation of Next.js declarative caching (`revalidatePath()`) allowing efficient real-time polling sync with webhooks without crushing DB performance.

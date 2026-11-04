@@ -3,7 +3,7 @@ import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { createAuditLog } from "@/lib/audit-logger";
 import { encrypt, decrypt, maskSecret, isMaskedValue } from "@/lib/crypto";
 
-const SENSITIVE_FIELDS = ["resendApiKey", "mayarApiKey", "mayarWebhookSecret"] as const;
+const SENSITIVE_FIELDS = ["smtpPass", "mayarApiKey", "mayarWebhookSecret"] as const;
 
 export const GET = withTenantRls(async (_req, _ctx, tx) => {
   try {
@@ -22,7 +22,7 @@ export const GET = withTenantRls(async (_req, _ctx, tx) => {
 
     const response = {
       ...settings,
-      resendApiKey: maskSecret(settings.resendApiKey ? decrypt(settings.resendApiKey) : null),
+      smtpPass: maskSecret(settings.smtpPass ? decrypt(settings.smtpPass) : null),
       mayarApiKey: maskSecret(settings.mayarApiKey ? decrypt(settings.mayarApiKey) : null),
       mayarWebhookSecret: maskSecret(settings.mayarWebhookSecret ? decrypt(settings.mayarWebhookSecret) : null),
     };
@@ -56,6 +56,9 @@ export const PUT = withTenantRls(async (req, _ctx, tx) => {
       bankName: body.bankName,
       bankAccountName: body.bankAccountName,
       bankAccountNumber: body.bankAccountNumber,
+      smtpHost: body.smtpHost,
+      smtpPort: body.smtpPort,
+      smtpUser: body.smtpUser,
     };
 
     const auditEntries: { field: string; oldValue: string | null; newValue: string | null }[] = [];
@@ -117,7 +120,7 @@ export const PUT = withTenantRls(async (req, _ctx, tx) => {
 
     const response = {
       ...settings,
-      resendApiKey: maskSecret(settings.resendApiKey ? decrypt(settings.resendApiKey) : null),
+      smtpPass: maskSecret(settings.smtpPass ? decrypt(settings.smtpPass) : null),
       mayarApiKey: maskSecret(settings.mayarApiKey ? decrypt(settings.mayarApiKey) : null),
       mayarWebhookSecret: maskSecret(settings.mayarWebhookSecret ? decrypt(settings.mayarWebhookSecret) : null),
     };

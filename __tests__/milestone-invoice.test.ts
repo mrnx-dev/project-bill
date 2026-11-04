@@ -228,6 +228,25 @@ describe("webhook mayar — milestone PAID sync (transactional)", () => {
     }));
   });
 
+  test("payment receipt is built from the invoice's org, not the first Settings row", async () => {
+    (prisma.invoice.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+    (prisma.invoice.findUnique as jest.Mock).mockResolvedValue({
+      id: "inv1", type: "MILESTONE", invoiceNumber: "INV-1", organizationId: "org1",
+      project: { id: "p1", title: "T", currency: "IDR", taxRate: null, termsAcceptedAt: null, client: { email: "c@x.com", name: "C" } },
+    });
+    (prisma.$transaction as jest.Mock).mockImplementation(async (cb) => cb(prisma));
+
+    const { sendPaymentSuccessEmail } = require("@/lib/email");
+    const { POST } = require("@/app/api/webhooks/mayar/route");
+    const body = JSON.stringify({ event: "payment.received", data: { reference_id: "inv1", id: "pay1" } });
+    const res = await POST(new Request("http://localhost/api/webhooks/mayar", { method: "POST", body, headers: { "x-callback-token": "valid" } }));
+    expect(res.status).toBe(200);
+
+    // The PDF+email work runs in a floating async IIFE: one macrotask tick drains it.
+    await new Promise((r) => setTimeout(r, 0));
+    expect(sendPaymentSuccessEmail).toHaveBeenCalledWith(expect.objectContaining({ organizationId: "org1" }));
+  });
+
   test("duplicate webhook → count 0 → no milestone update (idempotent)", async () => {
     (prisma.invoice.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
     (prisma.$transaction as jest.Mock).mockImplementation(async (cb) => cb(prisma));

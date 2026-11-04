@@ -1,4 +1,4 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import { render } from "@react-email/render";
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/crypto";
@@ -12,8 +12,11 @@ import type { CompanyInfo, Language } from "@/emails/EmailLayout";
 export type { ReminderType };
 
 export interface CompanySettings extends CompanyInfo {
-  resendApiKey?: string;
   senderEmail?: string | null;
+  smtpHost?: string | null;
+  smtpPort?: string | null;
+  smtpUser?: string | null;
+  smtpPass?: string | null;
 }
 
 export async function getCompanySettings(organizationId: string): Promise<CompanySettings> {
@@ -27,7 +30,10 @@ export async function getCompanySettings(organizationId: string): Promise<Compan
       companyLogoUrl: settings?.companyLogoUrl || null,
       companyAddress: settings?.companyAddress || null,
       senderEmail: settings?.senderEmail || null,
-      resendApiKey: settings?.resendApiKey ? (decrypt(settings.resendApiKey) || undefined) : undefined,
+      smtpHost: settings?.smtpHost || null,
+      smtpPort: settings?.smtpPort || null,
+      smtpUser: settings?.smtpUser || null,
+      smtpPass: settings?.smtpPass ? (decrypt(settings.smtpPass) || null) : null,
     };
   } catch {
     return {
@@ -36,7 +42,10 @@ export async function getCompanySettings(organizationId: string): Promise<Compan
       companyLogoUrl: null,
       companyAddress: null,
       senderEmail: null,
-      resendApiKey: undefined,
+      smtpHost: null,
+      smtpPort: null,
+      smtpUser: null,
+      smtpPass: null,
     };
   }
 }
@@ -46,6 +55,37 @@ function getSenderFrom(companyName: string, senderEmail?: string | null): string
     return `${companyName} <${senderEmail.trim()}>`;
   }
   return `${companyName} <noreply@projectbill.mrndev.me>`;
+}
+
+async function sendMail(
+  settings: CompanySettings,
+  mail: { to: string; subject: string; html: string; attachments?: { filename: string; content: Buffer }[] },
+): Promise<{ success: boolean; mocked?: boolean; data?: { messageId: string }; error?: string }> {
+  if (!settings.smtpHost || !settings.smtpUser || !settings.smtpPass) {
+    return { success: true, mocked: true };
+  }
+  // shortcut: TLS mode derived from port; add an smtpSecure column if a tenant needs implicit TLS off 465.
+  const port = Number(settings.smtpPort) || 587;
+  // shortcut: a transport per send, no pooling; cache one if SMTP handshake latency ever matters.
+  const transport = nodemailer.createTransport({
+    host: settings.smtpHost,
+    port,
+    secure: port === 465,
+    auth: { user: settings.smtpUser, pass: settings.smtpPass },
+  });
+  try {
+    const info = await transport.sendMail({
+      from: getSenderFrom(settings.companyName, settings.senderEmail),
+      to: mail.to,
+      subject: mail.subject,
+      html: mail.html,
+      attachments: mail.attachments,
+    });
+    return { success: true, data: { messageId: info.messageId } };
+  } catch (error) {
+    console.error("[SMTP] Send failed:", error);
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
 }
 
 export interface SendInvoiceEmailParams {
@@ -72,14 +112,6 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
 
   const settings = await getCompanySettings(params.organizationId!);
 
-  if (!settings.resendApiKey) {
-    console.warn("No RESEND_API_KEY found in DB. Mocking email delivery.");
-    console.log(`[MOCK EMAIL] To: ${params.to} | Link: ${params.invoiceLink}`);
-    return { success: true, mocked: true };
-  }
-
-  const resend = new Resend(settings.resendApiKey);
-
   try {
     const lang = params.lang || "id";
 
@@ -100,21 +132,21 @@ export async function sendInvoiceEmail(params: SendInvoiceEmailParams) {
       ? `Invoice untuk ${params.projectTitle} - Diperlukan Tindakan`
       : `Invoice for ${params.projectTitle} - Action Required`;
 
-    const data = await resend.emails.send({
-      from: getSenderFrom(settings.companyName, settings.senderEmail),
-      to: [params.to],
-      subject,
-      html,
-    });
-
+    const result = await sendMail(settings, { to: params.to, subject, html });
+    if (!result.success) return { success: false, error: result.error };
+    if (result.mocked) {
+      console.warn("No SMTP configuration found in DB. Mocking email delivery.");
+      console.log(`[MOCK EMAIL] To: ${params.to} | Link: ${params.invoiceLink}`);
+      return { success: true, mocked: true };
+    }
     if (params.organizationId) {
       const { incrementOrgUsage } = await import("@/lib/billing/subscription");
       await incrementOrgUsage(params.organizationId, "emailsSent");
     }
 
-    return { success: true, data };
+    return { success: true, data: result.data };
   } catch (error) {
-    console.error("Failed to send email via Resend:", error);
+    console.error("Failed to send email via SMTP:", error);
     return { success: false, error };
   }
 }
@@ -144,14 +176,6 @@ export async function sendRecurringInvoiceEmail(params: SendRecurringInvoiceEmai
 
   const settings = await getCompanySettings(params.organizationId!);
 
-  if (!settings.resendApiKey) {
-    console.warn("No RESEND_API_KEY found in DB. Mocking recurring email delivery.");
-    console.log(`[MOCK RECURRING EMAIL] To: ${params.to} | Link: ${params.invoiceLink}`);
-    return { success: true, mocked: true };
-  }
-
-  const resend = new Resend(settings.resendApiKey);
-
   try {
     const lang = params.lang || "id";
 
@@ -173,26 +197,21 @@ export async function sendRecurringInvoiceEmail(params: SendRecurringInvoiceEmai
       ? `Tagihan Rutin untuk ${params.projectTitle} - Diperlukan Tindakan`
       : `Recurring Invoice for ${params.projectTitle} - Action Required`;
 
-    const { data, error } = await resend.emails.send({
-      from: getSenderFrom(settings.companyName, settings.senderEmail),
-      to: [params.to],
-      subject,
-      html,
-    });
-
-    if (error) {
-      console.error("[RESEND] API Error:", error);
-      return { success: false, error: error.message };
+    const result = await sendMail(settings, { to: params.to, subject, html });
+    if (!result.success) return { success: false, error: result.error };
+    if (result.mocked) {
+      console.warn("No SMTP configuration found in DB. Mocking recurring email delivery.");
+      console.log(`[MOCK RECURRING EMAIL] To: ${params.to} | Link: ${params.invoiceLink}`);
+      return { success: true, mocked: true };
     }
-
     if (params.organizationId) {
       const { incrementOrgUsage } = await import("@/lib/billing/subscription");
       await incrementOrgUsage(params.organizationId, "emailsSent");
     }
 
-    return { success: true, data };
+    return { success: true, data: result.data };
   } catch (error) {
-    console.error("Failed to send recurring email via Resend:", error);
+    console.error("Failed to send recurring email via SMTP:", error);
     return { success: false, error };
   }
 }
@@ -243,14 +262,6 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
   const subject = REMINDER_SUBJECTS[params.reminderType][lang](params.projectTitle);
   const settings = await getCompanySettings(params.organizationId!);
 
-  if (!settings.resendApiKey) {
-    console.warn("[MOCK REMINDER EMAIL]", params.reminderType);
-    console.log(`  To: ${params.to} | Subject: ${subject}`);
-    return { success: true, mocked: true };
-  }
-
-  const resend = new Resend(settings.resendApiKey);
-
   try {
     const html = await render(
       ReminderEmail({
@@ -266,24 +277,19 @@ export async function sendReminderEmail(params: SendReminderEmailParams) {
       })
     );
 
-    const { data, error } = await resend.emails.send({
-      from: getSenderFrom(settings.companyName, settings.senderEmail),
-      to: [params.to],
-      subject,
-      html,
-    });
-
-    if (error) {
-      console.error("[RESEND] API Error:", error);
-      return { success: false, error: error.message };
+    const result = await sendMail(settings, { to: params.to, subject, html });
+    if (!result.success) return { success: false, error: result.error };
+    if (result.mocked) {
+      console.warn("No SMTP configuration found in DB. Mocking reminder email delivery.");
+      console.log(`[MOCK REMINDER EMAIL] ${params.reminderType} To: ${params.to} | Subject: ${subject}`);
+      return { success: true, mocked: true };
     }
-
     if (params.organizationId) {
       const { incrementOrgUsage } = await import("@/lib/billing/subscription");
       await incrementOrgUsage(params.organizationId, "emailsSent");
     }
 
-    return { success: true, data };
+    return { success: true, data: result.data };
   } catch (error) {
     console.error("Failed to send reminder email:", error);
     return { success: false, error };
@@ -315,14 +321,6 @@ export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailPar
 
   const lang = params.lang || "id";
   const settings = await getCompanySettings(params.organizationId!);
-
-  if (!settings.resendApiKey) {
-    console.warn("[MOCK PAYMENT SUCCESS EMAIL]");
-    console.log(`  To: ${params.to} | Subject: Payment Received for ${params.projectTitle}`);
-    return { success: true, mocked: true };
-  }
-
-  const resend = new Resend(settings.resendApiKey);
 
   try {
     const attachments = [];
@@ -356,20 +354,17 @@ export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailPar
       ? "Pembayaran Diterima - Terima kasih atas kerjasamanya!"
       : "Payment Received - Thank you for your business!";
 
-    const from = getSenderFrom(settings.companyName, settings.senderEmail);
-    console.log(`[RESEND] Attempting to send payment success email from: ${from} to: ${params.to}`);
-
-    const { data, error } = await resend.emails.send({
-      from,
-      to: [params.to],
+    const result = await sendMail(settings, {
+      to: params.to,
       subject,
       html,
       attachments: attachments.length > 0 ? attachments : undefined,
     });
-
-    if (error) {
-      console.error("[RESEND] API Error:", error);
-      return { success: false, error: error.message };
+    if (!result.success) return { success: false, error: result.error };
+    if (result.mocked) {
+      console.warn("No SMTP configuration found in DB. Mocking email delivery.");
+      console.log(`[MOCK PAYMENT SUCCESS EMAIL] To: ${params.to} | Subject: Payment Received for ${params.projectTitle}`);
+      return { success: true, mocked: true };
     }
 
     if (params.organizationId) {
@@ -377,10 +372,10 @@ export async function sendPaymentSuccessEmail(params: SendPaymentSuccessEmailPar
       await incrementOrgUsage(params.organizationId, "emailsSent");
     }
 
-    return { success: true, data };
+    return { success: true, data: result.data };
   } catch (error) {
     console.error("Failed to send payment success email:", error);
-    return { success: false, error };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -396,23 +391,9 @@ export async function sendInviteEmail(params: { to: string; orgName: string; tok
   </div>`;
 
   const settings = await getCompanySettings(params.organizationId);
-  if (!settings.resendApiKey) {
-    console.log(`[MOCK INVITE EMAIL] To: ${params.to} | Link: ${inviteLink}`);
-    return { success: true, mocked: true };
-  }
-  try {
-    const resend = new Resend(settings.resendApiKey);
-    await resend.emails.send({
-      from: getSenderFrom(settings.companyName, settings.senderEmail),
-      to: [params.to],
-      subject: `You've been invited to join ${params.orgName}`,
-      html,
-    });
-    return { success: true };
-  } catch (error) {
-    console.error("Failed to send invite email:", error);
-    return { success: false, error };
-  }
+  const result = await sendMail(settings, { to: params.to, subject: `You've been invited to join ${params.orgName}`, html });
+  if (result.mocked) console.log(`[MOCK INVITE EMAIL] To: ${params.to} | Link: ${inviteLink}`);
+  return { success: result.success, error: result.error };
 }
 
 export async function sendMagicLinkEmail(params: {
@@ -437,23 +418,15 @@ export async function sendMagicLinkEmail(params: {
   </div>`;
 
   const settings = await getCompanySettings(params.organizationId);
-  if (!settings.resendApiKey) {
+  const result = await sendMail(settings, {
+    to: params.to,
+    subject: "Your Client Portal Login Link",
+    html,
+  });
+  if (result.mocked) {
     console.log(`[MOCK MAGIC LINK EMAIL] To: ${params.to} | Links: ${params.links.map((l) => l.url).join(", ")}`);
-    return { success: true, mocked: true };
   }
-  try {
-    const resend = new Resend(settings.resendApiKey);
-    await resend.emails.send({
-      from: getSenderFrom(settings.companyName, settings.senderEmail),
-      to: [params.to],
-      subject: "Your Client Portal Login Link",
-      html,
-    });
-    return { success: true };
-  } catch (error) {
-    console.error("Failed to send magic link email:", error);
-    return { success: false };
-  }
+  return { success: result.success, mocked: result.mocked };
 }
 
 export async function sendOrgDeletionEmail(params: { to: string; orgName: string; organizationId: string }) {
@@ -464,23 +437,9 @@ export async function sendOrgDeletionEmail(params: { to: string; orgName: string
   </div>`;
 
   const settings = await getCompanySettings(params.organizationId);
-  if (!settings.resendApiKey) {
-    console.log(`[MOCK DELETION EMAIL] To: ${params.to}`);
-    return { success: true, mocked: true };
-  }
-  try {
-    const resend = new Resend(settings.resendApiKey);
-    await resend.emails.send({
-      from: getSenderFrom(settings.companyName, settings.senderEmail),
-      to: [params.to],
-      subject: `Organization Deletion - ${params.orgName}`,
-      html,
-    });
-    return { success: true };
-  } catch (error) {
-    console.error("Failed to send deletion email:", error);
-    return { success: false, error };
-  }
+  const result = await sendMail(settings, { to: params.to, subject: `Organization Deletion - ${params.orgName}`, html });
+  if (result.mocked) console.log(`[MOCK DELETION EMAIL] To: ${params.to}`);
+  return { success: result.success, error: result.error };
 }
 
 export async function sendExportReadyEmail(params: { to: string; orgName: string; downloadUrl: string; organizationId: string }) {
@@ -495,21 +454,7 @@ export async function sendExportReadyEmail(params: { to: string; orgName: string
   </div>`;
 
   const settings = await getCompanySettings(params.organizationId);
-  if (!settings.resendApiKey) {
-    console.log(`[MOCK EXPORT EMAIL] To: ${params.to} | Link: ${link}`);
-    return { success: true, mocked: true };
-  }
-  try {
-    const resend = new Resend(settings.resendApiKey);
-    await resend.emails.send({
-      from: getSenderFrom(settings.companyName, settings.senderEmail),
-      to: [params.to],
-      subject: `Data Export Ready - ${params.orgName}`,
-      html,
-    });
-    return { success: true };
-  } catch (error) {
-    console.error("Failed to send export email:", error);
-    return { success: false, error };
-  }
+  const result = await sendMail(settings, { to: params.to, subject: `Data Export Ready - ${params.orgName}`, html });
+  if (result.mocked) console.log(`[MOCK EXPORT EMAIL] To: ${params.to} | Link: ${link}`);
+  return { success: result.success, error: result.error };
 }

@@ -96,7 +96,7 @@ export const POST = withTenantRls(async (request, _ctx, tx) => {
     const baseUrl = getBaseUrl();
     const invoiceDetailUrl = `${baseUrl}/invoices/${newInvoice.id}`;
 
-    // Soft-fail: Try communicating with Resend, but don't fail the whole block if it errors.
+    // Soft-fail: Try sending via SMTP, but don't fail the whole block if it errors.
     let emailSent = false;
     let manual = false;
     let mailtoData: { to: string; subject: string; body: string } | undefined;
