@@ -1,5 +1,5 @@
 # Prisma 7 requires node ^20.19 || ^22.12 || >=24
-FROM node:22.12-alpine AS base
+FROM node:22.13-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
