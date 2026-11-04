@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { createAuditLog } from "@/lib/audit-logger";
 import { projectSchema } from "@/lib/validations";
+import { generateContractNumber } from "@/lib/invoice-utils";
 
 export const GET = withTenantRls(async (request: Request, _ctx, tx) => {
   try {
@@ -96,6 +97,7 @@ export const POST = withTenantRls(async (request: Request, _ctx, tx) => {
       deadline: data.deadline ? new Date(data.deadline) : null,
       status: "TO_DO",
       organizationId: orgId,
+      contractNumber: await generateContractNumber(orgId, tx),
     };
 
     projectData.terms = data.terms ?? null;
