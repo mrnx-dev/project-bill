@@ -70,6 +70,9 @@ test.describe("Core Business Journey", () => {
       .click();
     await page.getByRole("option", { name: clientName }).click();
 
+    // Price lives in the Finance tab now
+    await page.getByRole("tab", { name: "Finance" }).click();
+
     // Fill total price using the NumericFormat input (target by id)
     await page.locator("#totalPrice").fill("5000000");
 
