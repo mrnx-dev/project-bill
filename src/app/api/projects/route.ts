@@ -115,18 +115,18 @@ export const POST = withTenantRls(async (request: Request, _ctx, tx) => {
     projectData.taxRate = data.taxRate ?? null;
 
     // Retry once on P2002: a duplicate contract number from a deploy outside the advisory
-    // lock would otherwise 500 the whole project creation.
-    const project = await tx.$transaction(async (numTx) => {
-      await withContractNumberRetry(orgId, numTx, async (contractNumber) => {
-        await numTx.project.create({
-          data: { ...projectData, contractNumber },
-        });
+    // lock would otherwise 500 the whole project creation. Runs on the SAME tx — withTenantRls
+    // already opened a transaction, and @prisma/adapter-pg rejects nested ones (P2028).
+    const contractNumber: string[] = [];
+    await withContractNumberRetry(orgId, tx, async (num) => {
+      contractNumber.push(num);
+      await tx.project.create({
+        data: { ...projectData, contractNumber: num },
       });
-      return numTx.project.findFirst({
-        where: { organizationId: orgId, title: projectData.title },
-        orderBy: { createdAt: "desc" },
-        include: { client: true, invoices: true, items: true },
-      });
+    });
+    const project = await tx.project.findUnique({
+      where: { organizationId_contractNumber: { organizationId: orgId, contractNumber: contractNumber[0] } },
+      include: { client: true, invoices: true, items: true },
     });
     if (!project) {
       throw new Error("Project vanished inside its own creation transaction");
