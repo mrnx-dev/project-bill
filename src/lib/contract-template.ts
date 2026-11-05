@@ -277,3 +277,13 @@ export const CONTRACT_PLACEHOLDERS: { token: string; group: "document" | "partie
   { token: "{{pajak.nilai}}", group: "money", label: "Nilai pajak" },
   { token: "{{dp}}", group: "money", label: "Uang muka" },
 ];
+
+// Five help lines rendered inside the template editor's <details> panel. Concrete, not
+// marketing copy: a tenant reads these while they type.
+export const EDITOR_HELP_LINES: string[] = [
+  "Setiap token {{…}} otomatis diganti dengan data proyek Anda saat dokumen dicetak. Example: {{klien.nama}} becomes the client's name.",
+  "{{lingkup.tabel}} builds the item table (description, qty, rate, price) by itself — you don't write the table.",
+  "A misspelt token (for example {{klien.namaa}}) is printed as-is on the document, on purpose, so the mistake is visible instead of silently blank.",
+  "The document header, contract number/tanggal and the electronic signature block are added automatically and are not editable here.",
+  "Once a client signs, the body is frozen: the signed printout always reproduces the exact text that was agreed.",
+];
