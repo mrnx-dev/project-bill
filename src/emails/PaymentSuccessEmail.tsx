@@ -123,9 +123,9 @@ export const PaymentSuccessEmail = ({
                     }}
                 >
                     {lang === "id" ? (
-                        "Terlampir adalah dokumen Invoice dan Statement of Work (SOW) resmi untuk arsip Anda."
+                        "Terlampir adalah dokumen Invoice dan dokumen kontrak resmi untuk arsip Anda."
                     ) : (
-                        "Please find attached your Invoice and official Statement of Work (SOW) documents for your records."
+                        "Please find attached your Invoice and official contract document for your records."
                     )}
                 </Text>
             ) : (

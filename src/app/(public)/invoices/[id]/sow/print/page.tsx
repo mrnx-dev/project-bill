@@ -18,7 +18,7 @@ export default function SOWPrintPage() {
             try {
                 const projRes = await fetch(`/api/invoices/${invoiceId}/public-sow`);
 
-                if (!projRes.ok) throw new Error("Failed to fetch SOW");
+                if (!projRes.ok) throw new Error("Failed to fetch contract");
 
                 const projData = await projRes.json();
                 setProject(projData);

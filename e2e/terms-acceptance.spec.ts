@@ -86,7 +86,7 @@ test.describe("Terms of Service Acceptance Flow", () => {
     await expect(page.getByText("Digital Agreement Required")).toBeVisible();
 
     // Click the trigger button to open the contract modal
-    await page.getByRole("button", { name: "Review & Sign SOW" }).click();
+    await page.getByRole("button", { name: "Review & Sign Document" }).click();
 
     // Verify dialog content is visible
     await expect(page.getByText("1. No revisions.")).toBeVisible();

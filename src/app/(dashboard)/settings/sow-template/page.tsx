@@ -44,7 +44,7 @@ export default function SOWTemplateListPage() {
         }
     }
 
-    const handleCreateClick = async (e: React.MouseEvent) => {
+    const handleCreateClick = async (e: React.MouseEvent, starter?: string) => {
         e.preventDefault();
         try {
             const res = await fetch("/api/subscription/check?resource=sowTemplates");
@@ -60,7 +60,7 @@ export default function SOWTemplateListPage() {
             console.error("Failed to check subscription limit:", error);
         }
         
-        router.push("/settings/sow-template/new");
+        router.push(`/settings/sow-template/new${starter ? `?starter=${starter}` : ""}`);
     };
 
     async function handleDeleteConfirmed() {
@@ -97,16 +97,24 @@ export default function SOWTemplateListPage() {
                         <div className="p-2.5 bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-slate-100 dark:border-zinc-700">
                             <NotepadTextDashed className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                         </div>
-                        Agreement Templates
+                        Contract Templates
                     </h3>
                     <p className="text-sm text-slate-600 dark:text-zinc-400 mt-2 max-w-xl leading-relaxed">
-                        Standardize your agreements. Create reusable SOW templates tailored to different services, languages, or client tiers.
+                        Standardize your contracts. Create reusable contract templates tailored to different services, languages, or client tiers.
                     </p>
                 </div>
-                <div className="relative z-10 flex-shrink-0 w-full md:w-auto">
-                    <Button onClick={handleCreateClick} className="w-full md:w-auto shadow-md hover:shadow-lg transition-all bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6">
+                <div className="relative z-10 flex-shrink-0 w-full md:w-auto flex flex-col sm:flex-row gap-2">
+                    <Button onClick={(e) => handleCreateClick(e, "id")} className="w-full md:w-auto shadow-md hover:shadow-lg transition-all bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6">
                         <Plus className="w-4 h-4 mr-2" />
-                        Create Template
+                        SPK (Indonesian)
+                    </Button>
+                    <Button onClick={(e) => handleCreateClick(e, "en")} variant="outline" className="w-full md:w-auto rounded-full px-5 shadow-sm hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-zinc-800 dark:hover:text-indigo-300 transition-colors border-indigo-200 dark:border-zinc-700">
+                        <Plus className="w-4 h-4 mr-2" />
+                        SOW (English)
+                    </Button>
+                    <Button onClick={(e) => handleCreateClick(e, "blank")} variant="outline" className="w-full md:w-auto rounded-full px-5 shadow-sm hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-zinc-800 dark:hover:text-indigo-300 transition-colors border-indigo-200 dark:border-zinc-700">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Blank
                     </Button>
                 </div>
 
@@ -123,7 +131,7 @@ export default function SOWTemplateListPage() {
                     <p className="text-slate-500 dark:text-zinc-400 text-sm max-w-[280px] text-center mb-6">
                         Start building your library of reusable contracts to streamline your onboarding workflow.
                     </p>
-                    <Button onClick={handleCreateClick} variant="outline" className="rounded-full shadow-sm hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-zinc-800 dark:hover:text-indigo-300 transition-colors border-indigo-200 dark:border-zinc-700">
+                    <Button onClick={(e) => handleCreateClick(e, "id")} variant="outline" className="rounded-full shadow-sm hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-zinc-800 dark:hover:text-indigo-300 transition-colors border-indigo-200 dark:border-zinc-700">
                         <Plus className="w-4 h-4 mr-2" />
                         Draft First Template
                     </Button>
@@ -174,7 +182,7 @@ export default function SOWTemplateListPage() {
             <UpgradeDialog 
                 isOpen={isUpgradeLimitOpen} 
                 onOpenChange={setIsUpgradeLimitOpen}
-                resourceName="Agreement Templates"
+                resourceName="Contract Templates"
                 limit={currentLimit}
             />
         </div>

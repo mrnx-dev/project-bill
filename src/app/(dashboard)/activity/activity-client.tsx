@@ -13,7 +13,7 @@ const ENTITY_FILTERS = [
   { label: "Project", value: "PROJECT" },
   { label: "Client", value: "CLIENT" },
   { label: "Recurring Invoice", value: "RECURRING_INVOICE" },
-  { label: "SOW Template", value: "SOW_TEMPLATE" },
+  { label: "Contract Template", value: "SOW_TEMPLATE" },
   { label: "Settings", value: "SETTINGS" },
 ] as const;
 

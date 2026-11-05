@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { UpgradeDialog } from "@/components/subscription/upgrade-dialog";
 import {
   Card,
@@ -51,6 +51,8 @@ import remarkBreaks from "remark-breaks";
 import { CostEstimator } from "@/components/cost-estimator";
 import { MilestoneTimeline } from "@/components/milestone-timeline";
 import { MilestonePlanBuilder, type PlanRow } from "@/components/milestone-plan-builder";
+import { PlaceholderPalette } from "@/components/placeholder-palette";
+import { renderContractTemplate, SPK_SAMPLE_DATA, type ContractTemplateData } from "@/lib/contract-template";
 import {
   Tooltip,
   TooltipContent,
@@ -142,6 +144,26 @@ export function ProjectsClient({
   const [newItemRate, setNewItemRate] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
   const [formTab, setFormTab] = useState("detail");
+  const previewData: ContractTemplateData = {
+    ...SPK_SAMPLE_DATA,
+    language, title: title || SPK_SAMPLE_DATA.title,
+    contractNumber: null, // the number is assigned when the project is saved
+    client: { name: clients.find(c => c.id === clientId)?.name ?? SPK_SAMPLE_DATA.client.name, email: null, phone: null },
+    items: items.map(i => ({
+      description: i.description,
+      quantity: i.quantity == null || i.quantity === "" ? null : Number(i.quantity),
+      rate: i.rate == null || i.rate === "" ? null : Number(i.rate),
+      price: Number(i.price),
+    })),
+    totalPrice: Number(totalPrice) || 0, currency,
+    taxName: taxName || null, taxRate: taxRate ? Number(taxRate) : null,
+    dpAmount: dpAmount ? Number(dpAmount) : null, billingMode,
+    milestones: milestoneRows.map(r => ({
+      name: r.name, percentage: r.percentage,
+      amount: Math.round((Number(totalPrice) || 0) * r.percentage / 100), dueDate: null,
+    })),
+    deadline: deadline ? new Date(deadline).toISOString() : null,
+  };
 
   // Auto calculate price based on Qty and Rate
   useEffect(() => {
@@ -164,6 +186,7 @@ export function ProjectsClient({
 
   // Full Screen TOS Editor State
   const [isTosEditorOpen, setIsTosEditorOpen] = useState(false);
+const termsRef = useRef<HTMLTextAreaElement>(null);
   const [isTosPreview, setIsTosPreview] = useState(false);
 
   // Invoice Form State
@@ -570,7 +593,7 @@ export function ProjectsClient({
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <span className="text-sm leading-none font-medium select-none">
-                            Terms &amp; Conditions (SOW/Contract)
+                            Contract
                           </span>
                           <p className="mt-1 text-xs text-muted-foreground">
                             {terms
@@ -623,7 +646,7 @@ export function ProjectsClient({
                           <Info className="mt-0.5 h-4 w-4 shrink-0" />
                           <p>
                             {isSowSigned
-                              ? "The client has signed the SOW, so billing, pricing, and items are read-only."
+                              ? "The client has signed the contract, so billing, pricing, and items are read-only."
                               : "An invoice already exists, so billing, pricing, and items are read-only. Delete the unpaid invoice to change them."}
                           </p>
                         </div>
@@ -690,7 +713,7 @@ export function ProjectsClient({
                                   <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>This language is used for generating invoices and statements of work (SOW) translations.</p>
+                                  <p>This language is used for generating invoices and contract translations.</p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
@@ -1208,6 +1231,7 @@ export function ProjectsClient({
                     </DialogDescription>
                   </div>
                 </div>
+                <PlaceholderPalette textareaRef={termsRef} value={terms} onChange={setTerms} disabled={isSowLocked || isSowSigned} />
                 {/* Menambahkan mr-8 agar tidak menabrak tombol X (close) bawaan Dialog */}
                 <div className="flex bg-slate-100 dark:bg-zinc-800/50 p-1 rounded-lg border border-slate-200 dark:border-zinc-700/50 mr-8 sm:mr-10">
                   <button
@@ -1235,7 +1259,7 @@ export function ProjectsClient({
                     <div className="prose prose-sm md:prose-base prose-slate dark:prose-invert max-w-3xl mx-auto prose-headings:font-semibold prose-a:text-indigo-600 dark:prose-a:text-indigo-400 text-slate-700 dark:text-zinc-300 leading-relaxed text-justify">
                       {terms ? (
                         <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} rehypePlugins={[rehypeSanitize]}>
-                          {terms}
+                          {renderContractTemplate(terms, previewData)}
                         </ReactMarkdown>
                       ) : (
                         <div className="flex flex-col items-center justify-center h-40 opacity-50">
@@ -1246,6 +1270,7 @@ export function ProjectsClient({
                   </div>
                 ) : (
                   <Textarea
+                    ref={termsRef}
                     className="flex-1 font-mono text-sm leading-relaxed p-6 rounded-none border-0 focus-visible:ring-0 resize-none bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-200"
                     value={terms}
                     disabled={isSowLocked || isSowSigned}

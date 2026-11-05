@@ -28,7 +28,7 @@ export default async function PortalProjectsPage() {
                 </div>
                 {p.hasTerms && (
                   <Button asChild variant="outline" size="sm">
-                    <Link href={`/portal/projects/${p.id}/sow`}>View SOW</Link>
+                    <Link href={`/portal/projects/${p.id}/sow`}>View contract</Link>
                   </Button>
                 )}
               </div>

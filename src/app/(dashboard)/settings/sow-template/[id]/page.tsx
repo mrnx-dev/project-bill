@@ -1,20 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { SPK_STARTER_TEMPLATE } from "@/lib/contract-template";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { SPK_STARTER_TEMPLATE, SOW_STARTER_TEMPLATE_EN, BLANK_STARTER_TEMPLATE, SPK_SAMPLE_DATA, renderContractTemplate, EDITOR_HELP_LINES } from "@/lib/contract-template";
+import { PlaceholderPalette } from "@/components/placeholder-palette";
 import { Button } from "@/components/ui/button";
 import { Loader2, Save, NotepadTextDashed, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 
-export default function SOWTemplatePage() {
+function SOWTemplateEditor() {
     const params = useParams();
     const router = useRouter();
     const id = params?.id as string;
@@ -22,10 +23,16 @@ export default function SOWTemplatePage() {
 
     const [name, setName] = useState("");
     // Prefill only for a new template — not a useEffect, which would race the fetch for existing ones.
-    const [template, setTemplate] = useState(isNew ? SPK_STARTER_TEMPLATE : "");
+    // An existing template never reads the query string, so a shared URL can't overwrite a saved template.
+    const starterParam = useSearchParams().get("starter");
+    const prefill = starterParam === "en" ? SOW_STARTER_TEMPLATE_EN
+                  : starterParam === "blank" ? BLANK_STARTER_TEMPLATE
+                  : SPK_STARTER_TEMPLATE;           // default id, and an unknown value falls back to id
+    const [template, setTemplate] = useState(isNew ? prefill : "");
     const [isLoading, setIsLoading] = useState(!isNew);
     const [isSaving, setIsSaving] = useState(false);
     const [isPreview, setIsPreview] = useState(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         if (isNew) return;
@@ -67,7 +74,7 @@ export default function SOWTemplatePage() {
 
             if (!res.ok) throw new Error("Failed to save SOW template");
 
-            toast.success("SOW Template saved successfully!");
+            toast.success("Contract template saved successfully!");
             router.push("/settings/sow-template");
         } catch (error) {
             console.error(error);
@@ -131,6 +138,17 @@ export default function SOWTemplatePage() {
                 </div>
 
                 <div className="flex flex-col gap-4">
+                    <PlaceholderPalette textareaRef={textareaRef} value={template} onChange={setTemplate} />
+                    <details className="group rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/50 px-4 py-3">
+                        <summary className="text-sm font-medium text-slate-600 dark:text-zinc-400 cursor-pointer select-none hover:text-slate-900 dark:hover:text-zinc-200">
+                            How placeholders work
+                        </summary>
+                        <ul className="mt-3 space-y-1.5 text-sm text-slate-600 dark:text-zinc-400 list-disc pl-5">
+                            {EDITOR_HELP_LINES.map((line, i) => (
+                                <li key={i}>{line}</li>
+                            ))}
+                        </ul>
+                    </details>
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                         <div className="flex items-center gap-2">
                             <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-lg border border-indigo-100 dark:border-indigo-500/20">
@@ -166,18 +184,19 @@ export default function SOWTemplatePage() {
                                 <div className="prose prose-slate dark:prose-invert max-w-3xl mx-auto prose-headings:font-semibold prose-a:text-indigo-600 dark:prose-a:text-indigo-400 text-slate-700 dark:text-zinc-300 leading-relaxed text-justify">
                                     {template ? (
                                         <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} rehypePlugins={[rehypeSanitize]}>
-                                            {template}
+                                            {renderContractTemplate(template, SPK_SAMPLE_DATA)}
                                         </ReactMarkdown>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center h-full py-20 opacity-50">
                                             <NotepadTextDashed className="w-12 h-12 mb-4 text-slate-400" />
-                                            <span className="text-slate-500 dark:text-zinc-500 italic">No content provided yet. Switch to 'Write' mode to start typing.</span>
+                                            <span className="text-slate-500 dark:text-zinc-500 italic">No content provided yet. Switch to &apos;Write&apos; mode to start typing.</span>
                                         </div>
                                     )}
                                 </div>
                             </div>
                         ) : (
                             <Textarea
+                                ref={textareaRef}
                                 className="font-mono min-h-[500px] text-sm leading-relaxed p-6 bg-transparent border-0 focus-visible:ring-0 resize-y text-slate-800 dark:text-zinc-200 placeholder:text-slate-400 dark:placeholder:text-zinc-600"
                                 value={template}
                                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setTemplate(e.target.value)}
@@ -188,5 +207,14 @@ export default function SOWTemplatePage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+// useSearchParams() in SOWTemplateEditor needs a Suspense boundary so the page can be statically prerendered.
+export default function SOWTemplatePage() {
+    return (
+        <Suspense fallback={null}>
+            <SOWTemplateEditor />
+        </Suspense>
     );
 }
