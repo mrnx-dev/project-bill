@@ -36,7 +36,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Plus, FileText, Maximize2, NotepadTextDashed, Info } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Pencil, Trash2, Plus, FileText, Maximize2, NotepadTextDashed, Info, Check, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { formatEnum } from "@/lib/utils";
@@ -140,6 +141,7 @@ export function ProjectsClient({
   const [newItemQty, setNewItemQty] = useState("");
   const [newItemRate, setNewItemRate] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
+  const [formTab, setFormTab] = useState("detail");
 
   // Auto calculate price based on Qty and Rate
   useEffect(() => {
@@ -182,6 +184,7 @@ export function ProjectsClient({
   }, []);
 
   const handleOpenDialog = async (project?: Project) => {
+    setFormTab("detail");
     if (project) {
       setEditingId(project.id);
       setTitle(project.title);
@@ -301,7 +304,20 @@ export function ProjectsClient({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientId) {
+      setFormTab("detail");
       toast.error("Please select a client");
+      return;
+    }
+
+    // Tabs unmount inactive fields, so HTML `required` can't guard them — validate here.
+    if (!title.trim()) {
+      setFormTab("detail");
+      toast.error("Please enter a project title");
+      return;
+    }
+    if (!totalPrice && items.length === 0) {
+      setFormTab("finance");
+      toast.error("Please enter a total price or add at least one item");
       return;
     }
 
@@ -440,6 +456,14 @@ export function ProjectsClient({
     }
   };
 
+  const isFinancialLocked = hasInvoices || isSowSigned;
+  // NumericFormat doesn't inherit Input styling; keep the shared field look in one place.
+  const moneyFieldClass =
+    "flex h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive";
+  const formTotal = items.length > 0
+    ? items.reduce((sum, item) => sum + Number(item.price), 0)
+    : Number(totalPrice) || 0;
+
   const filteredProjects = projects.filter(
     (project) => {
       const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -479,8 +503,8 @@ export function ProjectsClient({
           </Button>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
+            <DialogContent className="sm:max-w-[760px] max-h-[85dvh] p-0 gap-0 flex flex-col overflow-hidden">
+              <DialogHeader className="px-6 pt-6 pb-4 border-b pr-14">
                 <DialogTitle>
                   {editingId ? "Edit Project" : "Add Project"}
                 </DialogTitle>
@@ -490,480 +514,534 @@ export function ProjectsClient({
                     : "Create a new project for a client."}
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Project Title</Label>
-                  <Input
-                    id="title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    required
-                    disabled={isSowSigned}
-                    placeholder="Website Redesign"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="client">Client</Label>
-                  <Select value={clientId} onValueChange={setClientId} required disabled={isSowSigned}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="deadline">Deadline (Optional)</Label>
-                  <Input
-                    id="deadline"
-                    type="date"
-                    value={deadline}
-                    disabled={isSowSigned}
-                    onChange={(e) => setDeadline(e.target.value)}
-                    onClick={(e) => e.currentTarget.showPicker()}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="terms">
-                      {isSowLocked || isSowSigned ? "Terms & Conditions (SOW/Contract) - Locked" : "Terms & Conditions (SOW/Contract)"}
-                    </Label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsTosEditorOpen(true)}
-                      className="h-6 px-2 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/50"
-                    >
-                      <Maximize2 className="w-3 h-3 mr-1" />
-                      {isSowLocked || isSowSigned ? "Full Screen View" : "Full Screen Edit"}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    If provided, the client must digitally accept these terms
-                    before they can pay the invoice.
-                  </p>
-
-                  <div className="mb-2">
-                    <Select
-                      disabled={sowTemplates.length === 0 || isSowLocked || isSowSigned}
-                      onValueChange={(val) => {
-                        if (!val) return;
-                        const tpl = sowTemplates.find(t => t.id === val);
-                        if (tpl) {
-                          if (terms) {
-                            setSowTemplateConfirm(tpl.content);
-                          } else {
-                            setTerms(tpl.content);
-                          }
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="text-sm h-8 mt-1 border-dashed bg-slate-50 dark:bg-slate-900 border-slate-300">
-                        <SelectValue placeholder={sowTemplates.length === 0 ? "No templates created yet" : "Load from Template..."} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sowTemplates.map(t => (
-                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <textarea
-                    id="terms"
-                    rows={4}
-                    value={terms}
-                    disabled={isSowLocked || isSowSigned}
-                    onChange={(e) => setTerms(e.target.value)}
-                    className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                    placeholder="e.g. 1. Revisions are limited to 2 rounds. 2. Payments are non-refundable."
-                  />
-                  {(isSowLocked || isSowSigned) && (
-                    <p className="text-[10px] text-amber-600 font-medium">
-                      Terms cannot be edited because {isSowSigned ? "the client has already signed the SOW" : "a payment has already been made"}.
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Billing Mode</Label>
-                  <div className="flex gap-3">
-                    <label className={`flex items-center gap-2 cursor-pointer p-3 border rounded-lg hover:bg-muted/50 transition-colors ${billingMode === "SIMPLE" ? "border-primary" : ""}`}>
-                      <input
-                        type="radio"
-                        name="billingMode"
-                        value="SIMPLE"
-                        checked={billingMode === "SIMPLE"}
-                        onChange={() => setBillingMode("SIMPLE")}
-                        disabled={hasInvoices || isSowSigned}
-                        className="w-4 h-4"
-                      />
-                      <div className="text-sm">
-                        <div className="font-medium">Simple</div>
-                        <div className="text-xs text-muted-foreground">DP + full payment</div>
+              <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+                <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+                  <Tabs value={formTab} onValueChange={setFormTab}>
+                    <TabsList className="w-full mb-5">
+                      <TabsTrigger value="detail">Detail</TabsTrigger>
+                      <TabsTrigger value="finance">Finance</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="detail" className="space-y-5">
+                      <div className="space-y-2">
+                        <Label htmlFor="title">Project Title</Label>
+                        <Input
+                          id="title"
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value)}
+                          required
+                          disabled={isSowSigned}
+                          placeholder="Website Redesign"
+                        />
                       </div>
-                    </label>
-                    <label className={`flex items-center gap-2 cursor-pointer p-3 border rounded-lg hover:bg-muted/50 transition-colors ${billingMode === "MILESTONE" ? "border-primary" : ""}`}>
-                      <input
-                        type="radio"
-                        name="billingMode"
-                        value="MILESTONE"
-                        checked={billingMode === "MILESTONE"}
-                        onChange={() => setBillingMode("MILESTONE")}
-                        disabled={hasInvoices || isSowSigned}
-                        className="w-4 h-4"
-                      />
-                      <div className="text-sm">
-                        <div className="font-medium">Milestone</div>
-                        <div className="text-xs text-muted-foreground">Per-stage invoicing</div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="client">Client</Label>
+                        <Select value={clientId} onValueChange={setClientId} required disabled={isSowSigned}>
+                          <SelectTrigger id="client">
+                            <SelectValue placeholder="Select a client" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {clients.length === 0 ? (
+                              <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                                No clients yet. Add a client first.
+                              </div>
+                            ) : (
+                              clients.map((client) => (
+                                <SelectItem key={client.id} value={client.id}>
+                                  {client.name}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    </label>
-                  </div>
-                  {(hasInvoices || isSowSigned) && (
-                    <p className="text-[10px] text-amber-600 font-medium">
-                      Billing mode is locked because {isSowSigned ? "the SOW has been signed" : "invoices already exist"}.
-                    </p>
-                  )}
-                  {billingMode === "MILESTONE" && (
-                    <p className="text-[10px] text-muted-foreground">
-                      Tip: define the full plan (sum = 100%) before tagging any milestone — the plan locks after the first invoice.
-                    </p>
-                  )}
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="deadline">Deadline (Optional)</Label>
+                        <Input
+                          id="deadline"
+                          type="date"
+                          value={deadline}
+                          disabled={isSowSigned}
+                          onChange={(e) => setDeadline(e.target.value)}
+                          onClick={(e) => e.currentTarget.showPicker()}
+                        />
+                      </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {(hasInvoices || isSowSigned) && (
-                    <div className="col-span-full p-3 bg-amber-50 text-amber-800 text-sm border border-amber-200 rounded-md">
-                      <strong>Note:</strong> Financial fields (Currency, Pricing, Tax, and Items) are locked. {isSowSigned ? "The SOW has already been signed by the client." : "An invoice has already been generated. Delete the unpaid invoice to modify them."}
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label htmlFor="currency">Currency</Label>
-                    <Select value={currency} onValueChange={setCurrency} disabled={hasInvoices}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Currency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getCurrencyOptions().map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1.5">
-                      <Label htmlFor="language">Language</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>This language is used for generating invoices and statements of work (SOW) translations.</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <Select value={language} onValueChange={setLanguage}>
-                      <SelectTrigger className="truncate">
-                        <SelectValue placeholder="Language" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="id">🇮🇩 ID</SelectItem>
-                        <SelectItem value="en">🇬🇧 EN</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="totalPrice">Total Price</Label>
-                  </div>
-                    <NumericFormat
-                      id="totalPrice"
-                      value={
-                        items.length > 0
-                          ? items.reduce(
-                            (sum, item) => sum + Number(item.price),
-                            0,
-                          )
-                          : totalPrice
-                      }
-                      onValueChange={(values) => setTotalPrice(values.value)}
-                      required
-                      disabled={items.length > 0 || hasInvoices || isSowSigned}
-                      placeholder={
-                        items.length > 0 ? "Auto-calculated" : "1,000"
-                      }
-                      thousandSeparator="."
-                      decimalSeparator=","
-                      prefix={`${getCurrencySymbol(currency)} `}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                    />
-                  </div>
-                  {billingMode === "MILESTONE" ? (
-                    <div className="col-span-2 space-y-2">
-                      <MilestonePlanBuilder
-                        totalPrice={Number(totalPrice) || 0}
-                        currency={currency}
-                        initial={milestoneRows}
-                        onChange={setMilestoneRows}
-                      />
-                    </div>
-                  ) : (
-                  <div className="space-y-2">
-                    <Label htmlFor="dpAmount">DP Amount (Optional)</Label>
-                    <NumericFormat
-                      id="dpAmount"
-                      value={dpAmount}
-                      onValueChange={(values) => setDpAmount(values.value)}
-                      disabled={hasInvoices || isSowSigned}
-                      placeholder="Enter DP Amount"
-                      thousandSeparator="."
-                      decimalSeparator=","
-                      prefix={`${getCurrencySymbol(currency)} `}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                    />
-                  </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="taxName">Tax Name {Number(taxRate) > 0 ? "" : "(Optional)"}</Label>
-                    <Input
-                      id="taxName"
-                      value={taxName}
-                      onChange={(e) => setTaxName(e.target.value)}
-                      placeholder="e.g. PPN, VAT"
-                      required={Number(taxRate) > 0}
-                      disabled={hasInvoices || isSowSigned}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="taxRate">Tax Rate % (Optional)</Label>
-                    <NumericFormat
-                      id="taxRate"
-                      value={taxRate}
-                      onValueChange={(values) => setTaxRate(values.value)}
-                      disabled={hasInvoices || isSowSigned}
-                      placeholder="e.g. 11"
-                      allowNegative={false}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3 pt-2 border-t mt-4 text-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="mr-2">
-                      <Label>
-                        Project Scope / Items {editingId ? "" : "(Optional)"}
-                      </Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Adding items will automatically calculate the Total Price.
-                      </p>
-                    </div>
-                    {!hasInvoices && !isSowSigned && (
-                      <CostEstimator currency={currency} onApply={async (generatedItems) => {
-                        if (editingId) {
-                          setIsLoading(true);
-                          try {
-                            let updatedItems = [...items];
-                            let currentTotal = Number(totalPrice);
-                            for (const gItem of generatedItems) {
-                              const res = await fetch(`/api/projects/${editingId}/items`, {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  description: gItem.description,
-                                  price: gItem.price,
-                                  quantity: gItem.quantity,
-                                  rate: gItem.rate,
-                                }),
-                              });
-                              if (res.ok) {
-                                const data = await res.json();
-                                updatedItems.push({
-                                  id: data.item.id,
-                                  description: data.item.description,
-                                  price: String(data.item.price),
-                                  quantity: data.item.quantity ? String(data.item.quantity) : null,
-                                  rate: data.item.rate ? String(data.item.rate) : null,
-                                });
-                                currentTotal = data.projectTotal;
-                              }
-                            }
-                            setItems(updatedItems);
-                            setTotalPrice(String(currentTotal));
-                            toast.success("Estimated items created successfully");
-                          } catch (err) {
-                            toast.error("Failed to save estimated items");
-                          } finally {
-                            setIsLoading(false);
-                          }
-                        } else {
-                          setItems([...items, ...generatedItems]);
-                        }
-                      }} />
-                    )}
-                  </div>
-
-                  {items.length > 0 && (
-                    <div className="flex flex-col gap-2 mb-3">
-                      {items.map((item, idx) => (
-                        <div
-                          key={item.id || idx}
-                          className="flex justify-between items-center text-sm border p-2 rounded-md bg-muted/20"
-                        >
-                          <span className="flex-1 truncate pr-2">
-                            {item.description}
-                          </span>
-                          <div className="flex items-center gap-3">
-                            <span className="font-medium text-xs">
-                              {item.quantity && item.rate ? `${item.quantity} x ${formatMoney(item.rate, currency)} = ` : ""}
-                              {formatMoney(item.price, currency)}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                if (hasInvoices || isSowSigned) return;
-                                if (editingId && item.id) {
-                                  setItemRemoveConfirm({ idx, item });
-                                } else {
-                                  setItems(items.filter((_, i) => i !== idx));
-                                  toast.success("Item removed");
-                                }
-                              }}
-                              className="text-red-500 hover:text-red-700 text-[10px] font-bold px-1 disabled:opacity-50"
-                              title="Remove"
-                              disabled={hasInvoices || isSowSigned}
-                            >
-                              ✕
-                            </button>
-                          </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="terms">
+                            {isSowLocked || isSowSigned ? "Terms & Conditions (SOW/Contract) - Locked" : "Terms & Conditions (SOW/Contract)"}
+                          </Label>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsTosEditorOpen(true)}
+                            className="h-6 px-2 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/50"
+                          >
+                            <Maximize2 className="w-3 h-3 mr-1" />
+                            {isSowLocked || isSowSigned ? "Full Screen View" : "Full Screen Edit"}
+                          </Button>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                        <p className="text-xs text-muted-foreground">
+                          If provided, the client must digitally accept these terms
+                          before they can pay the invoice.
+                        </p>
 
-                  <div className="flex flex-col md:grid md:grid-cols-[3fr_1fr_1.5fr_1.5fr_auto] gap-2 md:items-start items-stretch">
-                    <Input
-                      placeholder="Task description..."
-                      value={newItemDesc}
-                      onChange={(e) => setNewItemDesc(e.target.value)}
-                      disabled={hasInvoices || isSowSigned}
-                      maxLength={120}
-                      className="text-sm h-9"
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Qty"
-                      value={newItemQty}
-                      onChange={(e) => setNewItemQty(e.target.value)}
-                      disabled={hasInvoices || isSowSigned}
-                      className="text-sm h-9"
-                    />
-                    <NumericFormat
-                      value={newItemRate}
-                      onValueChange={(values) => setNewItemRate(values.value)}
-                      disabled={hasInvoices || isSowSigned}
-                      placeholder="Rate"
-                      thousandSeparator="."
-                      decimalSeparator=","
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                    />
-                    <NumericFormat
-                      value={newItemPrice}
-                      onValueChange={(values) => setNewItemPrice(values.value)}
-                      disabled={hasInvoices || isSowSigned}
-                      placeholder="Total Price"
-                      thousandSeparator="."
-                      decimalSeparator=","
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      disabled={!newItemDesc || !newItemPrice || hasInvoices || isSowSigned}
-                      onClick={async () => {
-                        if (editingId) {
-                          try {
-                            const res = await fetch(
-                              `/api/projects/${editingId}/items`,
-                              {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  description: newItemDesc,
-                                  price: newItemPrice,
-                                  quantity: newItemQty || null,
-                                  rate: newItemRate || null,
-                                }),
-                              },
-                            );
-                            if (res.ok) {
-                              const data = await res.json();
-                              setItems([
-                                ...items,
-                                {
-                                  id: data.item.id,
-                                  description: data.item.description,
-                                  price: String(data.item.price),
-                                  quantity: data.item.quantity ? String(data.item.quantity) : null,
-                                  rate: data.item.rate ? String(data.item.rate) : null,
-                                },
-                              ]);
-                              setTotalPrice(String(data.projectTotal));
-                              setNewItemDesc("");
-                              setNewItemQty("");
-                              setNewItemRate("");
-                              setNewItemPrice("");
-                            } else {
-                              const errData = await res
-                                .json()
-                                .catch(() => ({}));
-                              toast.error(
-                                errData.error || "Failed to add item.",
-                              );
+                        <div className="mb-2">
+                          <Select
+                            disabled={sowTemplates.length === 0 || isSowLocked || isSowSigned}
+                            onValueChange={(val) => {
+                              if (!val) return;
+                              const tpl = sowTemplates.find(t => t.id === val);
+                              if (tpl) {
+                                if (terms) {
+                                  setSowTemplateConfirm(tpl.content);
+                                } else {
+                                  setTerms(tpl.content);
+                                }
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="text-sm h-8 mt-1 border-dashed bg-slate-50 dark:bg-slate-900 border-slate-300">
+                              <SelectValue placeholder={sowTemplates.length === 0 ? "No templates created yet" : "Load from Template..."} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {sowTemplates.map(t => (
+                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <textarea
+                          id="terms"
+                          rows={4}
+                          value={terms}
+                          disabled={isSowLocked || isSowSigned}
+                          onChange={(e) => setTerms(e.target.value)}
+                          className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          placeholder="e.g. 1. Revisions are limited to 2 rounds. 2. Payments are non-refundable."
+                        />
+                        {(isSowLocked || isSowSigned) && (
+                          <p className="text-[10px] text-amber-600 font-medium">
+                            Terms cannot be edited because {isSowSigned ? "the client has already signed the SOW" : "a payment has already been made"}.
+                          </p>
+                        )}
+                      </div>
+
+                    </TabsContent>
+
+                    <TabsContent value="finance" className="space-y-5">
+                      {isFinancialLocked && (
+                        <div className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                          <p>
+                            {isSowSigned
+                              ? "The client has signed the SOW, so billing, pricing, and items are read-only."
+                              : "An invoice already exists, so billing, pricing, and items are read-only. Delete the unpaid invoice to change them."}
+                          </p>
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <Label id="billingModeLabel">Billing Mode</Label>
+                        <div role="radiogroup" aria-labelledby="billingModeLabel" className="grid grid-cols-2 gap-3">
+                          {([
+                            { value: "SIMPLE", label: "Simple", hint: "DP + full payment" },
+                            { value: "MILESTONE", label: "Milestone", hint: "Per-stage invoicing" },
+                          ] as const).map((option) => (
+                            <label
+                              key={option.value}
+                              className={`relative flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-[background-color,border-color,box-shadow,transform] duration-150 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring ${billingMode === option.value ? "border-primary ring-1 ring-primary" : "hover:bg-muted/50"} ${isFinancialLocked ? "cursor-not-allowed opacity-60" : "active:scale-[0.99]"}`}
+                            >
+                              <input
+                                type="radio"
+                                name="billingMode"
+                                value={option.value}
+                                checked={billingMode === option.value}
+                                onChange={() => setBillingMode(option.value)}
+                                disabled={isFinancialLocked}
+                                className="sr-only"
+                              />
+                              <div className="text-sm">
+                                <div className="font-medium">{option.label}</div>
+                                <div className="text-xs text-muted-foreground">{option.hint}</div>
+                              </div>
+                              {billingMode === option.value && (
+                                <Check className="ml-auto h-4 w-4 text-primary" />
+                              )}
+                            </label>
+                          ))}
+                        </div>
+                        {billingMode === "MILESTONE" && (
+                          <p className="text-[10px] text-muted-foreground">
+                            Tip: define the full plan (sum = 100%) before tagging any milestone — the plan locks after the first invoice.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="currency">Currency</Label>
+                          <Select value={currency} onValueChange={setCurrency} disabled={hasInvoices}>
+                            <SelectTrigger id="currency">
+                              <SelectValue placeholder="Currency" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getCurrencyOptions().map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-1.5">
+                            <Label htmlFor="language">Language</Label>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>This language is used for generating invoices and statements of work (SOW) translations.</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                          <Select value={language} onValueChange={setLanguage}>
+                            <SelectTrigger id="language" className="truncate">
+                              <SelectValue placeholder="Language" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="id">🇮🇩 ID</SelectItem>
+                              <SelectItem value="en">🇬🇧 EN</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="totalPrice">Total Price</Label>
+                        </div>
+                          <NumericFormat
+                            id="totalPrice"
+                            value={
+                              items.length > 0
+                                ? items.reduce(
+                                  (sum, item) => sum + Number(item.price),
+                                  0,
+                                )
+                                : totalPrice
                             }
-                          } catch {
-                            toast.error("Network error");
-                          }
-                        } else {
-                          setItems([
-                            ...items,
-                            {
-                              description: newItemDesc,
-                              price: newItemPrice,
-                              quantity: newItemQty || null,
-                              rate: newItemRate || null
-                            },
-                          ]);
-                          setNewItemDesc("");
-                          setNewItemQty("");
-                          setNewItemRate("");
-                          setNewItemPrice("");
-                        }
-                      }}
-                      className="h-9 whitespace-nowrap"
-                    >
-                      Add
-                    </Button>
-                  </div>
+                            onValueChange={(values) => setTotalPrice(values.value)}
+                            required
+                            disabled={items.length > 0 || hasInvoices || isSowSigned}
+                            placeholder={
+                              items.length > 0 ? "Auto-calculated" : "1,000"
+                            }
+                            thousandSeparator="."
+                            decimalSeparator=","
+                            prefix={`${getCurrencySymbol(currency)} `}
+                            className={moneyFieldClass}
+                          />
+                        </div>
+                        {billingMode === "MILESTONE" ? (
+                          <div className="col-span-2 space-y-2">
+                            <MilestonePlanBuilder
+                              totalPrice={Number(totalPrice) || 0}
+                              currency={currency}
+                              initial={milestoneRows}
+                              onChange={setMilestoneRows}
+                            />
+                          </div>
+                        ) : (
+                        <div className="space-y-2">
+                          <Label htmlFor="dpAmount">DP Amount (Optional)</Label>
+                          <NumericFormat
+                            id="dpAmount"
+                            value={dpAmount}
+                            onValueChange={(values) => setDpAmount(values.value)}
+                            disabled={hasInvoices || isSowSigned}
+                            placeholder="Enter DP Amount"
+                            thousandSeparator="."
+                            decimalSeparator=","
+                            prefix={`${getCurrencySymbol(currency)} `}
+                            className={moneyFieldClass}
+                          />
+                        </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="taxName">Tax Name {Number(taxRate) > 0 ? "" : "(Optional)"}</Label>
+                          <Input
+                            id="taxName"
+                            value={taxName}
+                            onChange={(e) => setTaxName(e.target.value)}
+                            placeholder="e.g. PPN, VAT"
+                            required={Number(taxRate) > 0}
+                            disabled={hasInvoices || isSowSigned}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="taxRate">Tax Rate % (Optional)</Label>
+                          <NumericFormat
+                            id="taxRate"
+                            value={taxRate}
+                            onValueChange={(values) => setTaxRate(values.value)}
+                            disabled={hasInvoices || isSowSigned}
+                            placeholder="e.g. 11"
+                            allowNegative={false}
+                            className={moneyFieldClass}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 pt-2 border-t mt-4 text-sm">
+                        <div className="flex items-center justify-between">
+                          <div className="mr-2">
+                            <Label>
+                              Project Scope / Items {editingId ? "" : "(Optional)"}
+                            </Label>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Adding items will automatically calculate the Total Price.
+                            </p>
+                          </div>
+                          {!hasInvoices && !isSowSigned && (
+                            <CostEstimator currency={currency} onApply={async (generatedItems) => {
+                              if (editingId) {
+                                setIsLoading(true);
+                                try {
+                                  let updatedItems = [...items];
+                                  let currentTotal = Number(totalPrice);
+                                  for (const gItem of generatedItems) {
+                                    const res = await fetch(`/api/projects/${editingId}/items`, {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({
+                                        description: gItem.description,
+                                        price: gItem.price,
+                                        quantity: gItem.quantity,
+                                        rate: gItem.rate,
+                                      }),
+                                    });
+                                    if (res.ok) {
+                                      const data = await res.json();
+                                      updatedItems.push({
+                                        id: data.item.id,
+                                        description: data.item.description,
+                                        price: String(data.item.price),
+                                        quantity: data.item.quantity ? String(data.item.quantity) : null,
+                                        rate: data.item.rate ? String(data.item.rate) : null,
+                                      });
+                                      currentTotal = data.projectTotal;
+                                    }
+                                  }
+                                  setItems(updatedItems);
+                                  setTotalPrice(String(currentTotal));
+                                  toast.success("Estimated items created successfully");
+                                } catch (err) {
+                                  toast.error("Failed to save estimated items");
+                                } finally {
+                                  setIsLoading(false);
+                                }
+                              } else {
+                                setItems([...items, ...generatedItems]);
+                              }
+                            }} />
+                          )}
+                        </div>
+
+                        {items.length > 0 && (
+                          <div className="flex flex-col gap-2 mb-3">
+                            {items.map((item, idx) => (
+                              <div
+                                key={item.id || idx}
+                                className="flex justify-between items-center text-sm border p-2 rounded-md bg-muted/20"
+                              >
+                                <span className="flex-1 truncate pr-2">
+                                  {item.description}
+                                </span>
+                                <div className="flex items-center gap-3">
+                                  <span className="font-medium text-xs">
+                                    {item.quantity && item.rate ? `${item.quantity} x ${formatMoney(item.rate, currency)} = ` : ""}
+                                    {formatMoney(item.price, currency)}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    aria-label={`Remove ${item.description}`}
+                                    onClick={async () => {
+                                      if (hasInvoices || isSowSigned) return;
+                                      if (editingId && item.id) {
+                                        setItemRemoveConfirm({ idx, item });
+                                      } else {
+                                        setItems(items.filter((_, i) => i !== idx));
+                                        toast.success("Item removed");
+                                      }
+                                    }}
+                                    className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                                    title="Remove"
+                                    disabled={hasInvoices || isSowSigned}
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+                          <div className="col-span-2 space-y-1 sm:col-span-4">
+                            <Label htmlFor="itemDesc" className="text-xs font-normal text-muted-foreground">
+                              Description
+                            </Label>
+                            <Input
+                              id="itemDesc"
+                              placeholder="Task description..."
+                              value={newItemDesc}
+                              onChange={(e) => setNewItemDesc(e.target.value)}
+                              disabled={hasInvoices || isSowSigned}
+                              maxLength={120}
+                              className="text-sm h-9"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="itemQty" className="text-xs font-normal text-muted-foreground">
+                              Qty
+                            </Label>
+                            <Input
+                              id="itemQty"
+                              type="number"
+                              placeholder="1"
+                              value={newItemQty}
+                              onChange={(e) => setNewItemQty(e.target.value)}
+                              disabled={hasInvoices || isSowSigned}
+                              className="text-sm h-9"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="itemRate" className="text-xs font-normal text-muted-foreground">
+                              Rate
+                            </Label>
+                            <NumericFormat
+                              id="itemRate"
+                              value={newItemRate}
+                              onValueChange={(values) => setNewItemRate(values.value)}
+                              disabled={hasInvoices || isSowSigned}
+                              placeholder="0"
+                              thousandSeparator="."
+                              decimalSeparator=","
+                              className={moneyFieldClass}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="itemPrice" className="text-xs font-normal text-muted-foreground">
+                              Total
+                            </Label>
+                            <NumericFormat
+                              id="itemPrice"
+                              value={newItemPrice}
+                              onValueChange={(values) => setNewItemPrice(values.value)}
+                              disabled={hasInvoices || isSowSigned}
+                              placeholder="0"
+                              thousandSeparator="."
+                              decimalSeparator=","
+                              className={moneyFieldClass}
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            disabled={!newItemDesc || !newItemPrice || hasInvoices || isSowSigned}
+                            onClick={async () => {
+                              if (editingId) {
+                                try {
+                                  const res = await fetch(
+                                    `/api/projects/${editingId}/items`,
+                                    {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({
+                                        description: newItemDesc,
+                                        price: newItemPrice,
+                                        quantity: newItemQty || null,
+                                        rate: newItemRate || null,
+                                      }),
+                                    },
+                                  );
+                                  if (res.ok) {
+                                    const data = await res.json();
+                                    setItems([
+                                      ...items,
+                                      {
+                                        id: data.item.id,
+                                        description: data.item.description,
+                                        price: String(data.item.price),
+                                        quantity: data.item.quantity ? String(data.item.quantity) : null,
+                                        rate: data.item.rate ? String(data.item.rate) : null,
+                                      },
+                                    ]);
+                                    setTotalPrice(String(data.projectTotal));
+                                    setNewItemDesc("");
+                                    setNewItemQty("");
+                                    setNewItemRate("");
+                                    setNewItemPrice("");
+                                  } else {
+                                    const errData = await res
+                                      .json()
+                                      .catch(() => ({}));
+                                    toast.error(
+                                      errData.error || "Failed to add item.",
+                                    );
+                                  }
+                                } catch {
+                                  toast.error("Network error");
+                                }
+                              } else {
+                                setItems([
+                                  ...items,
+                                  {
+                                    description: newItemDesc,
+                                    price: newItemPrice,
+                                    quantity: newItemQty || null,
+                                    rate: newItemRate || null
+                                  },
+                                ]);
+                                setNewItemDesc("");
+                                setNewItemQty("");
+                                setNewItemRate("");
+                                setNewItemPrice("");
+                              }
+                            }}
+                            className="h-9 w-full whitespace-nowrap self-end sm:w-auto"
+                          >
+                            Add
+                          </Button>
+                        </div>
+                      </div>
+
+                    </TabsContent>
+                  </Tabs>
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="px-6 py-3 border-t bg-background/95 backdrop-blur sm:items-center">
+                  <div className="mr-auto flex items-baseline gap-2 text-sm">
+                    <span className="text-muted-foreground">Total</span>
+                    <span className="font-semibold tabular-nums">
+                      {formatMoney(formTotal, currency)}
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setIsDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
                   <Button type="submit" disabled={isLoading}>
                     {isLoading ? "Saving..." : "Save changes"}
                   </Button>
