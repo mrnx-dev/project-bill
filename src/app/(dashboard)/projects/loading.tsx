@@ -38,7 +38,7 @@ export default function ProjectsLoading() {
                 <TableHead>Deadline</TableHead>
                 <TableHead>Total Price</TableHead>
                 <TableHead>DP Amount</TableHead>
-                <TableHead>SOW Status</TableHead>
+                <TableHead>Contract Status</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>

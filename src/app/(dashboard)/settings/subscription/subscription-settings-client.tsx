@@ -222,7 +222,7 @@ export function SubscriptionSettingsClient({ isSelfHosted }: { isSelfHosted: boo
             <UsageBar label="Total Clients" current={usage.clients.current} limit={usage.clients.limit} />
             <UsageBar label="Active Projects" current={usage.activeProjects.current} limit={usage.activeProjects.limit} />
             <UsageBar label="Recurring Templates" current={usage.recurringTemplates.current} limit={usage.recurringTemplates.limit} />
-            <UsageBar label="SOW Templates" current={usage.sowTemplates.current} limit={usage.sowTemplates.limit} />
+            <UsageBar label="Contract Templates" current={usage.sowTemplates.current} limit={usage.sowTemplates.limit} />
           </CardContent>
         </Card>
       </div>

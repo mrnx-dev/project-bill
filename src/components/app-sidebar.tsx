@@ -93,7 +93,7 @@ const navGroups: NavGroup[] = [
     items: [
       { title: "General", url: "/settings", icon: Settings },
       { title: "Team", url: "/settings/team", icon: Users },
-      { title: "SOW Templates", url: "/settings/sow-template", icon: NotepadTextDashed },
+      { title: "Contract Templates", url: "/settings/sow-template", icon: NotepadTextDashed },
       { title: "Subscription", url: "/settings/subscription", icon: FileText },
       { title: "AI Assistant", url: "/settings/agent", icon: Bot },
     ],

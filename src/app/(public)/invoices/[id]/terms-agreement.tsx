@@ -16,21 +16,21 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
-type TranslationKey = "validContract" | "signedOn" | "printSave" | "digitalAgreementRequired" | "reviewSignDescription" | "reviewSignBtn" | "sowTermsTitle" | "sowTermsDescription" | "scrollToBottom" | "acknowledgeText" | "termsConditions" | "statementOfWork" | "cancel" | "signAgreement" | "signing";
+type TranslationKey = "validContract" | "signedOn" | "printSave" | "digitalAgreementRequired" | "reviewSignDescription" | "reviewSignBtn" | "sowTermsTitle" | "sowTermsDescription" | "scrollToBottom" | "acknowledgeText" | "statementOfWork" | "cancel" | "signAgreement" | "signing";
 
-const TRANSLATIONS: Record<string, Record<TranslationKey, string>> = {
+// The acceptance copy, exported so tests can pin it (one document, one acknowledge token).
+export const TERMS_AGREEMENT_COPY: Record<"en" | "id", Record<TranslationKey, string>> = {
   en: {
     validContract: "Valid Digital Contract Formed",
     signedOn: "Digitally signed and accepted on",
     printSave: "Print / Save PDF",
     digitalAgreementRequired: "Digital Agreement Required",
-    reviewSignDescription: "A formal Statement of Work (SOW) has been drafted for this project. Please review and securely sign the terms to unlock the payment module.",
-    reviewSignBtn: "Review & Sign SOW",
-    sowTermsTitle: "Statement of Work & Terms",
+    reviewSignDescription: "A Statement of Work has been drafted for this project. Please review and securely sign the contract to unlock the payment module.",
+    reviewSignBtn: "Review & Sign Document",
+    sowTermsTitle: "Statement of Work",
     sowTermsDescription: "This is a legally binding mutual agreement. Please review the detailed scope and terms carefully.",
     scrollToBottom: "Scroll to the bottom of the document to accept",
-    acknowledgeText: "I acknowledge that I have read and agree to all the [TERMS] and [SOW] outlined above. My digital signature below serves as a formal, legally binding acceptance of this agreement.",
-    termsConditions: "Terms & Conditions",
+    acknowledgeText: "I acknowledge that I have read and agree to the entire [SOW] outlined above. My digital signature below serves as a formal, legally binding acceptance of this agreement.",
     statementOfWork: "Statement of Work",
     cancel: "Cancel",
     signAgreement: "Sign Agreement",
@@ -41,14 +41,13 @@ const TRANSLATIONS: Record<string, Record<TranslationKey, string>> = {
     signedOn: "Ditandatangani secara digital dan disetujui pada",
     printSave: "Cetak / Simpan PDF",
     digitalAgreementRequired: "Persetujuan Digital Diperlukan",
-    reviewSignDescription: "Perjanjian Kerja (SOW) formal telah disusun untuk proyek ini. Silakan tinjau dan tandatangani syarat secara aman untuk membuka modul pembayaran.",
-    reviewSignBtn: "Tinjau & Tandatangani SOW",
-    sowTermsTitle: "Perjanjian Kerja (SOW) & Syarat",
+    reviewSignDescription: "Surat Perjanjian Kerja (SPK) telah disusun untuk proyek ini. Silakan tinjau dan tandatangani kontrak secara aman untuk membuka modul pembayaran.",
+    reviewSignBtn: "Tinjau & Tandatangani SPK",
+    sowTermsTitle: "Surat Perjanjian Kerja",
     sowTermsDescription: "Ini adalah perjanjian bersama yang mengikat secara hukum. Harap tinjau cakupan detail dan ketentuan secara saksama.",
     scrollToBottom: "Gulir ke bagian bawah dokumen untuk menyetujui",
-    acknowledgeText: "Saya menyatakan telah membaca dan menyetujui semua [TERMS] dan [SOW] yang diuraikan di atas. Tanda tangan digital saya di bawah ini berfungsi sebagai penerimaan yang sah secara hukum dan mengikat secara formal atas perjanjian ini.",
-    termsConditions: "Syarat & Ketentuan",
-    statementOfWork: "Perjanjian Kerja",
+    acknowledgeText: "Saya menyatakan telah membaca dan menyetujui seluruh [SOW] yang diuraikan di atas. Tanda tangan digital saya di bawah ini berfungsi sebagai penerimaan yang sah secara hukum dan mengikat secara formal atas perjanjian ini.",
+    statementOfWork: "Surat Perjanjian Kerja",
     cancel: "Batal",
     signAgreement: "Tandatangani Perjanjian",
     signing: "Menandatangani..."
@@ -83,7 +82,7 @@ export function TermsAgreement({
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const t = TRANSLATIONS[language];
+  const t = TERMS_AGREEMENT_COPY[language];
   const dateLocale = language === "id" ? localeId : localeEn;
   const dateFormat = language === "id" ? "d MMMM yyyy, HH:mm" : "MMMM d, yyyy, h:mm a";
 
@@ -134,17 +133,10 @@ export function TermsAgreement({
 
   // Helper function to render acknowledge text with bold elements
   const renderAcknowledgeText = () => {
-    const parts = t.acknowledgeText.split(/(\[TERMS\]|\[SOW\])/g);
+    const parts = t.acknowledgeText.split(/(\[SOW\])/g);
     return (
       <span className={`text-sm leading-relaxed ${hasScrolledToBottom ? "text-slate-700" : "text-slate-400"}`}>
         {parts.map((part, index) => {
-          if (part === "[TERMS]") {
-            return (
-              <strong key={index} className={hasScrolledToBottom ? "text-slate-900" : "text-slate-500"}>
-                {t.termsConditions}
-              </strong>
-            );
-          }
           if (part === "[SOW]") {
             return (
               <strong key={index} className={hasScrolledToBottom ? "text-slate-900" : "text-slate-500"}>

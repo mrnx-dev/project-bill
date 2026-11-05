@@ -158,7 +158,7 @@ function getEntityIcon(entityType: string | null) {
   }
 }
 
-/** Format entityType for display: "INVOICE" → "Invoice", "SOW_TEMPLATE" → "SOW Template" */
+/** Format entityType for display: "INVOICE" → "Invoice", "SOW_TEMPLATE" → "Contract Template" */
 function formatEntityType(entityType: string): string {
   return entityType
     .split("_")

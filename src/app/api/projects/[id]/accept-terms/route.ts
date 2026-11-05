@@ -100,8 +100,8 @@ export async function PATCH(
       // Fetch project minimal title for notification
       const p = await prisma.project.findUnique({ where: { id }, select: { title: true } });
       await createNotification({
-        title: "SOW Signed",
-        message: `Client accepted SOW for project "${p?.title}".`,
+        title: "Contract Signed",
+        message: `Client accepted the contract for project "${p?.title}".`,
         type: "sow_signed",
         linkUrl: `/projects`,
         organizationId: project.organizationId,

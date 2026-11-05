@@ -97,10 +97,10 @@ export default function SOWTemplateListPage() {
                         <div className="p-2.5 bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-slate-100 dark:border-zinc-700">
                             <NotepadTextDashed className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                         </div>
-                        Agreement Templates
+                        Contract Templates
                     </h3>
                     <p className="text-sm text-slate-600 dark:text-zinc-400 mt-2 max-w-xl leading-relaxed">
-                        Standardize your agreements. Create reusable SOW templates tailored to different services, languages, or client tiers.
+                        Standardize your contracts. Create reusable contract templates tailored to different services, languages, or client tiers.
                     </p>
                 </div>
                 <div className="relative z-10 flex-shrink-0 w-full md:w-auto flex flex-col sm:flex-row gap-2">
@@ -182,7 +182,7 @@ export default function SOWTemplateListPage() {
             <UpgradeDialog 
                 isOpen={isUpgradeLimitOpen} 
                 onOpenChange={setIsUpgradeLimitOpen}
-                resourceName="Agreement Templates"
+                resourceName="Contract Templates"
                 limit={currentLimit}
             />
         </div>

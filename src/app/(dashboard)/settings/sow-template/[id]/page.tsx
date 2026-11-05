@@ -74,7 +74,7 @@ function SOWTemplateEditor() {
 
             if (!res.ok) throw new Error("Failed to save SOW template");
 
-            toast.success("SOW Template saved successfully!");
+            toast.success("Contract template saved successfully!");
             router.push("/settings/sow-template");
         } catch (error) {
             console.error(error);

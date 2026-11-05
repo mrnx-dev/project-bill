@@ -62,7 +62,7 @@ export const PATCH = withTenantRls(async (request, ctx, tx) => {
 
       if (isTryingToChangeCoreFields) {
         return NextResponse.json(
-          { error: "Cannot modify project details because the SOW has been signed." },
+          { error: "Cannot modify project details because the contract has been signed." },
           { status: 403 },
         );
       }

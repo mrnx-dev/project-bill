@@ -199,6 +199,13 @@ describe("signed-document lock", () => {
     expect((await res.json()).error).toBe(SIGN_MSG);
   });
 
+  test("the printed contract body cannot be edited after signing", async () => {
+    seedProject({ termsAcceptedAt: new Date(), terms: "## 1. Klausul" });
+    const { PATCH } = await import("@/app/api/projects/[id]/route");
+    const res = (await PATCH(req({ terms: "## 1. Klausul diubah" }, "PATCH"), ctx())) as any;
+    expect(res.status).toBe(403);
+  });
+
   test("a signed project cannot be deleted even when its invoices are paid", async () => {
     seedProject({ termsAcceptedAt: new Date() });
     world.invoices = [{ projectId: "p1", status: "PAID" }];

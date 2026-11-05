@@ -593,7 +593,7 @@ const termsRef = useRef<HTMLTextAreaElement>(null);
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <span className="text-sm leading-none font-medium select-none">
-                            Terms &amp; Conditions (SOW/Contract)
+                            Contract
                           </span>
                           <p className="mt-1 text-xs text-muted-foreground">
                             {terms
@@ -646,7 +646,7 @@ const termsRef = useRef<HTMLTextAreaElement>(null);
                           <Info className="mt-0.5 h-4 w-4 shrink-0" />
                           <p>
                             {isSowSigned
-                              ? "The client has signed the SOW, so billing, pricing, and items are read-only."
+                              ? "The client has signed the contract, so billing, pricing, and items are read-only."
                               : "An invoice already exists, so billing, pricing, and items are read-only. Delete the unpaid invoice to change them."}
                           </p>
                         </div>
@@ -713,7 +713,7 @@ const termsRef = useRef<HTMLTextAreaElement>(null);
                                   <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>This language is used for generating invoices and statements of work (SOW) translations.</p>
+                                  <p>This language is used for generating invoices and contract translations.</p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>

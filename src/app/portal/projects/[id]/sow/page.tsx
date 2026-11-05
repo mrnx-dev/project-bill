@@ -35,7 +35,7 @@ export default async function PortalProjectSowPage({
         }
       `}</style>
       <div className="flex items-center justify-between print:hidden">
-        <h1 className="text-2xl font-bold">Statement of Work — {sow.title}</h1>
+        <h1 className="text-2xl font-bold">Contract — {sow.title}</h1>
         <SowPrintButton />
       </div>
       <Card className="print:border-0 print:shadow-none bg-white">
