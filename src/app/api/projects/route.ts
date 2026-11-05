@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { withTenantRls, getTenantCtx } from "@/lib/rls";
 import { createAuditLog } from "@/lib/audit-logger";
 import { projectSchema } from "@/lib/validations";
+import { generateContractNumber, withContractNumberRetry } from "@/lib/invoice-utils";
 
 export const GET = withTenantRls(async (request: Request, _ctx, tx) => {
   try {
@@ -97,11 +98,6 @@ export const POST = withTenantRls(async (request: Request, _ctx, tx) => {
       status: "TO_DO",
       organizationId: orgId,
     };
-
-    projectData.terms = data.terms ?? null;
-    projectData.taxName = data.taxName ?? null;
-    projectData.taxRate = data.taxRate ?? null;
-
     if (data.items && data.items.length > 0) {
       projectData.items = {
         create: data.items.map((i) => ({
@@ -114,10 +110,27 @@ export const POST = withTenantRls(async (request: Request, _ctx, tx) => {
       };
     }
 
-    const project = await tx.project.create({
-      data: projectData,
-      include: { client: true, invoices: true, items: true },
+    projectData.terms = data.terms ?? null;
+    projectData.taxName = data.taxName ?? null;
+    projectData.taxRate = data.taxRate ?? null;
+
+    // Retry once on P2002: a duplicate contract number from a deploy outside the advisory
+    // lock would otherwise 500 the whole project creation.
+    const project = await tx.$transaction(async (numTx) => {
+      await withContractNumberRetry(orgId, numTx, async (contractNumber) => {
+        await numTx.project.create({
+          data: { ...projectData, contractNumber },
+        });
+      });
+      return numTx.project.findFirst({
+        where: { organizationId: orgId, title: projectData.title },
+        orderBy: { createdAt: "desc" },
+        include: { client: true, invoices: true, items: true },
+      });
     });
+    if (!project) {
+      throw new Error("Project vanished inside its own creation transaction");
+    }
 
     await createAuditLog({
       userId,

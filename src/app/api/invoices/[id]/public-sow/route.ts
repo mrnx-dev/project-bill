@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { RateLimiter } from "@/lib/rate-limit";
+import { toContractDocumentProps } from "@/lib/contract-document-mapper";
 
 // Public endpoint (no session) — IP rate limit to curb UUID enumeration.
 const limiter = new RateLimiter({ limit: 60, windowMs: 60 * 1000 });
@@ -19,24 +20,20 @@ export async function GET(
         const resolvedParams = await params;
         const id = resolvedParams.id; // invoice id
 
-        // Select only the fields the SOW print page consumes (client-side fetch
-        // at src/app/(public)/invoices/[id]/sow/print/page.tsx:52). The audit-
-        // trail fields (termsAccepted*) are part of the SOW document itself, not
-        // a leak; the leak we are closing is the full `client` object.
         const invoice = await prisma.invoice.findUnique({
             where: { id },
             select: {
-                id: true,
+                organizationId: true,
                 project: {
-                    select: {
-                        id: true,
-                        title: true,
-                        terms: true,
-                        language: true,
-                        termsAcceptedAt: true,
-                        termsAcceptedUserAgent: true,
-                        termsAcceptedSessionId: true,
-                        client: { select: { name: true } },
+                    include: {
+                        items: {
+                            select: { description: true, quantity: true, rate: true, price: true },
+                        },
+                        milestones: {
+                            orderBy: { order: "asc" },
+                            select: { name: true, percentage: true, amount: true, dueDate: true },
+                        },
+                        client: { select: { name: true, email: true, phone: true } },
                     },
                 },
             },
@@ -46,7 +43,7 @@ export async function GET(
             return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
         }
 
-        const project = invoice.project;
+        const { project } = invoice;
 
         if (!project?.terms) {
             return NextResponse.json(
@@ -55,7 +52,28 @@ export async function GET(
             );
         }
 
-        return NextResponse.json(project);
+        const settings = await prisma.settings.findFirst({
+            where: { organizationId: invoice.organizationId },
+            select: {
+                companyName: true,
+                companyAddress: true,
+                companyEmail: true,
+                companyWhatsApp: true,
+            },
+        });
+
+        // Explicit allow-list via the mapper: the only place Decimal/Date become number/string.
+        // Built as a literal object — never select-wide + rest-destructure, which silently leaks
+        // the next column somebody adds.
+        return NextResponse.json(
+            toContractDocumentProps({
+                // After the terms guard, terms is non-null but keeps its type; assert it.
+                project: { ...project, terms: project.terms },
+                provider: settings ?? {
+                    companyName: null, companyAddress: null, companyEmail: null, companyWhatsApp: null,
+                },
+            }),
+        );
     } catch (error) {
         console.error("Failed to fetch public SOW via invoice:", error);
         return NextResponse.json(

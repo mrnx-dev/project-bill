@@ -39,8 +39,12 @@ export function isPublicApi(pathname: string): boolean {
   // /api/invoices/:id/public-sow and /api/invoices/:id/pay are public;
   // /api/invoices/:id and /api/invoices/:id/mark-paid are NOT.
   if (/^\/api\/invoices\/[^/]+\/(public-sow|pay)$/.test(pathname)) return true;
-  // /api/projects/:id/public-sow is public
-  if (/^\/api\/projects\/[^/]+\/public-sow$/.test(pathname)) return true;
+  // The client signs from an anonymous public invoice page; the handler requires a matching
+  // invoiceId and refuses when terms are missing or already accepted.
+  if (/^\/api\/projects\/[^/]+\/accept-terms$/.test(pathname)) return true;
+  // The client signs from an anonymous public invoice page; the handler requires a matching
+  // invoiceId and refuses when terms are missing or already accepted.
+  if (/^\/api\/projects\/[^/]+\/accept-terms$/.test(pathname)) return true;
   return false;
 }
 

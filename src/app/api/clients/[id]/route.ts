@@ -20,6 +20,18 @@ export const PATCH = withTenantRls(async (request, ctx, tx) => {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
+    // A client's identity is frozen once any of its projects has been signed.
+    const signed = await tx.project.findFirst({
+      where: { clientId: id, organizationId: orgId, termsAcceptedAt: { not: null } },
+      select: { id: true },
+    });
+    if (signed && (name !== undefined || email !== undefined || phone !== undefined)) {
+      return NextResponse.json(
+        { error: "Cannot modify the contract after it has been signed." },
+        { status: 403 },
+      );
+    }
+
     const client = await tx.client.update({
       where: { id, organizationId: orgId },
       data: { name, email, phone },

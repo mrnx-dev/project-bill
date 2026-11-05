@@ -3,12 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, ShieldCheck, FileCheck2, CheckCircle2, Download } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
-import remarkGfm from "remark-gfm";
-import remarkBreaks from "remark-breaks";
 import { format } from "date-fns";
 import { id as localeId, enUS as localeEn } from "date-fns/locale";
+import { ContractDocument, type ContractDocumentProps } from "@/components/contract-document";
 import {
   Dialog,
   DialogContent,
@@ -60,7 +57,9 @@ const TRANSLATIONS: Record<string, Record<TranslationKey, string>> = {
 
 interface TermsAgreementProps {
   projectId: string;
-  terms: string;
+  invoiceId: string;
+  // Required, not optional: optional would let the signed text and the printed text drift apart.
+  document: ContractDocumentProps;
   termsAcceptedAt: string | null;
   language?: "en" | "id";
   children: React.ReactNode;
@@ -68,7 +67,8 @@ interface TermsAgreementProps {
 
 export function TermsAgreement({
   projectId,
-  terms,
+  invoiceId,
+  document,
   termsAcceptedAt,
   language = "en",
   children,
@@ -112,6 +112,8 @@ export function TermsAgreement({
     try {
       const res = await fetch(`/api/projects/${projectId}/accept-terms`, {
         method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId }),
       });
       const data = await res.json();
 
@@ -174,12 +176,12 @@ export function TermsAgreement({
           </div>
           <div className="ml-auto flex items-center gap-3">
             <a
-              href={`/invoices/${projectId}/sow/print`}
+              href={`/invoices/${invoiceId}/sow/print`}
               target="_blank"
               onClick={(e) => {
                 // Prevent default navigation initially, use window.open
                 e.preventDefault();
-                window.open(`/invoices/${projectId}/sow/print`, '_blank');
+                window.open(`/invoices/${invoiceId}/sow/print`, '_blank');
               }}
               className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-xs font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 disabled:pointer-events-none disabled:opacity-50 bg-white border border-emerald-200 hover:bg-emerald-50 text-emerald-700 h-8 px-3 py-1 shadow-sm"
             >
@@ -237,11 +239,8 @@ export function TermsAgreement({
             ref={scrollContainerRef}
           >
             <div className="bg-white border rounded-lg shadow-sm min-h-[400px]">
-              <div className="p-6 md:p-8 prose prose-sm md:prose-base max-w-none text-slate-700 leading-relaxed text-justify">
-                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} rehypePlugins={[rehypeSanitize]}>
-                  {terms}
-                </ReactMarkdown>
-              </div>
+              {/* Scroll gate: this outer div is the scrolling element — stay that way, or the checkbox locks */}
+              <ContractDocument {...document} />
             </div>
           </div>
 

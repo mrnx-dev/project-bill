@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { SPK_STARTER_TEMPLATE } from "@/lib/contract-template";
 import { Button } from "@/components/ui/button";
 import { Loader2, Save, NotepadTextDashed, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -20,7 +21,8 @@ export default function SOWTemplatePage() {
     const isNew = id === "new";
 
     const [name, setName] = useState("");
-    const [template, setTemplate] = useState("");
+    // Prefill only for a new template — not a useEffect, which would race the fetch for existing ones.
+    const [template, setTemplate] = useState(isNew ? SPK_STARTER_TEMPLATE : "");
     const [isLoading, setIsLoading] = useState(!isNew);
     const [isSaving, setIsSaving] = useState(false);
     const [isPreview, setIsPreview] = useState(false);

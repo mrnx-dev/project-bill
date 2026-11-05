@@ -45,6 +45,14 @@ export const POST = withTenantRls(async (request, ctx, tx) => {
       );
     }
 
+    // Signed contract: scope is frozen.
+    if (project.termsAcceptedAt) {
+      return NextResponse.json(
+        { error: "Cannot modify the contract after it has been signed." },
+        { status: 403 },
+      );
+    }
+
     // 2. Insert the item and update the project's tracked price atomically
     // (atomic via the withTenantRls request transaction)
     const newItem = await tx.projectItem.create({
