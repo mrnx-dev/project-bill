@@ -24,18 +24,18 @@ Pada hari ini, tanggal ____ , para pihak yang tercantum di bawah ini menyepakati
 
 ### 1. Identitas Para Pihak
 
-Pihak Pertama (Pelaksana): Nama {{penyedia.nama}} , alamat {{penyedia.alamat}} , email {{penyedia.email}} , WhatsApp {{penyedia.whatsapp}} .
-Pihak Kedua (Klien): Nama {{klien.nama}} , email {{klien.email}} , telepon {{klien.telepon}} .
+Pihak Pertama (Pelaksana): Nama {{provider.name}} , alamat {{provider.address}} , email {{provider.email}} , WhatsApp {{provider.whatsapp}} .
+Pihak Kedua (Klien): Nama {{client.name}} , email {{client.email}} , telepon {{client.phone}} .
 
-Nomor kontrak: {{nomor}} — dibuat pada {{tanggal}} .
+Nomor kontrak: {{number}} — dibuat pada {{date}} .
 
 ### 2. Lingkup Pekerjaan & Deliverables
 
-Proyek: {{proyek.judul}} .
+Proyek: {{project.title}} .
 
-{{lingkup.tabel}}
+{{scope.table}}
 
-Nilai pekerjaan yang disepakati: {{lingkup.total}} .
+Nilai pekerjaan yang disepakati: {{scope.total}} .
 
 ### 3. Batas Revisi
 
@@ -43,15 +43,15 @@ Revisi dibatasi maksimal ____ putaran; revisi di luar itu dihitung sebagai peker
 
 ### 4. Jadwal & Konsekuensi Keterlambatan
 
-Batas waktu penyelesaian: {{tenggat}} .
+Batas waktu penyelesaian: {{deadline}} .
 
-{{milestone.tabel}}
+{{milestone.table}}
 
 Keterlambatan akibat kelalaian Pelaksana dikenakan ____ per hari; keterlambatan penyampaian data/umpan balik dari Klien menggeser jadwal secara proporsional.
 
 ### 5. Harga & Termin Pembayaran
 
-Total nilai pekerjaan: {{total}} . Pajak {{pajak.nama}} {{pajak.persen}} %: {{pajak.nilai}} . Uang muka: {{dp}} . Pembayaran dilakukan melalui rekening ____ atas nama ____ .
+Total nilai pekerjaan: {{total}} . Pajak {{tax.name}} {{tax.rate}} %: {{tax.amount}} . Uang muka: {{downPayment}} . Pembayaran dilakukan melalui rekening ____ atas nama ____ .
 
 ### 6. Hak Cipta & File Final
 
@@ -83,18 +83,18 @@ On this day, ____ , the parties listed below agree to the following statement of
 
 ### 1. Parties
 
-First Party (Contractor): Name {{penyedia.nama}} , address {{penyedia.alamat}} , email {{penyedia.email}} , WhatsApp {{penyedia.whatsapp}} .
-Second Party (Client): Name {{klien.nama}} , email {{klien.email}} , phone {{klien.telepon}} .
+First Party (Contractor): Name {{provider.name}} , address {{provider.address}} , email {{provider.email}} , WhatsApp {{provider.whatsapp}} .
+Second Party (Client): Name {{client.name}} , email {{client.email}} , phone {{client.phone}} .
 
-Contract number: {{nomor}} — issued on {{tanggal}} .
+Contract number: {{number}} — issued on {{date}} .
 
 ### 2. Scope of Work & Deliverables
 
-Project: {{proyek.judul}} .
+Project: {{project.title}} .
 
-{{lingkup.tabel}}
+{{scope.table}}
 
-Agreed value of the work: {{lingkup.total}} .
+Agreed value of the work: {{scope.total}} .
 
 ### 3. Revision Limit
 
@@ -102,15 +102,15 @@ Revisions are limited to a maximum of ____ rounds; revisions beyond that are tre
 
 ### 4. Schedule & Late-Delivery Consequences
 
-Completion deadline: {{tenggat}} .
+Completion deadline: {{deadline}} .
 
-{{milestone.tabel}}
+{{milestone.table}}
 
 Delay caused by the Contractor's negligence incurs ____ per day; delays in delivering data/feedback by the Client shift the schedule proportionally.
 
 ### 5. Price & Payment Terms
 
-Total value of the work: {{total}} . Tax {{pajak.nama}} {{pajak.persen}} %: {{pajak.nilai}} . Down payment: {{dp}} . Payment is made to bank account ____ under the name ____ .
+Total value of the work: {{total}} . Tax {{tax.name}} {{tax.rate}} %: {{tax.amount}} . Down payment: {{downPayment}} . Payment is made to bank account ____ under the name ____ .
 
 ### 6. Copyright & Final Files
 
@@ -228,61 +228,61 @@ export function renderContractTemplate(template: string, data: ContractTemplateD
     : formatMoney(Number(Math.round((data.totalPrice * data.taxRate / 100 + Number.EPSILON) * 10 ** 2)) / 10 ** 2, data.currency);
 
   const values: Record<string, string> = {
-    "nomor": escapeValue(data.contractNumber ?? "-"),
-    "tanggal": escapeValue(fmtDate(data.createdAt)),
-    "proyek.judul": escapeValue(data.title),
-    "penyedia.nama": escapeValue(data.provider.name),
-    "penyedia.alamat": escapeValue(data.provider.address ?? "-"),
-    "penyedia.email": escapeValue(data.provider.email ?? "-"),
-    "penyedia.whatsapp": escapeValue(data.provider.whatsapp ?? "-"),
-    "klien.nama": escapeValue(data.client.name),
-    "klien.email": escapeValue(data.client.email ?? "-"),
-    "klien.telepon": escapeValue(data.client.phone ?? "-"),
-    "lingkup.tabel": buildItemTable(data.items, data.currency, data.totalPrice, lang),
-    "lingkup.total": formatMoney(data.totalPrice, data.currency),
-    "tenggat": escapeValue(fmtDate(data.deadline)),
-    "milestone.tabel": buildMilestoneTable(data.milestones, data.currency, data.billingMode, fmtDate, lang),
+    "number": escapeValue(data.contractNumber ?? "-"),
+    "date": escapeValue(fmtDate(data.createdAt)),
+    "project.title": escapeValue(data.title),
+    "provider.name": escapeValue(data.provider.name),
+    "provider.address": escapeValue(data.provider.address ?? "-"),
+    "provider.email": escapeValue(data.provider.email ?? "-"),
+    "provider.whatsapp": escapeValue(data.provider.whatsapp ?? "-"),
+    "client.name": escapeValue(data.client.name),
+    "client.email": escapeValue(data.client.email ?? "-"),
+    "client.phone": escapeValue(data.client.phone ?? "-"),
+    "scope.table": buildItemTable(data.items, data.currency, data.totalPrice, lang),
+    "scope.total": formatMoney(data.totalPrice, data.currency),
+    "deadline": escapeValue(fmtDate(data.deadline)),
+    "milestone.table": buildMilestoneTable(data.milestones, data.currency, data.billingMode, fmtDate, lang),
     "total": formatMoney(data.totalPrice, data.currency),
-    "pajak.nama": escapeValue(data.taxName ?? "-"),
-    "pajak.persen": data.taxRate === null || data.taxRate === undefined ? "-" : String(data.taxRate),
-    "pajak.nilai": taxAmount ?? "-",
-    "dp": data.dpAmount === null || data.dpAmount === undefined || data.dpAmount === 0
+    "tax.name": escapeValue(data.taxName ?? "-"),
+    "tax.rate": data.taxRate === null || data.taxRate === undefined ? "-" : String(data.taxRate),
+    "tax.amount": taxAmount ?? "-",
+    "downPayment": data.dpAmount === null || data.dpAmount === undefined || data.dpAmount === 0
       ? "-" : formatMoney(data.dpAmount, data.currency),
   };
 
   // One pass: a value that itself contains {{…}} is never re-expanded.
-  return template.replace(/\{\{([a-z.]+)\}\}/g, (match, key: string) => values[key] ?? match);
+  return template.replace(/\{\{([a-zA-Z.]+)\}\}/g, (match, key: string) => values[key] ?? match);
 }
 
 // 19 tokens for the palette (src/components/placeholder-palette.tsx) and the all-tokens test.
 export const CONTRACT_PLACEHOLDERS: { token: string; group: "document" | "parties" | "project" | "money"; label: string }[] = [
-  { token: "{{nomor}}", group: "document", label: "Nomor dokumen" },
-  { token: "{{tanggal}}", group: "document", label: "Tanggal dokumen" },
-  { token: "{{penyedia.nama}}", group: "parties", label: "Nama penyedia" },
-  { token: "{{penyedia.alamat}}", group: "parties", label: "Alamat penyedia" },
-  { token: "{{penyedia.email}}", group: "parties", label: "Email penyedia" },
-  { token: "{{penyedia.whatsapp}}", group: "parties", label: "WhatsApp penyedia" },
-  { token: "{{klien.nama}}", group: "parties", label: "Nama klien" },
-  { token: "{{klien.email}}", group: "parties", label: "Email klien" },
-  { token: "{{klien.telepon}}", group: "parties", label: "Telepon klien" },
-  { token: "{{proyek.judul}}", group: "project", label: "Judul proyek" },
-  { token: "{{lingkup.tabel}}", group: "project", label: "Tabel lingkup (item)" },
-  { token: "{{tenggat}}", group: "project", label: "Batas waktu" },
-  { token: "{{milestone.tabel}}", group: "project", label: "Tabel milestone" },
-  { token: "{{lingkup.total}}", group: "money", label: "Total nilai" },
-  { token: "{{total}}", group: "money", label: "Total nilai" },
-  { token: "{{pajak.nama}}", group: "money", label: "Nama pajak" },
-  { token: "{{pajak.persen}}", group: "money", label: "Persentase pajak" },
-  { token: "{{pajak.nilai}}", group: "money", label: "Nilai pajak" },
-  { token: "{{dp}}", group: "money", label: "Uang muka" },
+  { token: "{{number}}", group: "document", label: "Document number" },
+  { token: "{{date}}", group: "document", label: "Document date" },
+  { token: "{{provider.name}}", group: "parties", label: "Provider name" },
+  { token: "{{provider.address}}", group: "parties", label: "Provider address" },
+  { token: "{{provider.email}}", group: "parties", label: "Provider email" },
+  { token: "{{provider.whatsapp}}", group: "parties", label: "Provider WhatsApp" },
+  { token: "{{client.name}}", group: "parties", label: "Client name" },
+  { token: "{{client.email}}", group: "parties", label: "Client email" },
+  { token: "{{client.phone}}", group: "parties", label: "Client phone" },
+  { token: "{{project.title}}", group: "project", label: "Project title" },
+  { token: "{{scope.table}}", group: "project", label: "Scope table (items)" },
+  { token: "{{deadline}}", group: "project", label: "Deadline" },
+  { token: "{{milestone.table}}", group: "project", label: "Milestone table" },
+  { token: "{{scope.total}}", group: "money", label: "Total value" },
+  { token: "{{total}}", group: "money", label: "Total value" },
+  { token: "{{tax.name}}", group: "money", label: "Tax name" },
+  { token: "{{tax.rate}}", group: "money", label: "Tax percentage" },
+  { token: "{{tax.amount}}", group: "money", label: "Tax amount" },
+  { token: "{{downPayment}}", group: "money", label: "Down payment" },
 ];
 
 // Five help lines rendered inside the template editor's <details> panel. Concrete, not
 // marketing copy: a tenant reads these while they type.
 export const EDITOR_HELP_LINES: string[] = [
-  "Setiap token {{…}} otomatis diganti dengan data proyek Anda saat dokumen dicetak. Example: {{klien.nama}} becomes the client's name.",
-  "{{lingkup.tabel}} builds the item table (description, qty, rate, price) by itself — you don't write the table.",
-  "A misspelt token (for example {{klien.namaa}}) is printed as-is on the document, on purpose, so the mistake is visible instead of silently blank.",
-  "The document header, contract number/tanggal and the electronic signature block are added automatically and are not editable here.",
+  "Every {{placeholder}} is replaced with your project's data automatically when the document is printed. Example: {{client.name}} becomes the client's name.",
+  "{{scope.table}} builds the item table (description, quantity, rate, price) by itself — you don't write the table.",
+  "A misspelt placeholder (for example {{client.namee}}) is printed as-is on the document, on purpose, so the mistake is visible instead of silently blank.",
+  "The document header, contract number/date and the electronic signature block are added automatically and are not editable here.",
   "Once a client signs, the body is frozen: the signed printout always reproduces the exact text that was agreed.",
 ];

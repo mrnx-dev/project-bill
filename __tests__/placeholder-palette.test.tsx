@@ -1,14 +1,14 @@
 import { insertPlaceholder } from "@/components/placeholder-palette";
 
 test("inserts at the caret and leaves the caret after the token", () => {
-  const r = insertPlaceholder("Halo , apa kabar", "{{klien.nama}}", 5, 5);
-  expect(r.value).toBe("Halo {{klien.nama}}, apa kabar");
-  expect(r.caret).toBe(19); // start (5) + token.length (14) — the brief's 21 was an arithmetic typo
+  const r = insertPlaceholder("Halo , apa kabar", "{{client.name}}", 5, 5);
+  expect(r.value).toBe("Halo {{client.name}}, apa kabar");
+  expect(r.caret).toBe(20); // start (5) + "{{client.name}}".length (15)
 });
 
 test("replaces the current selection", () => {
-  const r = insertPlaceholder("Halo dunia", "{{klien.nama}}", 5, 10);
-  expect(r.value).toBe("Halo {{klien.nama}}");
+  const r = insertPlaceholder("Halo dunia", "{{client.name}}", 5, 10);
+  expect(r.value).toBe("Halo {{client.name}}");
 });
 
 test("appends when the caret is unknown (-1)", () => {

@@ -29,7 +29,7 @@ test("payload key set is exactly the allow-list", async () => {
     project: {
       id: "p1", title: "Web", contractNumber: "SPK-202611-0001", createdAt: new Date("2026-11-01"),
       deadline: null, totalPrice: "100.0000", currency: "IDR", taxName: null, taxRate: null,
-      dpAmount: null, billingMode: "SIMPLE", language: "id", terms: "No. {{nomor}} — {{klien.nama}}",
+      dpAmount: null, billingMode: "SIMPLE", language: "id", terms: "No. {{number}} — {{client.name}}",
       termsAcceptedAt: null, termsAcceptedUserAgent: null, termsAcceptedSessionId: null,
       organizationId: "org-1", clientId: "c1",
       items: [{ description: "Landing", quantity: null, rate: null, price: "100.0000" }],
