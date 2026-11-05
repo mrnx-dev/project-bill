@@ -1,4 +1,5 @@
 import type { ContractDocumentProps } from "@/components/contract-document";
+import { renderContractTemplate } from "@/lib/contract-template";
 
 // The ONLY place Decimal/Date become number/string. Never pass a raw Decimal or Date into
 // <ContractDocument>: it prints NaN / [object Object] on an A4 contract.
@@ -39,7 +40,7 @@ export function toContractDocumentProps(input: {
   provider: ProviderSettings;
 }): ContractDocumentProps {
   const { project, provider } = input;
-  return {
+  const props: ContractDocumentProps = {
     language: project.language,
     contractNumber: project.contractNumber,
     title: project.title,
@@ -79,4 +80,7 @@ export function toContractDocumentProps(input: {
     termsAcceptedUserAgent: project.termsAcceptedUserAgent,
     termsAcceptedSessionId: project.termsAcceptedSessionId,
   };
+  // The body is written with {{placeholders}} in the database; expand them once here so
+  // every call site (print page, public payload, client portal) receives rendered text.
+  return { ...props, terms: renderContractTemplate(project.terms, props) };
 }

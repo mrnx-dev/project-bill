@@ -29,7 +29,7 @@ test("payload key set is exactly the allow-list", async () => {
     project: {
       id: "p1", title: "Web", contractNumber: "SPK-202611-0001", createdAt: new Date("2026-11-01"),
       deadline: null, totalPrice: "100.0000", currency: "IDR", taxName: null, taxRate: null,
-      dpAmount: null, billingMode: "SIMPLE", language: "id", terms: "Klausul",
+      dpAmount: null, billingMode: "SIMPLE", language: "id", terms: "No. {{nomor}} — {{klien.nama}}",
       termsAcceptedAt: null, termsAcceptedUserAgent: null, termsAcceptedSessionId: null,
       organizationId: "org-1", clientId: "c1",
       items: [{ description: "Landing", quantity: null, rate: null, price: "100.0000" }],
@@ -54,6 +54,7 @@ test("payload key set is exactly the allow-list", async () => {
   expect(JSON.stringify(body)).not.toContain("123");
   expect(JSON.stringify(body)).not.toContain("key");
   expect(body.totalPrice).toBe(100);      // Decimal already converted by the mapper
+  expect(body.terms).toBe("No. SPK-202611-0001 — Budi");  // rendered in the mapper, not raw tokens
 });
 
 test("a terms-less project still 400s instead of rendering an empty agreement", async () => {
