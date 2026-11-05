@@ -1,6 +1,21 @@
 import { NextResponse } from "next/server";
 import { withTenantRls, getTenantCtx } from "@/lib/rls";
 
+export const GET = withTenantRls(async (_req, ctx, tx) => {
+  try {
+    const tenant = getTenantCtx()!;
+    const orgId = tenant.organizationId;
+    const id = (await ctx.params).id as string;
+    const template = await tx.sOWTemplate.findUnique({
+      where: { id, organizationId: orgId },
+    });
+    if (!template) return new NextResponse("Not Found", { status: 404 });
+    return NextResponse.json(template);
+  } catch (error) {
+    return new NextResponse("Internal Error", { status: 500 });
+  }
+});
+
 export const PUT = withTenantRls(async (req, ctx, tx) => {
   try {
     const tenant = getTenantCtx()!;
