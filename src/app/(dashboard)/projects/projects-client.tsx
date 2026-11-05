@@ -1231,9 +1231,7 @@ const termsRef = useRef<HTMLTextAreaElement>(null);
                     </DialogDescription>
                   </div>
                 </div>
-                <PlaceholderPalette textareaRef={termsRef} value={terms} onChange={setTerms} disabled={isSowLocked || isSowSigned} />
-                {/* Menambahkan mr-8 agar tidak menabrak tombol X (close) bawaan Dialog */}
-                <div className="flex bg-slate-100 dark:bg-zinc-800/50 p-1 rounded-lg border border-slate-200 dark:border-zinc-700/50 mr-8 sm:mr-10">
+                <div className="flex bg-slate-100 dark:bg-zinc-800/50 p-1 rounded-lg border border-slate-200 dark:border-zinc-700/50">
                   <button
                     onClick={() => setIsTosPreview(false)}
                     className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${!isTosPreview
@@ -1251,6 +1249,11 @@ const termsRef = useRef<HTMLTextAreaElement>(null);
                     Preview
                   </button>
                 </div>
+              </div>
+              <div className="flex items-center px-6 py-2 bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800">
+                {isSowLocked || isSowSigned ? null : (
+                  <PlaceholderPalette textareaRef={termsRef} value={terms} onChange={setTerms} />
+                )}
               </div>
 
               <div className="flex-1 overflow-hidden flex flex-col items-stretch min-h-[50vh]">

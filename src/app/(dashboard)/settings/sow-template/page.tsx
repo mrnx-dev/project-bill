@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Loader2, Plus, Edit, Trash2, NotepadTextDashed } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -91,35 +92,39 @@ export default function SOWTemplateListPage() {
 
     return (
         <div className="flex flex-col gap-6 w-full">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-gradient-to-br from-indigo-50 to-blue-50/50 border border-indigo-100 p-6 rounded-xl dark:from-zinc-900 dark:to-zinc-950 dark:border-zinc-800 relative overflow-hidden shadow-sm">
-                <div className="relative z-10 w-full mb-4 md:mb-0">
-                    <h3 className="font-bold text-2xl tracking-tight flex items-center gap-3 text-slate-900 dark:text-zinc-50">
-                        <div className="p-2.5 bg-white dark:bg-zinc-800 rounded-lg shadow-sm border border-slate-100 dark:border-zinc-700">
-                            <NotepadTextDashed className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                        </div>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="w-full">
+                    <h3 className="font-bold text-2xl tracking-tight text-slate-900 dark:text-zinc-50">
                         Contract Templates
                     </h3>
                     <p className="text-sm text-slate-600 dark:text-zinc-400 mt-2 max-w-xl leading-relaxed">
                         Standardize your contracts. Create reusable contract templates tailored to different services, languages, or client tiers.
                     </p>
                 </div>
-                <div className="relative z-10 flex-shrink-0 w-full md:w-auto flex flex-col sm:flex-row gap-2">
-                    <Button onClick={(e) => handleCreateClick(e, "id")} className="w-full md:w-auto shadow-md hover:shadow-lg transition-all bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6">
-                        <Plus className="w-4 h-4 mr-2" />
-                        SPK (Indonesian)
-                    </Button>
-                    <Button onClick={(e) => handleCreateClick(e, "en")} variant="outline" className="w-full md:w-auto rounded-full px-5 shadow-sm hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-zinc-800 dark:hover:text-indigo-300 transition-colors border-indigo-200 dark:border-zinc-700">
-                        <Plus className="w-4 h-4 mr-2" />
-                        SOW (English)
-                    </Button>
-                    <Button onClick={(e) => handleCreateClick(e, "blank")} variant="outline" className="w-full md:w-auto rounded-full px-5 shadow-sm hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-zinc-800 dark:hover:text-indigo-300 transition-colors border-indigo-200 dark:border-zinc-700">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Blank
-                    </Button>
+                <div className="flex-shrink-0 w-full md:w-auto">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button className="w-full md:w-auto rounded-full px-5">
+                                <Plus className="w-4 h-4 mr-2" />
+                                New Template
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={(e) => handleCreateClick(e, "id")}>
+                                Indonesian SPK
+                                <span className="ml-auto text-xs text-muted-foreground">Bahasa Indonesia</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => handleCreateClick(e, "en")}>
+                                English SOW
+                                <span className="ml-auto text-xs text-muted-foreground">English</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => handleCreateClick(e, "blank")}>
+                                Blank
+                                <span className="ml-auto text-xs text-muted-foreground">Empty body</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
-
-                {/* Decorative background element */}
-                <div className="absolute right-0 top-0 w-64 h-64 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
             </div>
 
             {templates.length === 0 ? (
@@ -139,7 +144,7 @@ export default function SOWTemplateListPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {templates.map(template => (
-                        <div key={template.id} className="group relative bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 p-6 rounded-2xl flex flex-col gap-4 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/5 hover:-translate-y-1 hover:border-indigo-200 dark:hover:border-indigo-900/50 overflow-hidden">
+                        <div key={template.id} className="group relative bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 p-6 rounded-2xl flex flex-col gap-4 transition-[border-color,box-shadow] duration-150 ease-out hover:shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900/50 overflow-hidden">
                             <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-full" onClick={() => setDeleteConfirmId(template.id)}>
                                     <Trash2 className="w-4 h-4" />
