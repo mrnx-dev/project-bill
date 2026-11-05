@@ -58,7 +58,7 @@ export default function SOWPrintPage() {
                 @media print {
                     @page {
                         size: A4;
-                        margin: 2cm;
+                        margin: 2cm 0;
                     }
                     body {
                         background: white;
