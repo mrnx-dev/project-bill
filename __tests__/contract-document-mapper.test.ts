@@ -3,7 +3,7 @@ import { toContractDocumentProps } from "@/lib/contract-document-mapper";
 const project = {
   title: "Web", contractNumber: "SPK-202611-0001", createdAt: new Date("2026-11-01"),
   deadline: null, totalPrice: "5000000.0000", currency: "IDR", taxName: null, taxRate: null,
-  dpAmount: null, billingMode: "SIMPLE", language: "id", terms: "No. {{nomor}} untuk {{klien.nama}}",
+  dpAmount: null, billingMode: "SIMPLE", language: "id", terms: "No. {{number}} untuk {{client.name}}",
   termsAcceptedAt: null, termsAcceptedUserAgent: null, termsAcceptedSessionId: null,
   items: [], milestones: [], client: { name: "Budi", email: null, phone: null },
 };
