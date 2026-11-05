@@ -168,21 +168,20 @@ function escapeValue(v: unknown): string {
 type Item = ContractTemplateData["items"][number];
 type Milestone = ContractTemplateData["milestones"][number];
 
-function itemCell(item: Item, key: keyof Item): string {
-  const v = item[key];
-  if (key === "description") return escapeValue(v ?? "-");
-  if (key === "quantity") return escapeValue(v === null || v === undefined ? "-" : v);
-  // rate === null prints "-" (a printed Rp 0 rate reads as an error); price is always present.
-  if (key === "rate") return escapeValue(v === null || v === undefined ? "-" : formatMoney(Number(v), "IDR"));
-  return escapeValue(v === null || v === undefined ? "-" : formatMoney(Number(v), "IDR"));
-}
+// The engine builds both tables, so their headers must follow the document language —
+// a tenant using the EN starter cannot edit them.
+const TABLE_I18N = {
+  id: { items: "| Deskripsi | Qty | Harga Satuan | Harga |", milestones: "| Tahap | Persentase | Nilai | Jatuh Tempo |", total: "**Total**" },
+  en: { items: "| Description | Qty | Unit Price | Amount |", milestones: "| Phase | Percentage | Amount | Due Date |", total: "**Total**" },
+} as const;
 
-function buildItemTable(items: Item[], currency: string, total: number): string {
+function buildItemTable(items: Item[], currency: string, total: number, lang: "id" | "en"): string {
   if (items.length === 0) {
     // No items: no empty table header — the agreed total is the whole clause.
     return formatMoney(total, currency);
   }
-  const header = "| Deskripsi | Qty | Harga Satuan | Harga |";
+  const t = TABLE_I18N[lang];
+  const header = t.items;
   const rule = "| --- | --- | --- | --- |";
   const rows = items.map((item) => {
     const cells = [
@@ -193,16 +192,16 @@ function buildItemTable(items: Item[], currency: string, total: number): string 
     ];
     return `| ${cells.map(escapeValue).join(" | ")} |`;
   });
-  const totalRow = `| **Total** | | | ${formatMoney(total, currency)} |`;
+  const totalRow = `| ${t.total} | | | ${formatMoney(total, currency)} |`;
   return [header, rule, ...rows, totalRow].join("\n");
 }
 
-function buildMilestoneTable(milestones: Milestone[], currency: string, mode: string, dateFormat: (iso: string) => string): string {
+function buildMilestoneTable(milestones: Milestone[], currency: string, mode: string, dateFormat: (iso: string) => string, lang: "id" | "en"): string {
   if (mode !== "MILESTONE" || milestones.length === 0) {
     // SIMPLE mode has no milestones: a dash line, not an empty table.
     return "-";
   }
-  const header = "| Tahap | Persentase | Nilai | Jatuh Tempo |";
+  const header = TABLE_I18N[lang].milestones;
   const rule = "| --- | --- | --- | --- |";
   const rows = milestones.map((m) => {
     const cells = [
@@ -239,10 +238,10 @@ export function renderContractTemplate(template: string, data: ContractTemplateD
     "klien.nama": escapeValue(data.client.name),
     "klien.email": escapeValue(data.client.email ?? "-"),
     "klien.telepon": escapeValue(data.client.phone ?? "-"),
-    "lingkup.tabel": buildItemTable(data.items, data.currency, data.totalPrice),
+    "lingkup.tabel": buildItemTable(data.items, data.currency, data.totalPrice, lang),
     "lingkup.total": formatMoney(data.totalPrice, data.currency),
     "tenggat": escapeValue(fmtDate(data.deadline)),
-    "milestone.tabel": buildMilestoneTable(data.milestones, data.currency, data.billingMode, fmtDate),
+    "milestone.tabel": buildMilestoneTable(data.milestones, data.currency, data.billingMode, fmtDate, lang),
     "total": formatMoney(data.totalPrice, data.currency),
     "pajak.nama": escapeValue(data.taxName ?? "-"),
     "pajak.persen": data.taxRate === null || data.taxRate === undefined ? "-" : String(data.taxRate),

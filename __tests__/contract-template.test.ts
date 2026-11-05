@@ -25,6 +25,17 @@ test("expands document, party and project tokens", () => {
   expect(out).toBe("SPK-202611-0001|Website Company Profile|Studio A|Budi|62812");
 });
 
+test("table headers follow the data language, not a hard-coded locale", () => {
+  expect(renderContractTemplate("{{lingkup.tabel}}", { ...data, language: "en" })).toContain("| Description | Qty | Unit Price | Amount |");
+  expect(renderContractTemplate("{{milestone.tabel}}",
+    { ...data, language: "en", billingMode: "MILESTONE",
+      milestones: [{ name: "Kickoff", percentage: 50, amount: 2500000, dueDate: null }] })).toContain("| Phase | Percentage | Amount | Due Date |");
+  // id stays the current header.
+  expect(renderContractTemplate("{{lingkup.tabel}}", data)).toContain("| Deskripsi | Qty | Harga Satuan | Harga |");
+  // bold total row label also follows the locale.
+  expect(renderContractTemplate("{{lingkup.tabel}}", { ...data, language: "en" })).toContain("**Total**");
+});
+
 test("an unknown token is printed verbatim", () => {
   expect(renderContractTemplate("Halo {{klien.namaa}}", data)).toContain("{{klien.namaa}}");
 });
