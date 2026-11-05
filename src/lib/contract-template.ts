@@ -12,18 +12,30 @@ export type ContractTemplateData = Omit<
 
 // Starter SPK (perjanjian kerja) template in Indonesian. Shown only as a prefill on the
 // new-template page — nothing hits the DB until the tenant saves their edited copy.
+export const BLANK_STARTER_TEMPLATE = `## 1.
+
+`;
+
+// Starter SPK (perjanjian kerja) template in Indonesian. Shown only as a prefill on the
+// new-template page — nothing hits the DB until the tenant saves their edited copy.
 export const SPK_STARTER_TEMPLATE = `## Perjanjian Kerja (SPK)
 
 Pada hari ini, tanggal ____ , para pihak yang tercantum di bawah ini menyepakati perjanjian kerja berikut.
 
 ### 1. Identitas Para Pihak
 
-Pihak Pertama (Klien): Nama ____ , alamat ____ , email ____ , telepon ____ .
-Pihak Kedua (Pelaksana): Nama ____ , alamat ____ , email ____ , telepon ____ .
+Pihak Pertama (Pelaksana): Nama {{penyedia.nama}} , alamat {{penyedia.alamat}} , email {{penyedia.email}} , WhatsApp {{penyedia.whatsapp}} .
+Pihak Kedua (Klien): Nama {{klien.nama}} , email {{klien.email}} , telepon {{klien.telepon}} .
+
+Nomor kontrak: {{nomor}} — dibuat pada {{tanggal}} .
 
 ### 2. Lingkup Pekerjaan & Deliverables
 
-Pekerjaan meliputi: ____ . Deliverables yang diserahkan: ____ , diserahkan dalam format ____ .
+Proyek: {{proyek.judul}} .
+
+{{lingkup.tabel}}
+
+Nilai pekerjaan yang disepakati: {{lingkup.total}} .
 
 ### 3. Batas Revisi
 
@@ -31,15 +43,19 @@ Revisi dibatasi maksimal ____ putaran; revisi di luar itu dihitung sebagai peker
 
 ### 4. Jadwal & Konsekuensi Keterlambatan
 
-Pekerjaan dimulai pada ____ dan diselesaikan paling lambat ____ . Keterlambatan akibat kelalaian Pihak Kedua dikenakan ____ per hari; keterlambatan penyampaian data/umpan balik dari Pihak Pertama menggeser jadwal secara proporsional.
+Batas waktu penyelesaian: {{tenggat}} .
+
+{{milestone.tabel}}
+
+Keterlambatan akibat kelalaian Pelaksana dikenakan ____ per hari; keterlambatan penyampaian data/umpan balik dari Klien menggeser jadwal secara proporsional.
 
 ### 5. Harga & Termin Pembayaran
 
-Total nilai pekerjaan: ____ ( ____ rupiah). Pembayaran dengan termin: ____ . Pembayaran dilakukan melalui rekening ____ atas nama ____ .
+Total nilai pekerjaan: {{total}} . Pajak {{pajak.nama}} {{pajak.persen}} %: {{pajak.nilai}} . Uang muka: {{dp}} . Pembayaran dilakukan melalui rekening ____ atas nama ____ .
 
 ### 6. Hak Cipta & File Final
 
-Seluruh hak cipta atas hasil kerja beralih ke Pihak Pertama setelah pelunasan penuh. File final diserahkan dalam format ____ setelah pelunasan. Pihak Kedua berhak menampilkan hasil kerja sebagai portofolio kecuali disepakati lain: ____ .
+Seluruh hak cipta atas hasil kerja beralih ke Klien setelah pelunasan penuh. Pelaksana berhak menampilkan hasil kerja sebagai portofolio kecuali disepakati lain: ____ .
 
 ### 7. Kerahasiaan
 
@@ -47,7 +63,7 @@ Masing-masing pihak menjaga kerahasiaan data, materi, dan informasi komersial pi
 
 ### 8. Pembatalan
 
-Pembatalan oleh Pihak Pertama diberitahukan secara tertulis. Upah/kerja yang telah dilakukan hingga tanggal pembatalan tetap terutang, sebesar ____ ; pembayaran yang telah diterima tidak dikembalikan untuk pekerjaan yang telah selesai.
+Pembatalan oleh Klien diberitahukan secara tertulis. Upah/kerja yang telah dilakukan hingga tanggal pembatalan tetap terutang, sebesar ____ ; pembayaran yang telah diterima tidak dikembalikan untuk pekerjaan yang telah selesai.
 
 ### 9. Mekanisme Perubahan Scope
 
@@ -59,6 +75,89 @@ Komunikasi resmi dilakukan melalui ____ dengan waktu tanggap ____ hari kerja. Ra
 
 Disetujui oleh kedua pihak melalui persetujuan digital pada dokumen ini.
 `;
+
+// English mirror of SPK_STARTER_TEMPLATE, clause for clause.
+export const SOW_STARTER_TEMPLATE_EN = `## Statement of Work
+
+On this day, ____ , the parties listed below agree to the following statement of work.
+
+### 1. Parties
+
+First Party (Contractor): Name {{penyedia.nama}} , address {{penyedia.alamat}} , email {{penyedia.email}} , WhatsApp {{penyedia.whatsapp}} .
+Second Party (Client): Name {{klien.nama}} , email {{klien.email}} , phone {{klien.telepon}} .
+
+Contract number: {{nomor}} — issued on {{tanggal}} .
+
+### 2. Scope of Work & Deliverables
+
+Project: {{proyek.judul}} .
+
+{{lingkup.tabel}}
+
+Agreed value of the work: {{lingkup.total}} .
+
+### 3. Revision Limit
+
+Revisions are limited to a maximum of ____ rounds; revisions beyond that are treated as additional work with its own fee.
+
+### 4. Schedule & Late-Delivery Consequences
+
+Completion deadline: {{tenggat}} .
+
+{{milestone.tabel}}
+
+Delay caused by the Contractor's negligence incurs ____ per day; delays in delivering data/feedback by the Client shift the schedule proportionally.
+
+### 5. Price & Payment Terms
+
+Total value of the work: {{total}} . Tax {{pajak.nama}} {{pajak.persen}} %: {{pajak.nilai}} . Down payment: {{dp}} . Payment is made to bank account ____ under the name ____ .
+
+### 6. Copyright & Final Files
+
+All copyright in the work transfers to the Client upon full payment. The Contractor may display the work in a portfolio unless otherwise agreed: ____ .
+
+### 7. Confidentiality
+
+Each party keeps confidential the data, materials, and commercial information of the other party obtained during this engagement, and does not disclose it to third parties without written consent.
+
+### 8. Cancellation
+
+Cancellation by the Client is notified in writing. Work performed up to the cancellation date remains chargeable, in the amount of ____ ; payments already received are not refunded for completed work.
+
+### 9. Scope Change Mechanism
+
+Every change to the scope of work is submitted in writing (email/message) and agreed by both parties before being worked on; changes may affect price and schedule.
+
+### 10. Communication Method
+
+Official communication takes place via ____ with a response time of ____ business days. Meetings are scheduled by mutual agreement of both parties.
+
+Agreed by both parties via digital consent on this document.
+`;
+
+// Sample data for the template editor's preview: every kind of value the preview can
+// display — a filled provider, a filled client, two items, a tax, a DP, a deadline.
+// Written for the preview, not copied from any test fixture.
+export const SPK_SAMPLE_DATA: ContractTemplateData = {
+  language: "id",
+  contractNumber: "SPK-202611-0001",
+  title: "Website Company Profile",
+  createdAt: "2026-11-01T00:00:00.000Z",
+  provider: { name: "Studio A", address: "Jl. Mawar 1, Jakarta", email: "hi@studio.id", whatsapp: "62811" },
+  client: { name: "Budi", email: "budi@mail.com", phone: "62812" },
+  items: [
+    { description: "Desain & pembuatan landing page", quantity: 1, rate: 2500000, price: 2500000 },
+    { description: "Copywriting halaman utama", quantity: 1, rate: 500000, price: 500000 },
+  ],
+  totalPrice: 5000000,
+  currency: "IDR",
+  taxName: "PPN",
+  taxRate: 11,
+  dpAmount: 2000000,
+  billingMode: "SIMPLE",
+  milestones: [],
+  deadline: "2026-12-01T00:00:00.000Z",
+};
 
 // Escape a scalar value for safe interpolation into a Markdown line: a pipe would split a
 // table cell and a newline would break the line, so both are neutralised BEFORE joining.
