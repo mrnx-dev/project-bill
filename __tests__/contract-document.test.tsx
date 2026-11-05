@@ -41,11 +41,20 @@ function render(props: ContractDocumentProps) {
   return div;
 }
 
-test("shows both parties and the document number", () => {
-  const text = render(base).textContent!;
+test("header keeps the number and title; parties come from the body, not the component", () => {
+  const text = render({ ...base, terms: "## 1. Identitas\nStudio A — Budi" }).textContent!;
   expect(text).toContain("SPK-202611-0001");
-  expect(text).toContain("Studio A");
-  expect(text).toContain("Budi");
+  expect(text).toContain("Website Company Profile");
+  expect(text).toContain("Studio A — Budi");          // from terms
+  // the hard-coded party cards print these role labels; deleting the grid removes them
+  expect(text).not.toContain("PENYEDIA");
+  expect(text).not.toContain("KLIEN");
+  // the hard-coded scope/schedule/payment sections and their headings are gone
+  expect(text).not.toContain("Lingkup Pekerjaan");
+  expect(text).not.toContain("Jadwal");
+  expect(text).not.toContain("Pembayaran");
+  // the body heading "4." is gone: the body supplies its own numbered headings
+  expect(text).not.toContain("4. Syarat");
 });
 
 test("a project without a number renders cleanly", () => {
@@ -53,23 +62,12 @@ test("a project without a number renders cleanly", () => {
   const text = render({ ...base, contractNumber: null }).textContent!;
   expect(text).not.toContain("null");
   expect(text).not.toContain("undefined");
-  expect(text).toContain("Budi");   // the rest of the header still renders
+  expect(text).toContain("Website Company Profile");   // the header still renders
 });
 
-test("zero items falls back to the agreed total, no empty scope table", () => {
-  const div = render(base);
-  // The payment section may use a table, so assert on the scope section specifically.
-  expect(div.textContent).not.toContain("Deskripsi");   // the item-table header
-  expect(div.textContent).toContain("5.000.000");
-});
-
-test("milestone mode renders the schedule and no DP row", () => {
-  const text = render({ ...base, billingMode: "MILESTONE", dpAmount: null, milestones: [
-    { name: "Tahap Awal 50%", percentage: 50, amount: 2500000, dueDate: null },
-    { name: "Pelunasan", percentage: 50, amount: 2500000, dueDate: null },
-  ] }).textContent!;
-  expect(text).toContain("Tahap Awal 50%");
-  expect(text).not.toContain("Uang Muka (DP) Awal");  // the SIMPLE-mode DP row label
+test("a body with no placeholder text prints verbatim", () => {
+  const text = render({ ...base, terms: "## Klausul\nTeks apa adanya." }).textContent!;
+  expect(text).toContain("Teks apa adanya.");
 });
 
 test("signed document renders the audit trail", () => {
@@ -77,13 +75,4 @@ test("signed document renders the audit trail", () => {
     termsAcceptedUserAgent: "Mozilla", termsAcceptedSessionId: "sess-1" }).textContent!;
   expect(text).toContain("Mozilla");
   expect(text).toContain("sess-1");
-});
-
-test("non-IDR currency prints its own symbol, never Rupiah", () => {
-  // formatMoney(5000000,"USD") === "$5,000,000.00"; formatMoney(5000000,"IDR")
-  // is "Rp" + NBSP + "5.000.000" (so match "5.000.000", not the whole string).
-  const text = render({ ...base, currency: "USD" }).textContent!;
-  expect(text).not.toContain("Rp");
-  expect(text).toContain("$");
-  expect(text).toContain("5,000,000.00");
 });
