@@ -567,28 +567,18 @@ export function ProjectsClient({
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="terms">
-                            {isSowLocked || isSowSigned ? "Terms & Conditions (SOW/Contract) - Locked" : "Terms & Conditions (SOW/Contract)"}
-                          </Label>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setIsTosEditorOpen(true)}
-                            className="h-6 px-2 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/50"
-                          >
-                            <Maximize2 className="w-3 h-3 mr-1" />
-                            {isSowLocked || isSowSigned ? "Full Screen View" : "Full Screen Edit"}
-                          </Button>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <span className="text-sm leading-none font-medium select-none">
+                            Terms &amp; Conditions (SOW/Contract)
+                          </span>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {terms
+                              ? `${terms.length.toLocaleString()} characters${isSowLocked || isSowSigned ? " \u00b7 locked" : ""}`
+                              : "Not set"}
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          If provided, the client must digitally accept these terms
-                          before they can pay the invoice.
-                        </p>
-
-                        <div className="mb-2">
+                        <div className="flex shrink-0 items-center gap-1">
                           <Select
                             disabled={sowTemplates.length === 0 || isSowLocked || isSowSigned}
                             onValueChange={(val) => {
@@ -603,8 +593,8 @@ export function ProjectsClient({
                               }
                             }}
                           >
-                            <SelectTrigger className="text-sm h-8 mt-1 border-dashed bg-slate-50 dark:bg-slate-900 border-slate-300">
-                              <SelectValue placeholder={sowTemplates.length === 0 ? "No templates created yet" : "Load from Template..."} />
+                            <SelectTrigger className="h-8 w-[150px] text-xs border-dashed">
+                              <SelectValue placeholder={sowTemplates.length === 0 ? "No templates" : "From template"} />
                             </SelectTrigger>
                             <SelectContent>
                               {sowTemplates.map(t => (
@@ -612,22 +602,17 @@ export function ProjectsClient({
                               ))}
                             </SelectContent>
                           </Select>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8"
+                            onClick={() => setIsTosEditorOpen(true)}
+                          >
+                            <Maximize2 className="mr-1 h-3 w-3" />
+                            {isSowLocked || isSowSigned ? "View" : "Edit"}
+                          </Button>
                         </div>
-
-                        <textarea
-                          id="terms"
-                          rows={4}
-                          value={terms}
-                          disabled={isSowLocked || isSowSigned}
-                          onChange={(e) => setTerms(e.target.value)}
-                          className="flex min-h-[120px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                          placeholder="e.g. 1. Revisions are limited to 2 rounds. 2. Payments are non-refundable."
-                        />
-                        {(isSowLocked || isSowSigned) && (
-                          <p className="text-[10px] text-amber-600 font-medium">
-                            Terms cannot be edited because {isSowSigned ? "the client has already signed the SOW" : "a payment has already been made"}.
-                          </p>
-                        )}
                       </div>
 
                     </TabsContent>
@@ -1219,7 +1204,7 @@ export function ProjectsClient({
                     <DialogDescription className="text-xs">
                       {isSowLocked || isSowSigned
                         ? "Viewing the signed terms of service or scope of work."
-                        : "Write your terms of service or scope of work using Markdown."}
+                        : "Write your terms of service or scope of work using Markdown. The client must digitally accept them before they can pay."}
                     </DialogDescription>
                   </div>
                 </div>
