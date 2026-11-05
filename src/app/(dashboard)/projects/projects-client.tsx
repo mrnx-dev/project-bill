@@ -814,7 +814,7 @@ export function ProjectsClient({
                               if (editingId) {
                                 setIsLoading(true);
                                 try {
-                                  let updatedItems = [...items];
+                                  const updatedItems = [...items];
                                   let currentTotal = Number(totalPrice);
                                   for (const gItem of generatedItems) {
                                     const res = await fetch(`/api/projects/${editingId}/items`, {
@@ -843,6 +843,7 @@ export function ProjectsClient({
                                   setTotalPrice(String(currentTotal));
                                   toast.success("Estimated items created successfully");
                                 } catch (err) {
+                                  console.error("Failed to save estimated items:", err);
                                   toast.error("Failed to save estimated items");
                                 } finally {
                                   setIsLoading(false);
