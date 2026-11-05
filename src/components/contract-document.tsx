@@ -78,7 +78,7 @@ export function ContractDocument(props: ContractDocumentProps) {
 
 
         <section className="mb-16">
-          <div className="prose prose-sm max-w-none text-slate-800 leading-relaxed text-justify break-inside-avoid">
+          <div className="prose prose-sm max-w-none text-slate-800 leading-relaxed text-justify">
             <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} rehypePlugins={[rehypeSanitize]}>
               {props.terms}
             </ReactMarkdown>
