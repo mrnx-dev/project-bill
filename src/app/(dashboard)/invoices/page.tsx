@@ -1,4 +1,3 @@
-import type { Viewport } from "next";
 import { prisma } from "@/lib/prisma";
 import { InvoicesClient } from "./invoices-client";
 
@@ -8,12 +7,6 @@ import { rlsContext } from "@/lib/rls";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
-
-// Render desktop layout on smartphones: mobile browsers lay out the page at
-// 1280px and shrink it, so the desktop table (md:) shows instead of cards.
-export const viewport: Viewport = {
-  width: 1280,
-};
 
 export default async function InvoicesPage() {
   const session = await auth();
