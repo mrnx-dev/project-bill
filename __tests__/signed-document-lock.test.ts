@@ -38,6 +38,9 @@ jest.mock("@/lib/prisma", () => {
       delete: jest.fn(),
     },
     invoice: { deleteMany: jest.fn() },
+    organizationMember: {
+      findUnique: jest.fn().mockResolvedValue({ id: "m1", userId: "u1", organizationId: "org1", role: "OWNER" }),
+    },
     projectItem: {
       findUnique: jest.fn(({ where: { id, organizationId } }: any) => {
         const item = prisma._world.items[id];

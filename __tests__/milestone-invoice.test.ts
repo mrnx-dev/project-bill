@@ -11,6 +11,9 @@ jest.mock("@/lib/prisma", () => {
       update: jest.fn(), updateMany: jest.fn(),
     },
     invoice: { create: jest.fn(), updateMany: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn() },
+    organizationMember: {
+      findUnique: jest.fn().mockResolvedValue({ id: "m1", userId: "u1", organizationId: "org1", role: "OWNER" }),
+    },
     auditLog: { create: jest.fn() },
     $transaction: jest.fn(async (cb: (tx: any) => Promise<unknown>) => cb(prisma)), // eslint-disable-line @typescript-eslint/no-explicit-any
     $executeRaw: jest.fn().mockResolvedValue(0), // withTenantRls: SET LOCAL app.current_tenant_id

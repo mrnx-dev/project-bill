@@ -10,6 +10,9 @@ jest.mock("@/lib/prisma", () => {
   const prisma: any = { $executeRaw: jest.fn().mockResolvedValue(0), $transaction: jest.fn() };
   prisma.$transaction = jest.fn(async (cb: (tx: any) => Promise<unknown>) => cb(prisma));
   prisma.settings = { findFirst: jest.fn(), update: jest.fn(), create: jest.fn() };
+  prisma.organizationMember = {
+    findUnique: jest.fn().mockResolvedValue({ id: "m1", userId: "u1", organizationId: "org1", role: "OWNER" }),
+  };
   return { prisma };
 });
 jest.mock("next/server", () => ({
