@@ -7,7 +7,7 @@ import { formatMoney } from "@/lib/currency";
 export const POST = withTenantRls(async (request, ctx, tx) => {
   try {
     const tenant = getTenantCtx()!;
-    if (tenant.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+    if (tenant.role !== "ADMIN" && tenant.role !== "OWNER") return new NextResponse("Forbidden", { status: 403 });
     const orgId = tenant.organizationId;
     const userId = tenant.userId;
     const id = (await ctx.params).id as string;

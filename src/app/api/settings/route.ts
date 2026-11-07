@@ -8,7 +8,7 @@ const SENSITIVE_FIELDS = ["smtpPass", "mayarApiKey", "mayarWebhookSecret"] as co
 export const GET = withTenantRls(async (_req, _ctx, tx) => {
   try {
     const tenant = getTenantCtx()!;
-    if (tenant.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+    if (tenant.role !== "ADMIN" && tenant.role !== "OWNER") return new NextResponse("Forbidden", { status: 403 });
     const orgId = tenant.organizationId;
     let settings = await tx.settings.findFirst({
       where: { organizationId: orgId },
@@ -37,7 +37,7 @@ export const GET = withTenantRls(async (_req, _ctx, tx) => {
 export const PUT = withTenantRls(async (req, _ctx, tx) => {
   try {
     const tenant = getTenantCtx()!;
-    if (tenant.role !== "ADMIN") return new NextResponse("Forbidden", { status: 403 });
+    if (tenant.role !== "ADMIN" && tenant.role !== "OWNER") return new NextResponse("Forbidden", { status: 403 });
     const orgId = tenant.organizationId;
     const userId = tenant.userId;
     const body = await req.json();
