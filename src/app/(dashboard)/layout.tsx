@@ -13,7 +13,6 @@ import { prisma } from "@/lib/prisma";
 import { isSelfHosted } from "@/lib/billing/subscription";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { OnboardingModal } from "@/components/onboarding-modal";
-import { AIFloatingChat } from "@/components/ai/ai-floating-chat";
 
 export const dynamic = "force-dynamic";
 
@@ -94,7 +93,6 @@ export default async function DashboardLayout({
           existingClients={clients}
         />
       )}
-      <AIFloatingChat />
     </SidebarProvider>
   );
 }

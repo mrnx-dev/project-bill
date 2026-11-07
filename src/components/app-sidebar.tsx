@@ -17,7 +17,6 @@ import {
   CalendarClock,
   History,
   BarChart3,
-  Bot,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { useTheme } from "next-themes";
@@ -95,7 +94,6 @@ const navGroups: NavGroup[] = [
       { title: "Team", url: "/settings/team", icon: Users },
       { title: "Contract Templates", url: "/settings/sow-template", icon: NotepadTextDashed },
       { title: "Subscription", url: "/settings/subscription", icon: FileText },
-      { title: "AI Assistant", url: "/settings/agent", icon: Bot },
     ],
   },
 ];

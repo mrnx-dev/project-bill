@@ -30,88 +30,29 @@ async function login(page: import("@playwright/test").Page) {
   });
 }
 
-test.describe("AI Financial Co-Pilot", () => {
-  test.beforeEach(async ({ page }) => {
+// AI assistant is disabled in production: no widget, no nav entry, no API.
+test.describe("AI disabled", () => {
+  test("no AI widget, no settings/agent page, endpoints 404", async ({ page }) => {
     await login(page);
-  });
 
-  test("opens AI chat panel from floating button", async ({ page }) => {
-    // The FAB button with Bot icon should be visible
-    const fabButton = page.locator("button.fixed.bottom-5.right-5");
-    await expect(fabButton).toBeVisible({ timeout: 10000 });
+    // Floating chat widget is gone from the dashboard
+    await expect(page.locator("button.fixed.bottom-5.right-5")).toHaveCount(0);
 
-    // Click to open the chat panel
-    await fabButton.click();
+    // Sidebar has no AI Assistant entry
+    await expect(page.getByRole("link", { name: "AI Assistant" })).toHaveCount(0);
 
-    // The chat panel should appear with a textarea
-    const textarea = page.getByPlaceholder("Ask me anything about your business...");
-    await expect(textarea).toBeVisible({ timeout: 5000 });
-  });
+    // Direct settings/agent navigation → 404 page
+    const notFound = page.waitForURL(/404|not-found/).catch(() => null);
+    await page.goto("/settings/agent");
+    await expect(page.getByText("404").first()).toBeVisible({ timeout: 10000 });
+    await notFound;
 
-  test("closes AI chat panel with Escape key", async ({ page }) => {
-    // Open the panel
-    const fabButton = page.locator("button.fixed.bottom-5.right-5");
-    await fabButton.click();
-
-    const textarea = page.getByPlaceholder("Ask me anything about your business...");
-    await expect(textarea).toBeVisible({ timeout: 5000 });
-
-    // Press Escape to close
-    await page.keyboard.press("Escape");
-
-    // Panel should be closed — textarea no longer visible
-    await expect(textarea).not.toBeVisible({ timeout: 3000 });
-  });
-
-  test("sends a message and receives response", async ({ page }) => {
-    // Open the panel
-    const fabButton = page.locator("button.fixed.bottom-5.right-5");
-    await fabButton.click();
-
-    const textarea = page.getByPlaceholder("Ask me anything about your business...");
-    await expect(textarea).toBeVisible({ timeout: 5000 });
-
-    // Type a simple message
-    await textarea.fill("Hello, how are you?");
-
-    // Press Enter to send
-    await textarea.press("Enter");
-
-    // The user message should appear in the chat
-    await expect(page.getByText("Hello, how are you?")).toBeVisible({ timeout: 5000 });
-
-    // Wait for AI response — either a message bubble or an error toast
-    // We wait up to 30 seconds for the streaming response
-    const responseAppeared = await page
-      .locator("[data-role='assistant'], .assistant-message, [class*='message']")
-      .or(page.getByText("error").or(page.getByText("Error")))
-      .first()
-      .isVisible({ timeout: 30000 })
-      .catch(() => false);
-
-    // At minimum, verify the message was sent (input cleared)
-    await expect(textarea).toHaveValue("");
-  });
-
-  test("chat input is disabled during streaming", async ({ page }) => {
-    // Open the panel
-    const fabButton = page.locator("button.fixed.bottom-5.right-5");
-    await fabButton.click();
-
-    const textarea = page.getByPlaceholder("Ask me anything about your business...");
-    await expect(textarea).toBeVisible({ timeout: 5000 });
-
-    // Send a message
-    await textarea.fill("Test message for streaming");
-    await textarea.press("Enter");
-
-    // Immediately after sending, the textarea should be disabled (during streaming)
-    // Note: This might be very fast, so we use a short timeout
-    const isDisabled = await textarea.isDisabled().catch(() => false);
-
-    // If AI API is configured, input should briefly be disabled
-    // If not configured, the input may stay enabled — either is acceptable
-    // The key behavior is: input cleared after send
-    await expect(textarea).toHaveValue("");
+    // API endpoints respond 404
+    const history = await page.request.get("/api/agent/history");
+    expect(history.status()).toBe(404);
+    const config = await page.request.get("/api/agent/config");
+    expect(config.status()).toBe(404);
+    const chat = await page.request.post("/api/agent/chat", { data: { message: "hi" } });
+    expect(chat.status()).toBe(404);
   });
 });
