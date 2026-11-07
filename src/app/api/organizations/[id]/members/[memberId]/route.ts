@@ -32,6 +32,15 @@ export async function PATCH(
       );
     }
 
+    // Load the target first and verify org membership — never update by a
+    // bare memberId another org's member could name.
+    const targetMember = await prisma.organizationMember.findUnique({
+      where: { id: memberId },
+    });
+    if (!targetMember || targetMember.organizationId !== id) {
+      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    }
+
     const member = await prisma.organizationMember.update({
       where: { id: memberId },
       data: { role: validation.data.role },

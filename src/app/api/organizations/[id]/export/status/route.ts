@@ -11,6 +11,15 @@ export async function GET(
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { id } = await params;
 
+    // Same trust boundary as export creation: only the org OWNER may read
+    // its export job (object-level auth).
+    const membership = await prisma.organizationMember.findUnique({
+      where: { userId_organizationId: { userId: session.user.id, organizationId: id } },
+    });
+    if (!membership || membership.role !== "OWNER") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const job = await prisma.exportJob.findFirst({
       where: { organizationId: id },
       orderBy: { createdAt: "desc" },
