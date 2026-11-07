@@ -10,10 +10,6 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!session.user.activeOrganizationId) {
-      return NextResponse.json({ error: "No active organization" }, { status: 403 });
-    }
-
     const memberships = await prisma.organizationMember.findMany({
       where: { userId: session.user.id },
       include: { organization: true },
