@@ -79,7 +79,7 @@ export function withTenant(handler: RouteHandler): RouteHandler {
       return new Response("Forbidden", { status: 403 });
     }
     return rlsContext.run(
-      { organizationId: orgId, userId: session.user.id, role: session.user.role },
+      { organizationId: orgId, userId: session.user.id, role: membership.role },
       () => handler(req, ctx),
     );
   };
@@ -113,7 +113,7 @@ export function withTenantRls(
     }
     const { prisma } = await import("./prisma");
     return rlsContext.run(
-      { organizationId: orgId, userId: session.user.id, role: session.user.role },
+      { organizationId: orgId, userId: session.user.id, role: membership.role },
       async () =>
         prisma.$transaction(async (tx) => {
           // set_config(name, value, is_local=true) == SET LOCAL (transaction-scoped).

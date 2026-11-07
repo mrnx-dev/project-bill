@@ -131,6 +131,23 @@ describe("withTenant", () => {
     expect(captured).toEqual({ organizationId: "org-1", userId: "u1" });
   });
 
+  test("tenant context role comes from the membership row, not the platform role", async () => {
+    // User.role defaults to ADMIN on self-hosted credentials users; intra-org
+    // authorization must follow OrganizationMember.role instead.
+    const { auth } = require("@/auth");
+    auth.mockResolvedValue({ user: { id: "u1", activeOrganizationId: "org-1", role: "ADMIN" } });
+    prisma.organizationMember.findUnique.mockResolvedValue({
+      id: "m1", role: "MEMBER",
+    });
+    let captured: any = null;
+    const handler = withTenant(async () => {
+      captured = getTenantCtx();
+      return new Response("ok");
+    });
+    await handler(new Request("http://localhost/x"), {} as any);
+    expect(captured.role).toBe("MEMBER");
+  });
+
   test("preserves native handler signature (passes ctx through)", async () => {
     const { auth } = require("@/auth");
     auth.mockResolvedValue({ user: { id: "u1", activeOrganizationId: "org-1" } });

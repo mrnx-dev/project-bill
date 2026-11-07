@@ -11,7 +11,7 @@ jest.mock("@/lib/prisma", () => {
   prisma.$transaction = jest.fn(async (cb: (tx: any) => Promise<unknown>) => cb(prisma));
   prisma.settings = { findFirst: jest.fn(), update: jest.fn(), create: jest.fn() };
   prisma.organizationMember = {
-    findUnique: jest.fn().mockResolvedValue({ id: "m1", userId: "u1", organizationId: "org1", role: "OWNER" }),
+    findUnique: jest.fn().mockResolvedValue({ id: "m1", userId: "u1", organizationId: "org1", role: "ADMIN" }),
   };
   return { prisma };
 });
