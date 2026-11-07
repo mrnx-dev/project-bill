@@ -9,6 +9,7 @@ import { TermsAgreement } from "./terms-agreement";
 import { toContractDocumentProps } from "@/lib/contract-document-mapper";
 import { isMayarSupported } from "@/lib/currency";
 import { RealtimeInvoicePoller } from "@/components/realtime-invoice-poller";
+import { FitA4Sheet } from "@/components/fit-a4-sheet";
 import { format } from "date-fns";
 import { id as localeId, enUS as localeEn } from "date-fns/locale";
 import { NotepadTextDashed } from "lucide-react";
@@ -131,12 +132,13 @@ export default async function InvoiceViewPage(props: {
     <div className="light-theme min-h-screen bg-neutral-100 py-10 print:py-0 print:bg-white flex justify-center flex-col items-center gap-6">
       {invoice.status !== "PAID" && <RealtimeInvoicePoller invoiceId={invoice.id} />}
       {/* Toolbar outside the A4 paper */}
+      <FitA4Sheet />
       <div className="w-full max-w-[210mm] flex justify-end print:hidden gap-2">
         <PrintButton invoiceId={invoice.id} />
       </div>
 
       {/* A4 Container */}
-      <div className="w-full max-w-[210mm] min-h-[297mm] bg-white shadow-xl print:shadow-none p-12 text-slate-900 relative flex flex-col">
+      <div className="a4-sheet w-full max-w-[210mm] min-h-[297mm] bg-white shadow-xl print:shadow-none p-12 text-slate-900 relative flex flex-col">
         {/* Watermark Section - Show only when paid */}
         {invoice.status === "PAID" && (
           <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none overflow-hidden print:overflow-visible">
