@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
 
 # next.js
 /.next/
@@ -57,6 +59,9 @@ next-env.d.ts
 
 # database backups
 /backups
+
+# graphify working data
+/graphify-out
 
 # sentry
 .sentryclirc
