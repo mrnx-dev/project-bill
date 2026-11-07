@@ -8,34 +8,34 @@ export async function GET(request: Request) {
   const loginUrl = new URL("/portal/login", request.url);
   if (!t) return NextResponse.redirect(loginUrl + "?error=invalid_or_expired");
 
-  // Token-only verify: hash the incoming token, find the ClientAuth by hash.
+  // Token-only lookup by hash is deliberately unscoped (hash is high-entropy).
   const auth = await prisma.clientAuth.findFirst({
     where: { magicLinkTokenHash: hashToken(t) },
   });
+  if (!auth) return NextResponse.redirect(loginUrl + "?error=invalid_or_expired");
 
+  // Atomic single-use consume: every validity condition lives in the WHERE, so
+  // a parallel request on the same token can win the row update only once.
   const now = new Date();
-  const valid =
-    auth &&
-    auth.magicLinkExpiresAt &&
-    auth.magicLinkExpiresAt > now &&
-    auth.magicLinkUsedAt === null;
-
-  if (!valid) {
+  const consume = await prisma.clientAuth.updateMany({
+    where: {
+      id: auth.id,
+      magicLinkTokenHash: hashToken(t),
+      magicLinkUsedAt: null,
+      magicLinkExpiresAt: { gt: now },
+    },
+    data: { magicLinkUsedAt: now, magicLinkTokenHash: null },
+  });
+  if (consume.count !== 1) {
+    // Lost the race, expired, or reused — identical response either way.
     return NextResponse.redirect(loginUrl + "?error=invalid_or_expired");
   }
 
-  const target = auth!;
-  // Single-use: mark used + clear hash atomically.
-  await prisma.clientAuth.update({
-    where: { id: target.id },
-    data: { magicLinkUsedAt: now, magicLinkTokenHash: null },
-  });
-
-  // Set signed session cookie (30-day rolling TTL).
+  // Set signed session cookie (30-day rolling TTL) from the winner's row.
   const signed = signSession({
-    clientId: target.clientId,
+    clientId: auth.clientId,
     exp: Date.now() + 30 * 24 * 60 * 60 * 1000,
-    sessionVersion: target.sessionVersion,
+    sessionVersion: auth.sessionVersion,
   });
   (await cookies()).set(COOKIE_NAME, signed, {
     httpOnly: true,

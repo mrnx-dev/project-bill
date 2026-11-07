@@ -56,6 +56,21 @@ describe("signSession / verifySessionCookie", () => {
     expect(verifySessionCookie("garbage")).toBeNull();
     expect(verifySessionCookie("a.b.c")).toBeNull();
   });
+
+  test("wrong-length hex signature → null (timing-safe compare needs equal buffers)", () => {
+    const signed = signSession({ clientId: "c1", exp: Date.now() + 60000, sessionVersion: 0 });
+    const shortSig = signed.slice(0, -4); // 60 hex chars instead of 64
+    expect(verifySessionCookie(shortSig)).toBeNull();
+    const longSig = signed + "aa"; // 66 hex chars
+    expect(verifySessionCookie(longSig)).toBeNull();
+  });
+
+  test("non-hex signature → null, no throw", () => {
+    const signed = signSession({ clientId: "c1", exp: Date.now() + 60000, sessionVersion: 0 });
+    const sig = signed.split(".").pop();
+    const nonHex = "z".repeat(64);
+    expect(verifySessionCookie(signed.replace(sig!, nonHex))).toBeNull();
+  });
 });
 
 test("COOKIE_NAME is the client session cookie name", () => {

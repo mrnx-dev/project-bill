@@ -27,16 +27,19 @@ export function signSession(payload: SessionPayload): string {
 }
 
 /** Verify a signed cookie. Returns the payload, or null if tampered/expired/malformed.
- *  Edge-safe: no DB. (Used by the proxy as the coarse gate.) */
+ *  Edge-safe: no DB. (Used by the proxy as the coarse gate.)
+ *  Signature comparison is constant-time and requires exact 32-byte hex buffers. */
 export function verifySessionCookie(raw: string | undefined): SessionPayload | null {
   if (!raw) return null;
   const parts = raw.split(".");
   if (parts.length !== 4) return null;
   const [clientId, expStr, verStr, sig] = parts;
   if (!clientId) return null;
+  if (!/^[0-9a-f]{64}$/.test(sig)) return null; // wrong length or non-hex → no throw
   const data = `${clientId}.${expStr}.${verStr}`;
   const expected = crypto.createHmac("sha256", env.AUTH_SECRET).update(data).digest("hex");
-  if (sig !== expected) return null; // tampered
+  // Constant-time compare on equal-length 32-byte buffers.
+  if (!crypto.timingSafeEqual(Buffer.from(sig, "hex"), Buffer.from(expected, "hex"))) return null;
   const exp = Number(expStr);
   const sessionVersion = Number(verStr);
   if (Number.isNaN(exp) || Number.isNaN(sessionVersion)) return null;

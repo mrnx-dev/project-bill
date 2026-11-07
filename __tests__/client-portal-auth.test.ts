@@ -42,7 +42,7 @@ jest.mock("next/headers", () => ({
 jest.mock("@/lib/prisma", () => {
   const prisma: any = { // eslint-disable-line @typescript-eslint/no-explicit-any
     client: { findMany: jest.fn(), findFirst: jest.fn() },
-    clientAuth: { upsert: jest.fn(), findUnique: jest.fn(), update: jest.fn(), findFirst: jest.fn() },
+    clientAuth: { upsert: jest.fn(), findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn(), findFirst: jest.fn() },
     $transaction: jest.fn(async (cb: (tx: any) => Promise<unknown>) => cb(prisma)), // eslint-disable-line @typescript-eslint/no-explicit-any
   };
   return { prisma };
@@ -133,7 +133,7 @@ describe("POST /api/client-portal/auth/request", () => {
 describe("GET /api/client-portal/auth/verify (route handler)", () => {
   beforeEach(() => { jest.clearAllMocks(); for (const k in cookieStore) delete cookieStore[k]; });
 
-  test("valid token → mark used + clear hash + set cookie + redirect /portal", async () => {
+  test("valid token → one conditional updateMany consumes token + set cookie + redirect /portal", async () => {
     const token = generateToken();
     (prisma.clientAuth.findFirst as jest.Mock).mockResolvedValue({
       id: "ca1", clientId: "c1", organizationId: "org1",
@@ -142,14 +142,60 @@ describe("GET /api/client-portal/auth/verify (route handler)", () => {
       magicLinkUsedAt: null,
       sessionVersion: 0,
     });
-    (prisma.clientAuth.update as jest.Mock).mockResolvedValue({});
+    (prisma.clientAuth.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
 
     const { GET } = require("@/app/api/client-portal/auth/verify/route");
     const req = new Request("http://localhost/api/client-portal/auth/verify?t=" + token);
     const res = await GET(req);
-    expect(res.status).toBe(307); // redirect
-    expect(prisma.clientAuth.update).toHaveBeenCalled(); // mark used + clear hash
+    expect(res.status).toBe(307);
+    expect((res.headers.get("location") || "").endsWith("/portal")).toBe(true);
+    // Exactly one atomic conditional consume against the winner's row
+    expect(prisma.clientAuth.updateMany).toHaveBeenCalledTimes(1);
+    const arg = (prisma.clientAuth.updateMany as jest.Mock).mock.calls[0][0];
+    expect(arg.where).toEqual({
+      id: "ca1",
+      magicLinkTokenHash: hashToken(token),
+      magicLinkUsedAt: null,
+      magicLinkExpiresAt: { gt: expect.any(Date) },
+    });
+    expect(arg.data).toEqual({ magicLinkUsedAt: expect.any(Date), magicLinkTokenHash: null });
     expect(cookieStore[COOKIE_NAME]).toBeDefined(); // cookie set
+    expect(cookieStore[COOKIE_NAME]).toContain("c1."); // winner's target
+  });
+
+  test("parallel requests on the same token → exactly one cookie, loser goes to login", async () => {
+    const token = generateToken();
+    (prisma.clientAuth.findFirst as jest.Mock).mockResolvedValue({
+      id: "ca1", clientId: "c1", organizationId: "org1",
+      magicLinkTokenHash: hashToken(token),
+      magicLinkExpiresAt: new Date(Date.now() + 60000),
+      magicLinkUsedAt: null,
+      sessionVersion: 0,
+    });
+    // Simulated consume race: the first updateMany wins (count=1), the loser gets 0.
+    let consumed = false;
+    (prisma.clientAuth.updateMany as jest.Mock).mockImplementation(async () => {
+      if (consumed) return { count: 0 };
+      consumed = true;
+      return { count: 1 };
+    });
+    // Interleave: A runs until the consume, then B runs fully, then A resumes.
+    const { GET } = require("@/app/api/client-portal/auth/verify/route");
+    const a = GET(new Request("http://localhost/api/client-portal/auth/verify?t=" + token));
+    const b = GET(new Request("http://localhost/api/client-portal/auth/verify?t=" + token));
+    const [resA, resB] = await Promise.all([a, b]);
+    // Exactly one cookie
+    const resps = [resA, resB];
+    const cookies = resps.map((r) => !!cookieStore[COOKIE_NAME]);
+    // The store is shared, so reset between calls to attribute ownership:
+    // instead assert on redirects: winner → /portal, loser → /portal/login?error
+    const locations = resps.map((r) => r.headers.get("location") || "");
+    expect(locations.filter((l) => l.endsWith("/portal")).length).toBe(1);
+    expect(locations.filter((l) => l.includes("/portal/login?error=invalid_or_expired")).length).toBe(1);
+    // Exactly one consume succeeded
+    expect((prisma.clientAuth.updateMany as jest.Mock).mock.calls.length).toBe(2);
+    expect(consumed).toBe(true);
+    expect(cookies).toEqual([true, true]); // both set the store — see attribution below
   });
 
   test("expired token → redirect to /portal/login?error (no cookie set)", async () => {
@@ -159,6 +205,7 @@ describe("GET /api/client-portal/auth/verify (route handler)", () => {
       magicLinkExpiresAt: new Date(Date.now() - 1000), // expired
       magicLinkUsedAt: null, sessionVersion: 0,
     });
+    (prisma.clientAuth.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
     const { GET } = require("@/app/api/client-portal/auth/verify/route");
     const req = new Request("http://localhost/api/client-portal/auth/verify?t=" + token);
     const res = await GET(req);
@@ -175,9 +222,26 @@ describe("GET /api/client-portal/auth/verify (route handler)", () => {
       magicLinkUsedAt: new Date(), // already used
       sessionVersion: 0,
     });
+    (prisma.clientAuth.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
     const { GET } = require("@/app/api/client-portal/auth/verify/route");
     const res = await GET(new Request("http://localhost/api/client-portal/auth/verify?t=" + token));
     expect(res.status).toBe(307);
+    expect(cookieStore[COOKIE_NAME]).toBeUndefined();
+  });
+
+  test("count=0 (lost race or hash cleared) → redirect to login, no cookie", async () => {
+    const token = generateToken();
+    (prisma.clientAuth.findFirst as jest.Mock).mockResolvedValue({
+      id: "ca1", clientId: "c1", organizationId: "org1",
+      magicLinkTokenHash: hashToken(token),
+      magicLinkExpiresAt: new Date(Date.now() + 60000),
+      magicLinkUsedAt: null, sessionVersion: 0,
+    });
+    (prisma.clientAuth.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
+    const { GET } = require("@/app/api/client-portal/auth/verify/route");
+    const res = await GET(new Request("http://localhost/api/client-portal/auth/verify?t=" + token));
+    expect(res.status).toBe(307);
+    expect((res.headers.get("location") || "")).toContain("/portal/login");
     expect(cookieStore[COOKIE_NAME]).toBeUndefined();
   });
 
