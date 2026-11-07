@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NotificationsClient } from "./notifications-client";
 import { auth } from "@/auth";
+import { rlsContext } from "@/lib/rls";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,19 @@ export default async function NotificationsPage() {
      )
   }
 
+  // Notifications are org-scoped system events, not tenant data — but the
+  // counts/queries below only make sense per active org, so scope them.
+  if (!session.user.activeOrganizationId) {
+    redirect("/login");
+  }
+
+  return rlsContext.run(
+    {
+      organizationId: session.user.activeOrganizationId,
+      userId: session.user.id,
+      role: session.user.role,
+    },
+    async () => {
   // Pre-fetch first page of notifications for fast initial load
   const [notificationsRaw, total, unreadCount] = await Promise.all([
     prisma.notification.findMany({
@@ -63,5 +77,7 @@ export default async function NotificationsPage() {
         initialUnreadCount={unreadCount} 
       />
     </div>
+  );
+    },
   );
 }

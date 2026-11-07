@@ -1,9 +1,24 @@
 import { prisma } from "@/lib/prisma";
 import { ClientsClient } from "./clients-client";
+import { auth } from "@/auth";
+import { rlsContext } from "@/lib/rls";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function ClientsPage() {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.activeOrganizationId) {
+    redirect("/login");
+  }
+
+  return rlsContext.run(
+    {
+      organizationId: session.user.activeOrganizationId,
+      userId: session.user.id,
+      role: session.user.role,
+    },
+    async () => {
   const clients = await prisma.client.findMany({
     orderBy: { createdAt: "desc" },
   });
@@ -28,5 +43,7 @@ export default async function ClientsPage() {
 
       <ClientsClient initialClients={serializableClients} />
     </div>
+  );
+    },
   );
 }

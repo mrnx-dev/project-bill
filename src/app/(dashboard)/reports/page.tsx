@@ -1,9 +1,24 @@
 import { prisma } from "@/lib/prisma";
 import { ReportsClient } from "./reports-client";
+import { auth } from "@/auth";
+import { rlsContext } from "@/lib/rls";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.activeOrganizationId) {
+    redirect("/login");
+  }
+
+  return rlsContext.run(
+    {
+      organizationId: session.user.activeOrganizationId,
+      userId: session.user.id,
+      role: session.user.role,
+    },
+    async () => {
   // Fetch all paid invoices for revenue data
   const invoicesRaw = await prisma.invoice.findMany({
     include: {
@@ -55,5 +70,7 @@ export default async function ReportsPage() {
 
       <ReportsClient invoices={invoices} clients={clients} />
     </div>
+  );
+    },
   );
 }

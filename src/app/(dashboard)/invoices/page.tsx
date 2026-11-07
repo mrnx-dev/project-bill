@@ -2,10 +2,25 @@ import { prisma } from "@/lib/prisma";
 import { InvoicesClient } from "./invoices-client";
 
 import { GlobalInvoicePoller } from "@/components/global-invoice-poller";
+import { auth } from "@/auth";
+import { rlsContext } from "@/lib/rls";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function InvoicesPage() {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.activeOrganizationId) {
+    redirect("/login");
+  }
+
+  return rlsContext.run(
+    {
+      organizationId: session.user.activeOrganizationId,
+      userId: session.user.id,
+      role: session.user.role,
+    },
+    async () => {
   const [invoicesRaw, unpaidCount] = await Promise.all([
     prisma.invoice.findMany({
       include: {
@@ -55,5 +70,7 @@ export default async function InvoicesPage() {
       <GlobalInvoicePoller currentUnpaidCount={unpaidCount} />
       <InvoicesClient initialInvoices={invoices} />
     </div>
+  );
+    },
   );
 }

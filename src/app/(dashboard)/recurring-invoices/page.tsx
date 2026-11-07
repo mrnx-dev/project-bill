@@ -1,9 +1,24 @@
 import { prisma } from "@/lib/prisma";
 import { RecurringInvoicesClient } from "./recurring-invoices-client";
+import { auth } from "@/auth";
+import { rlsContext } from "@/lib/rls";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function RecurringInvoicesPage() {
+    const session = await auth();
+    if (!session?.user?.id || !session.user.activeOrganizationId) {
+        redirect("/login");
+    }
+
+    return rlsContext.run(
+        {
+            organizationId: session.user.activeOrganizationId,
+            userId: session.user.id,
+            role: session.user.role,
+        },
+        async () => {
     const recurringInvoicesRaw = await prisma.recurringInvoice.findMany({
         include: {
             project: {
@@ -70,5 +85,7 @@ export default async function RecurringInvoicesPage() {
 
             <RecurringInvoicesClient initialRecurringInvoices={recurringInvoices} projects={projects} />
         </div>
+    );
+        },
     );
 }

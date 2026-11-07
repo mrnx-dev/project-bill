@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { getProactiveInsights } from "@/lib/ai/agent";
 import { auth } from "@/auth";
-import { AIInsightCard } from "@/components/ai/ai-insight-card";
+import { rlsContext } from "@/lib/rls";
 import { OverviewCharts } from "@/components/dashboard/overview-charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, FileText, Wallet, Clock } from "lucide-react";
 import { formatEnum } from "@/lib/utils";
 import { formatMoney, getCurrency } from "@/lib/currency";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -19,28 +19,37 @@ type CurrencyRevenue = {
 
 export default async function DashboardPage() {
   const session = await auth();
-  const userId = session?.user?.id ?? "";
+  if (!session?.user?.id || !session.user.activeOrganizationId) {
+    redirect("/login");
+  }
 
-  // Sequential queries (Prisma pg@9 — no Promise.all)
-  const projectsRaw = await prisma.project.findMany({
-    include: { client: true },
-    orderBy: { createdAt: "desc" },
-  });
-
-  const unpaidInvoices = await prisma.invoice.count({
-    where: { status: "UNPAID" },
-  });
-
-  const totalClients = await prisma.client.count();
-
-  // Fetch all invoices with project currency for multi-currency aggregation
-  const allInvoices = await prisma.invoice.findMany({
-    select: {
-      amount: true,
-      status: true,
-      project: { select: { currency: true } },
+  return rlsContext.run(
+    {
+      organizationId: session.user.activeOrganizationId,
+      userId: session.user.id,
+      role: session.user.role,
     },
-  });
+    async () => {
+      // Sequential queries (Prisma pg@9 — no Promise.all)
+      const projectsRaw = await prisma.project.findMany({
+        include: { client: true },
+        orderBy: { createdAt: "desc" },
+      });
+
+      const unpaidInvoices = await prisma.invoice.count({
+        where: { status: "UNPAID" },
+      });
+
+      const totalClients = await prisma.client.count();
+
+      // Fetch all invoices with project currency for multi-currency aggregation
+      const allInvoices = await prisma.invoice.findMany({
+        select: {
+          amount: true,
+          status: true,
+          project: { select: { currency: true } },
+        },
+      });
 
   // Aggregate revenue by currency
   const revenueByCurrency = new Map<string, { paid: number; pending: number }>();
@@ -88,9 +97,7 @@ export default async function DashboardPage() {
     statusCounts = statusCounts.filter((s) => s.value > 0);
   }
 
-  // Fetch proactive AI insights
-  const insights = userId ? await getProactiveInsights(userId) : [];
-
+  // Return JSX
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -101,14 +108,6 @@ export default async function DashboardPage() {
           </p>
         </div>
       </div>
-
-      {insights.length > 0 && (
-        <div className="space-y-2">
-          {insights.map((insight) => (
-            <AIInsightCard key={insight.type} insight={insight as any} />
-          ))}
-        </div>
-      )}
 
       {/* Revenue cards — dynamic per currency */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -175,5 +174,7 @@ export default async function DashboardPage() {
 
       <OverviewCharts data={{ revenueData, statusData: statusCounts }} />
     </div>
+      );
+    },
   );
 }

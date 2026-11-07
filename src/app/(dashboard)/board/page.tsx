@@ -2,10 +2,25 @@ import { prisma } from "@/lib/prisma";
 import { DashboardClient as BoardClient } from "./board-client"; // Renamed on import for now to avoid refactoring the component itself
 
 import { GlobalInvoicePoller } from "@/components/global-invoice-poller";
+import { auth } from "@/auth";
+import { rlsContext } from "@/lib/rls";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function BoardPage() {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.activeOrganizationId) {
+    redirect("/login");
+  }
+
+  return rlsContext.run(
+    {
+      organizationId: session.user.activeOrganizationId,
+      userId: session.user.id,
+      role: session.user.role,
+    },
+    async () => {
   const [projectsRaw, unpaidCount] = await Promise.all([
     prisma.project.findMany({
       include: { client: true, invoices: true, items: true },
@@ -60,5 +75,7 @@ export default async function BoardPage() {
       <GlobalInvoicePoller currentUnpaidCount={unpaidCount} />
       <BoardClient initialProjects={projects} />
     </div>
+  );
+    },
   );
 }

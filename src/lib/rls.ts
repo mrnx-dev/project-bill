@@ -39,36 +39,44 @@ export function applyTenantScope(
   if (!orgId || !isTenantModel(model)) return args;
 
   if (mode === "where") {
-    if (args?.where?.organizationId) return args;
     return { ...args, where: { ...(args?.where || {}), organizationId: orgId } };
   }
 
   if (mode === "data") {
-    if (args?.data?.organizationId) return args;
     return { ...args, data: { ...(args?.data || {}), organizationId: orgId } };
   }
 
-  // dataMany
+  // dataMany — overwrite in every row so a caller-supplied tenant never wins.
   if (!Array.isArray(args?.data)) return args;
   return {
     ...args,
-    data: args.data.map((d: any) =>
-      d?.organizationId ? d : { ...d, organizationId: orgId },
-    ),
+    data: args.data.map((d: any) => ({ ...d, organizationId: orgId })),
   };
 }
 
 type RouteCtx = { params: Promise<Record<string, string | string[]>> };
 type RouteHandler = (req: Request, ctx: RouteCtx) => Promise<Response>;
 
+// Returns null when the session/user/org pair has no live membership.
+async function resolveMembership(userId: string, organizationId: string) {
+  // Lazy import to avoid a circular import at module load (auth.ts imports prisma).
+  const { prisma } = await import("@/lib/prisma");
+  return prisma.organizationMember.findUnique({
+    where: { userId_organizationId: { userId, organizationId } },
+  });
+}
+
 export function withTenant(handler: RouteHandler): RouteHandler {
   return async (req, ctx) => {
-    // Lazy import to avoid a circular import at module load (auth.ts imports prisma).
     const { auth } = await import("@/auth");
     const session = await auth();
     const orgId = session?.user?.activeOrganizationId;
     if (!session?.user || !orgId) {
       return new Response("Unauthorized", { status: 401 });
+    }
+    const membership = await resolveMembership(session.user.id, orgId);
+    if (!membership) {
+      return new Response("Forbidden", { status: 403 });
     }
     return rlsContext.run(
       { organizationId: orgId, userId: session.user.id, role: session.user.role },
@@ -98,6 +106,10 @@ export function withTenantRls(
     const orgId = session?.user?.activeOrganizationId;
     if (!session?.user || !orgId) {
       return new Response("Unauthorized", { status: 401 });
+    }
+    const membership = await resolveMembership(session.user.id, orgId);
+    if (!membership) {
+      return new Response("Forbidden", { status: 403 });
     }
     const { prisma } = await import("./prisma");
     return rlsContext.run(

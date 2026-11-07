@@ -1,9 +1,24 @@
 import { prisma } from "@/lib/prisma";
 import { ProjectsClient } from "./projects-client";
+import { auth } from "@/auth";
+import { rlsContext } from "@/lib/rls";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage() {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.activeOrganizationId) {
+    redirect("/login");
+  }
+
+  return rlsContext.run(
+    {
+      organizationId: session.user.activeOrganizationId,
+      userId: session.user.id,
+      role: session.user.role,
+    },
+    async () => {
   const projectsRaw = await prisma.project.findMany({
     include: { client: true, invoices: true, items: true, milestones: true },
     orderBy: { createdAt: "desc" },
@@ -76,5 +91,7 @@ export default async function ProjectsPage() {
 
       <ProjectsClient initialProjects={projects} clients={clients} />
     </div>
+  );
+    },
   );
 }
