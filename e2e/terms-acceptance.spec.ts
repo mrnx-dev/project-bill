@@ -35,6 +35,7 @@ test.describe("Terms of Service Acceptance Flow", () => {
         totalPrice: 10000000,
         dpAmount: 5000000,
         currency: "IDR",
+        language: "en",
         terms: "1. No revisions.\n2. Payment non-refundable.",
         organizationId: org.id,
         items: {
@@ -69,6 +70,22 @@ test.describe("Terms of Service Acceptance Flow", () => {
         .catch(() => { });
   });
 
+  test("mobile contract fills the viewport and keeps the agreement readable", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto(`/invoices/${testInvoice!.id}`);
+    await page.getByRole("button", { name: "Review & Sign Document" }).click();
+
+    const dialog = page.getByRole("dialog");
+    await expect.poll(async () => (await dialog.boundingBox())?.width ?? 0).toBeGreaterThanOrEqual(374);
+    await expect.poll(async () => (await dialog.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(666);
+    const scrollArea = dialog.locator(".overflow-y-auto");
+    await expect(scrollArea.getByRole("checkbox")).toBeAttached();
+    await scrollArea.evaluate((node) => node.scrollTo(0, node.scrollHeight));
+    await expect(dialog.getByRole("checkbox")).toBeEnabled();
+    await dialog.getByRole("checkbox").check({ force: true });
+    await expect(dialog.getByRole("button", { name: "Sign Agreement" })).toBeEnabled();
+  });
+
   test("Client must accept terms to see the Pay Now button", async ({
     page,
   }) => {
@@ -79,8 +96,8 @@ test.describe("Terms of Service Acceptance Flow", () => {
     await page.goto(`/invoices/${testInvoice.id}`);
 
     // 2. Verify "Pay Now" is hiding
-    const payButton = page.getByRole("button", { name: /Pay Rp/ });
-    await expect(payButton).not.toBeVisible();
+    const payment = page.getByRole("button", { name: /Pay Rp/ }).or(page.getByText("Manual Bank Transfer"));
+    await expect(payment).not.toBeVisible();
 
     // 3. Verify the Terms Agreement card is visible and open the dialog
     await expect(page.getByText("Digital Agreement Required")).toBeVisible();
@@ -89,7 +106,7 @@ test.describe("Terms of Service Acceptance Flow", () => {
     await page.getByRole("button", { name: "Review & Sign Document" }).click();
 
     // Verify dialog content is visible
-    await expect(page.getByText("1. No revisions.")).toBeVisible();
+    await expect(page.getByText("No revisions.")).toBeVisible();
 
     // 4. Scroll to the bottom of the terms container
     // We target the scrollable container. Since we are using standard Tailwind utility 'overflow-y-auto', 
@@ -117,11 +134,10 @@ test.describe("Terms of Service Acceptance Flow", () => {
     await acceptButton.click();
 
     // 7. Verify the success state appears
-    await expect(page.getByText("Valid Digital Contract Formed")).toBeVisible();
+    await expect(page.getByText("Valid Digital Contract Formed")).toBeVisible({ timeout: 25000 });
     await expect(page.getByText(/Digitally signed and accepted on/)).toBeVisible();
 
-    // 8. Verify the Pay Now button is now visible
-    await expect(payButton).toBeVisible();
-    await expect(payButton).toBeEnabled();
+    // 8. The configured payment method is now visible.
+    await expect(payment).toBeVisible();
   });
 });

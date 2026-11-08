@@ -214,38 +214,34 @@ export function TermsAgreement({
           </DialogTrigger>
         </div>
 
-        <DialogContent className="light-theme max-w-[900px] sm:max-w-[900px] max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden bg-slate-50 sm:rounded-xl">
-          <DialogHeader className="p-6 pb-5 border-b bg-white">
+        <DialogContent className="light-theme h-[100dvh] max-h-[100dvh] max-w-none rounded-none border-0 flex flex-col gap-0 p-0 overflow-hidden bg-slate-50 sm:h-auto sm:max-h-[90vh] sm:max-w-[900px] sm:rounded-xl sm:border">
+          <DialogHeader className="shrink-0 px-4 py-4 pr-12 border-b bg-white sm:p-6 sm:pb-5">
             <div className="flex items-center gap-3 mb-1">
               <ShieldCheck className="w-6 h-6 text-blue-600" />
               <DialogTitle className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">{t.sowTermsTitle}</DialogTitle>
             </div>
-            <DialogDescription className="text-slate-500 text-sm">
+            <DialogDescription className="sr-only text-slate-500 text-sm sm:not-sr-only">
               {t.sowTermsDescription}
             </DialogDescription>
           </DialogHeader>
 
           <div
-            className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50/50 relative"
+            className="min-h-0 flex-1 overflow-y-auto bg-white sm:p-6 sm:bg-slate-50/50 relative"
             onScroll={handleScroll}
             ref={scrollContainerRef}
           >
-            <div className="bg-white border rounded-lg shadow-sm min-h-[400px]">
-              {/* Scroll gate: this outer div is the scrolling element — stay that way, or the checkbox locks */}
+            <div className="bg-white sm:border sm:rounded-lg sm:shadow-sm [&_.print-content]:min-w-0 [&_.prose]:text-left [&_.prose]:text-base [&_.prose]:break-words [&_.prose_table]:block [&_.prose_table]:max-w-full [&_.prose_table]:overflow-x-auto sm:[&_.prose]:text-justify sm:[&_.prose]:text-sm [&>div]:px-4 [&>div]:py-6 sm:[&>div]:p-8 md:[&>div]:p-12">
+              {/* The outer container handles scrolling for the agreement gate. */}
               <ContractDocument {...document} />
             </div>
-          </div>
-
-          <div className="border-t bg-white z-10">
-            {/* Agreement Checkbox */}
-            <div className={`px-6 pt-5 pb-4 transition-opacity duration-300 ${!hasScrolledToBottom ? "opacity-50" : "opacity-100"}`}>
+            <div className={`px-4 pt-4 pb-4 sm:px-6 transition-opacity duration-300 ${!hasScrolledToBottom ? "opacity-50" : "opacity-100"}`}>
               {!hasScrolledToBottom && (
                 <div className="mb-3 text-xs font-semibold text-amber-600 bg-amber-50 px-3 py-2 rounded-md border border-amber-200 inline-block">
                   {t.scrollToBottom}
                 </div>
               )}
               <label
-                className={`flex items-start gap-4 select-none p-4 rounded-xl border-2 transition-all duration-200 ${!hasScrolledToBottom
+                className={`flex items-start gap-4 select-none p-4 rounded-xl border-2 focus-within:ring-2 focus-within:ring-blue-600 focus-within:ring-offset-2 transition-all duration-200 ${!hasScrolledToBottom
                   ? "cursor-not-allowed bg-slate-50 border-slate-200 grayscale"
                   : checked
                     ? "cursor-pointer bg-blue-50/80 border-blue-300 shadow-sm shadow-blue-100"
@@ -275,11 +271,14 @@ export function TermsAgreement({
               </label>
             </div>
 
+          </div>
+
+          <div className="shrink-0 border-t bg-white z-10">
             {/* Action Buttons */}
-            <div className="px-6 pb-6 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3">
+            <div className="px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-6 sm:pt-4 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3">
               <Button
                 variant="ghost"
-                className="text-slate-500 hover:text-slate-700 hover:bg-slate-100 font-medium px-6"
+                className="hidden sm:inline-flex text-slate-500 hover:text-slate-700 hover:bg-slate-100 font-medium px-6"
                 onClick={() => setIsOpen(false)}
                 disabled={isLoading}
               >
