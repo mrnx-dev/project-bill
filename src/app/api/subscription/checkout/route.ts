@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       customerName: user.name || "Customer",
       customerEmail: user.email || "",
       customerMobile: "08000000000",
-      description: `ProjectBill - Upgrade to ${plan.toUpperCase()} (${billing})`,
+      description: `Corez - Upgrade to ${plan.toUpperCase()} (${billing})`,
       redirectUrl: `${baseUrl}/settings/subscription?success=true`,
       organizationId: session.user.activeOrganizationId!,
     });

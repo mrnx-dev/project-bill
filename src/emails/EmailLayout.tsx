@@ -20,7 +20,7 @@ export interface CompanyInfo {
 }
 
 const DEFAULT_COMPANY: CompanyInfo = {
-    companyName: "ProjectBill",
+    companyName: "Corez",
     companyEmail: null,
     companyLogoUrl: null,
     companyAddress: null,
@@ -134,7 +134,7 @@ export const EmailLayout = ({ preview, company, lang = "id", children }: EmailLa
                                 lineHeight: "18px",
                             }}
                         >
-                            Powered by ProjectBill
+                            Powered by Corez
                         </Text>
                     </Section>
                 </Container>

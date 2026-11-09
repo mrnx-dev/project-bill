@@ -111,7 +111,7 @@ export function AppSidebar({ user, company, isSelfHosted }: AppSidebarProps) {
       }))
     : navGroups;
 
-  const companyName = company?.companyName || "ProjectBill";
+  const companyName = company?.companyName || "Corez";
   const companyLogo = company?.companyLogoUrl;
 
   return (

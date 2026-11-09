@@ -47,7 +47,7 @@ export async function exportToXLSX(
   filename: string
 ) {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "ProjectBill";
+  workbook.creator = "Corez";
   workbook.created = new Date();
 
   for (const sheet of sheets) {

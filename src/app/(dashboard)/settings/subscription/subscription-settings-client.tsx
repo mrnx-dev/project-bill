@@ -84,7 +84,7 @@ export function SubscriptionSettingsClient({ isSelfHosted }: { isSelfHosted: boo
             <Badge variant="default" className="bg-green-500 hover:bg-green-600">Unlimited</Badge>
           </div>
           <CardDescription>
-            You are running ProjectBill in self-hosted mode.
+            You are running Corez in self-hosted mode.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

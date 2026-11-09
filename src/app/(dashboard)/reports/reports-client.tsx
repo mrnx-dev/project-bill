@@ -310,7 +310,7 @@ export function ReportsClient({ invoices, clients }: ReportsClientProps) {
       "Paid Date": inv.paidAt ? new Date(inv.paidAt).toLocaleDateString() : "",
       "Created At": new Date(inv.createdAt).toLocaleDateString(),
     }));
-    exportToCSV(rows, `ProjectBill_Invoices_${new Date().toISOString().slice(0, 10)}`);
+    exportToCSV(rows, `Corez_Invoices_${new Date().toISOString().slice(0, 10)}`);
     toast.success("CSV exported successfully");
   };
 
@@ -367,7 +367,7 @@ export function ReportsClient({ invoices, clients }: ReportsClientProps) {
         { name: "Summary", data: summaryRows },
         { name: "Client Breakdown", data: clientRows },
       ],
-      `ProjectBill_Report_${new Date().toISOString().slice(0, 10)}`
+      `Corez_Report_${new Date().toISOString().slice(0, 10)}`
     );
     toast.success("XLSX exported successfully");
   };

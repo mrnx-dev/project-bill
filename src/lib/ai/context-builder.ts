@@ -115,7 +115,7 @@ export async function buildBusinessContext(organizationId?: string): Promise<Bus
 
   return {
     companyInfo: {
-      name: settings?.companyName ?? "ProjectBill",
+      name: settings?.companyName ?? "Corez",
       email: settings?.companyEmail ?? "",
       logoUrl: settings?.companyLogoUrl ?? undefined,
     },

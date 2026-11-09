@@ -136,7 +136,7 @@ export const ReminderEmail = ({
     projectName = "Website Development",
     invoiceId = "INV-1234",
     amount = "Rp 1,000,000",
-    invoiceLink = "https://projectbill.com/invoices/INV-1234",
+    invoiceLink = "https://corez.local/invoices/INV-1234",
     reminderType = "pre_due",
     lateFeeAmount,
     company,

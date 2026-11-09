@@ -16,7 +16,7 @@ export const GET = withTenantRls(async (_req, _ctx, tx) => {
 
     if (!settings) {
       settings = await tx.settings.create({
-        data: { companyName: "ProjectBill", organizationId: orgId },
+        data: { companyName: "Corez", organizationId: orgId },
       });
     }
 
@@ -97,7 +97,7 @@ export const PUT = withTenantRls(async (req, _ctx, tx) => {
       settings = await tx.settings.create({
         data: {
           ...dataToUpdate,
-          companyName: (dataToUpdate.companyName as string) || "ProjectBill",
+          companyName: (dataToUpdate.companyName as string) || "Corez",
           organizationId: orgId,
         } as any,
       });

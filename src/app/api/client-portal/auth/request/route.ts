@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       },
     });
     links.push({
-      orgName: c.organization?.name ?? "ProjectBill",
+      orgName: c.organization?.name ?? "Corez",
       url: `${baseUrl}/api/client-portal/auth/verify?t=${token}`,
     });
   }

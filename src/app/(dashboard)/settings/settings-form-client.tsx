@@ -24,7 +24,7 @@ export function SettingsFormClient() {
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
-      companyName: "ProjectBill",
+      companyName: "Corez",
       companyAddress: "",
       companyEmail: "",
       senderEmail: "",

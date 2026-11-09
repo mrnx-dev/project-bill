@@ -19,7 +19,7 @@ export const InvoiceEmail = ({
   projectName = "Website Development",
   amount = "Rp 1,000,000",
   dueDate = new Date(),
-  invoiceLink = "https://projectbill.com/invoices/INV-1234",
+  invoiceLink = "https://corez.local/invoices/INV-1234",
   company,
   lang = "id",
 }: InvoiceEmailProps) => {

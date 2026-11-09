@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ProjectBill",
+  title: "Corez",
   description: "Self-hosted invoicing and project tracking",
 };
 

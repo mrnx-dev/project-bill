@@ -23,7 +23,7 @@ export const PaymentSuccessEmail = ({
     projectName = "Website Development",
     invoiceNumber = "INV-1234",
     amount = "Rp 1,000,000",
-    invoiceLink = "https://projectbill.com/invoices/INV-1234",
+    invoiceLink = "https://corez.local/invoices/INV-1234",
     hasSowAttachment = false,
     company,
     lang = "id",

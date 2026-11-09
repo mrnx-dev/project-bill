@@ -298,7 +298,7 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
                 Welcome, {userName}! 👋
               </h2>
               <p className="text-muted-foreground text-sm sm:text-lg max-w-md mx-auto px-4">
-                Let&apos;s get ProjectBill set up for your business. This will only take a few minutes.
+                Let&apos;s get Corez set up for your business. This will only take a few minutes.
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 max-w-lg mx-auto pt-2 sm:pt-4 animate-in fade-in slide-in-from-bottom-6 duration-500 delay-300 px-4">
@@ -570,7 +570,7 @@ export function OnboardingModal({ isOpen: initialIsOpen, userName, existingSetti
                 You&apos;re all set! 🎉
               </h2>
               <p className="text-muted-foreground text-sm sm:text-lg max-w-md mx-auto">
-                ProjectBill is ready. You can now close this wizard and start managing your workspace.
+                Corez is ready. You can now close this wizard and start managing your workspace.
               </p>
             </div>
           </div>

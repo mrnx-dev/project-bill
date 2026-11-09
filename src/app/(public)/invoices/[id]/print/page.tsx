@@ -83,7 +83,7 @@ export default async function InvoicePrintPage(props: {
   const settings = (await prisma.settings.findFirst({
     where: { organizationId: invoice.organizationId },
   })) || {
-    companyName: "ProjectBill",
+    companyName: "Corez",
     companyAddress: null,
     companyEmail: null,
     companyLogoUrl: null,
@@ -447,7 +447,7 @@ export default async function InvoicePrintPage(props: {
 
       <div className="mt-auto text-center text-xs text-slate-400 border-t pt-4">
         <p>{t.thanks}</p>
-        <p>ProjectBill © {new Date().getFullYear()}</p>
+        <p>Corez © {new Date().getFullYear()}</p>
       </div>
       </div>
     </div>

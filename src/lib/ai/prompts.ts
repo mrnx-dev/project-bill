@@ -11,7 +11,7 @@ export function buildSystemPrompt(context: BusinessContext, locale: "id" | "en" 
       `${context.stats.overdueInvoices > 0 ? ` (${context.stats.overdueInvoices} overdue)` : ""}.`
     : "";
 
-  return `You are the AI Financial Co-Pilot for ProjectBill — an invoicing and project management application for freelancers and small agencies in Indonesia.
+  return `You are the AI Financial Co-Pilot for Corez — an invoicing and project management application for freelancers and small agencies in Indonesia.
 
 ## Current Business Context
 ${contextText}

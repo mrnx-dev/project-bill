@@ -91,7 +91,7 @@ export default async function InvoiceViewPage(props: {
   const settings = (await prisma.settings.findFirst({
     where: { organizationId: invoice.organizationId },
   })) || {
-    companyName: "ProjectBill",
+    companyName: "Corez",
     companyAddress: null,
     companyEmail: null,
     companyLogoUrl: null,
@@ -117,7 +117,7 @@ export default async function InvoiceViewPage(props: {
 
   const hasMayar = !!settings.mayarApiKey;
 
-  // Watermark: show "Powered by ProjectBill" for starter plan on managed cloud
+  // Watermark: show "Powered by Corez" for starter plan on managed cloud
   const { isManagedCloud } = await import("@/lib/billing/subscription");
   let showWatermark = false;
   if (isManagedCloud()) {
@@ -521,19 +521,19 @@ export default async function InvoiceViewPage(props: {
             ))}
           <div className="text-center mt-8 text-xs text-slate-400 border-t pt-4">
             <p>{t.thanks}</p>
-            <p>ProjectBill © {new Date().getFullYear()}</p>
+            <p>Corez © {new Date().getFullYear()}</p>
           </div>
 
           {/* Subscription Watermark - shown for starter plan on managed cloud */}
           {showWatermark && (
             <div className="mt-4 text-center print:mt-8">
               <a
-                href="https://projectbill.app"
+                href={process.env.APP_URL || "https://corez.local"}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 transition-colors bg-slate-50 px-3 py-1.5 rounded-full border"
               >
-                Powered by <strong>ProjectBill</strong>
+                Powered by <strong>Corez</strong>
               </a>
             </div>
           )}

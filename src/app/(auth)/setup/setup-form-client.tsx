@@ -83,7 +83,7 @@ export function SetupFormClient() {
           </div>
           <h1 className="text-3xl font-bold tracking-tight">First-Run Setup</h1>
           <p className="text-muted-foreground mt-2">
-            Welcome to ProjectBill. Create your global administrator account to
+            Welcome to Corez. Create your global administrator account to
             get started.
           </p>
         </div>
