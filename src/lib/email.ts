@@ -25,7 +25,7 @@ export async function getCompanySettings(organizationId: string): Promise<Compan
       where: { organizationId },
     });
     return {
-      companyName: settings?.companyName || "ProjectBill",
+      companyName: settings?.companyName || "Corez",
       companyEmail: settings?.companyEmail || null,
       companyLogoUrl: settings?.companyLogoUrl || null,
       companyAddress: settings?.companyAddress || null,
@@ -37,7 +37,7 @@ export async function getCompanySettings(organizationId: string): Promise<Compan
     };
   } catch {
     return {
-      companyName: "ProjectBill",
+      companyName: "Corez",
       companyEmail: null,
       companyLogoUrl: null,
       companyAddress: null,
@@ -50,11 +50,10 @@ export async function getCompanySettings(organizationId: string): Promise<Compan
   }
 }
 
-function getSenderFrom(companyName: string, senderEmail?: string | null): string {
-  if (senderEmail && senderEmail.trim() !== "") {
-    return `${companyName} <${senderEmail.trim()}>`;
-  }
-  return `${companyName} <noreply@projectbill.mrndev.me>`;
+function getSenderFrom(companyName: string, senderEmail?: string | null, smtpUser?: string | null): string {
+  // shortcut: corez.local is a placeholder, not deliverable; set sender email in Settings if tenants reply to invoices
+  const from = senderEmail?.trim() || smtpUser?.trim() || "noreply@corez.local";
+  return `${companyName} <${from}>`;
 }
 
 async function sendMail(
@@ -75,7 +74,7 @@ async function sendMail(
   });
   try {
     const info = await transport.sendMail({
-      from: getSenderFrom(settings.companyName, settings.senderEmail),
+      from: getSenderFrom(settings.companyName, settings.senderEmail, settings.smtpUser),
       to: mail.to,
       subject: mail.subject,
       html: mail.html,
